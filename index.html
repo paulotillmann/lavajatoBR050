@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -47,6 +48,12 @@
                 DEFAULT: "hsl(var(--card))",
                 foreground: "hsl(var(--card-foreground))",
               },
+              palette: {
+                light: "rgba(var(--palette-light), <alpha-value>)",
+                medium: "rgba(var(--palette-medium), <alpha-value>)",
+                dark: "rgba(var(--palette-dark), <alpha-value>)",
+                deep: "rgba(var(--palette-deep), <alpha-value>)",
+              }
             },
             borderRadius: {
               lg: "var(--radius)",
@@ -55,30 +62,116 @@
             },
           },
         },
+        plugins: [
+          function({ addVariant }) {
+            addVariant('light-theme', '.light-theme &')
+          }
+        ]
       }
     </script>
     <style>
       :root {
-        --background: 0 0% 100%;
-        --foreground: 222.2 84% 4.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 222.2 84% 4.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 222.2 84% 4.9%;
-        --primary: 222.2 47.4% 11.2%;
+        --background: 222.2 47.4% 11.2%; /* #0f172a (Slate 900) */
+        --foreground: 210 40% 98%; /* #f8fafc */
+        --card: 217.2 32.6% 17.5%; /* #1e293b (Slate 800) */
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 47.4% 11.2%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 221.2 83.2% 53.3%; /* #2563eb (Blue 600) */
         --primary-foreground: 210 40% 98%;
-        --secondary: 210 40% 96.1%;
-        --secondary-foreground: 222.2 47.4% 11.2%;
-        --muted: 210 40% 96.1%;
-        --muted-foreground: 215.4 16.3% 46.9%;
-        --accent: 210 40% 96.1%;
-        --accent-foreground: 222.2 47.4% 11.2%;
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215.4 16.3% 56.9%; /* #94a3b8 (Slate 400) */
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
         --destructive: 0 84.2% 60.2%;
         --destructive-foreground: 210 40% 98%;
-        --border: 214.3 31.8% 91.4%;
-        --input: 214.3 31.8% 91.4%;
-        --ring: 222.2 84% 4.9%;
-        --radius: 0.5rem;
+        --border: 215 27.9% 16.9%; /* #1e293b / border-slate-800 */
+        --input: 217.2 32.6% 17.5%;
+        --ring: 221.2 83.2% 53.3%;
+        --radius: 0.75rem;
+
+        /* Raw RGB channels for Tailwind opacity modifiers */
+        --palette-deep: 15, 23, 42;       /* #0f172a */
+        --palette-dark: 30, 41, 59;       /* #1e293b */
+        --palette-medium: 59, 130, 246;    /* #3b82f6 */
+        --palette-light: 241, 245, 249;   /* #f1f5f9 */
+
+        --scrollbar-track: #0f172a;
+        --scrollbar-thumb: #1e293b;
+        --scrollbar-thumb-hover: #3b82f6;
+      }
+      
+      .light-theme {
+        --background: 210 40% 98%; /* #f8fafc */
+        --foreground: 222.2 84% 4.9%; /* #0f172a */
+        --card: 0 0% 100%; /* #ffffff */
+        --card-foreground: 222.2 84% 4.9%;
+        --primary: 221.2 83.2% 53.3%; /* #2563eb */
+        --primary-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%; /* #e2e8f0 (Slate 200) */
+        --input: 210 40% 98%;
+        --ring: 221.2 83.2% 53.3%;
+
+        /* Raw RGB channels for Tailwind opacity modifiers */
+        --palette-deep: 248, 250, 252;    /* #f8fafc */
+        --palette-dark: 255, 255, 255;    /* #ffffff */
+        --palette-medium: 37, 99, 235;    /* #2563eb */
+        --palette-light: 15, 23, 42;       /* #0f172a */
+
+        --scrollbar-track: #f8fafc;
+        --scrollbar-thumb: #cbd5e1;
+        --scrollbar-thumb-hover: #2563eb;
+      }
+
+      body {
+        background-color: rgba(var(--palette-deep), 1) !important;
+        color: rgba(var(--palette-light), 1) !important;
+        transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+      }
+      
+      /* Transition all elements for rich visual aesthetic */
+      div, header, main, section, button, input, select, textarea {
+        transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      /* Custom scrollbar matching palette */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 4px;
+        border: 2px solid var(--scrollbar-track);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+      }
+
+      /* Ultra discrete and thin scrollbar for specific containers like Sidebar and grids */
+      .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.2) transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.2);
+        border-radius: 9999px;
+        border: none;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(148, 163, 184, 0.4);
       }
     </style>
   <script type="importmap">

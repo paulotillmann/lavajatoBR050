@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+
+# Temporary and local scratch scripts (contains db passwords and management tokens)
+scratch/
