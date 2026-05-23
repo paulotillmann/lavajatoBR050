@@ -35,6 +35,7 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Bell,
   Plus,
   Filter,
@@ -53,7 +54,8 @@ import {
   EyeOff,
   LogOut,
   Key,
-  AlertTriangle
+  AlertTriangle,
+  Pencil
 } from 'lucide-react';
 
 // Env variables (read directly from import.meta.env or fall back to user credentials)
@@ -215,7 +217,7 @@ const App: React.FC = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
-  
+
   // Auth Form Inputs
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -225,7 +227,7 @@ const App: React.FC = () => {
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [forgotEmail, setForgotEmail] = useState('');
-  
+
   // Auth Feedback & Loading State
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSuccess, setAuthSuccess] = useState<string | null>(null);
@@ -265,7 +267,7 @@ const App: React.FC = () => {
         .select('*')
         .eq('id', userId)
         .single();
-      
+
       if (error) {
         console.warn('Perfil não encontrado de imediato, tentando novamente...');
         setTimeout(async () => {
@@ -357,7 +359,7 @@ const App: React.FC = () => {
           }
         }
       });
-      
+
       if (error) throw error;
 
       if (data.session) {
@@ -420,15 +422,15 @@ const App: React.FC = () => {
 
         {/* Outer Split Card Container */}
         <div className="w-full max-w-5xl bg-[#0e111a]/40 light-theme:bg-white/80 backdrop-blur-xl border border-[#1f2433] light-theme:border-slate-200 rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row relative z-10 min-h-[600px]">
-          
+
           <div className="w-full lg:w-1/2 bg-gradient-to-br from-[#121626] to-[#0a0c14] light-theme:from-indigo-950 light-theme:to-slate-900 p-8 sm:p-12 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-[#1f2433] light-theme:border-slate-800/40">
             {/* Background Image with slight blur */}
-            <div 
+            <div
               className="absolute inset-0 bg-cover bg-center opacity-35 light-theme:opacity-[0.25] blur-[1px] pointer-events-none"
               style={{ backgroundImage: `url(${carretaImg})` }}
             />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(139,92,246,0.08),transparent_50%)] pointer-events-none" />
-            
+
             {/* Branding Header */}
             <div className="relative z-10 flex items-center gap-3.5">
               <div className="h-11 w-11 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-violet-900/30">
@@ -464,7 +466,7 @@ const App: React.FC = () => {
 
           <div className="w-full lg:w-1/2 p-8 sm:p-12 flex flex-col justify-center bg-transparent relative">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_70%,rgba(6,182,212,0.04),transparent_50%)] pointer-events-none" />
-            
+
             <AnimatePresence mode="wait">
               {authMode === 'login' ? (
                 <motion.div
@@ -906,9 +908,44 @@ const App: React.FC = () => {
   // Filtros por período para Supabase (Entradas, Despesas, Mensalistas)
   const [periodoInicioEntradas, setPeriodoInicioEntradas] = useState('');
   const [periodoFimEntradas, setPeriodoFimEntradas] = useState('');
+  const [currentPageEntradas, setCurrentPageEntradas] = useState(1);
+  const [selectedCentroCustoEntradas, setSelectedCentroCustoEntradas] = useState('');
 
-  const [periodoInicioDespesas, setPeriodoInicioDespesas] = useState('');
-  const [periodoFimDespesas, setPeriodoFimDespesas] = useState('');
+  // States adicionais para o CRUD e Formulário de Entradas
+  const [entradaFormMode, setEntradaFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedEntrada, setSelectedEntrada] = useState<Entrada | null>(null);
+  const [isExcluindoEntrada, setIsExcluindoEntrada] = useState<Entrada | null>(null);
+  const [isDeletingEntrada, setIsDeletingEntrada] = useState(false);
+
+  // States do formulário de entrada
+  const [formDataEntrada, setFormDataEntrada] = useState('');
+  const [formDescricaoEntrada, setFormDescricaoEntrada] = useState('');
+  const [formValorEntrada, setFormValorEntrada] = useState('');
+  const [formCentroCustoId, setFormCentroCustoId] = useState('');
+  const [formFormaPagamentoId, setFormFormaPagamentoId] = useState('');
+  const [formPessoaId, setFormPessoaId] = useState('');
+  const [formVeiculoId, setFormVeiculoId] = useState('');
+  const [formPlacaVeiculo, setFormPlacaVeiculo] = useState('');
+
+  const [formEntradaSubmitting, setFormEntradaSubmitting] = useState(false);
+  const [formEntradaError, setFormEntradaError] = useState<string | null>(null);
+
+  const getInitialDespesasDates = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+    return {
+      start: `${year}-${month}-01`,
+      end: `${year}-${month}-${String(lastDay).padStart(2, '0')}`
+    };
+  };
+
+  const initialDespesasDates = getInitialDespesasDates();
+  const [periodoInicioDespesas, setPeriodoInicioDespesas] = useState(initialDespesasDates.start);
+  const [periodoFimDespesas, setPeriodoFimDespesas] = useState(initialDespesasDates.end);
+  const [currentPageDespesas, setCurrentPageDespesas] = useState(1);
+  const [selectedCentroCustoDespesas, setSelectedCentroCustoDespesas] = useState('');
 
   const [periodoInicioMensalistas, setPeriodoInicioMensalistas] = useState('');
   const [periodoFimMensalistas, setPeriodoFimMensalistas] = useState('');
@@ -952,11 +989,10 @@ const App: React.FC = () => {
           {/* Visão Geral */}
           <button
             onClick={() => setCurrentTab('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${
-              currentTab === 'dashboard'
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${currentTab === 'dashboard'
                 ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                 : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
-            }`}
+              }`}
           >
             {currentTab === 'dashboard' && (
               <motion.div
@@ -980,11 +1016,10 @@ const App: React.FC = () => {
                   setIsConfigOpen(false);
                 }
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                ['entradas', 'despesas', 'mensalistas'].includes(currentTab)
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['entradas', 'despesas', 'mensalistas'].includes(currentTab)
                   ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                   : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <ArrowRightLeft className={`h-4.5 w-4.5 transition-transform ${['entradas', 'despesas', 'mensalistas'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
@@ -1008,11 +1043,10 @@ const App: React.FC = () => {
                   {/* Entradas */}
                   <button
                     onClick={() => setCurrentTab('entradas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'entradas'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'entradas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <ArrowUpRight className="h-4.5 w-4.5" />
                     <span>Entradas</span>
@@ -1021,11 +1055,10 @@ const App: React.FC = () => {
                   {/* Despesas */}
                   <button
                     onClick={() => setCurrentTab('despesas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'despesas'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'despesas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <ArrowDownRight className="h-4.5 w-4.5" />
                     <span>Despesas</span>
@@ -1034,11 +1067,10 @@ const App: React.FC = () => {
                   {/* Mensalistas */}
                   <button
                     onClick={() => setCurrentTab('mensalistas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'mensalistas'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'mensalistas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Calendar className="h-4.5 w-4.5" />
                     <span>Mensalistas</span>
@@ -1059,11 +1091,10 @@ const App: React.FC = () => {
                   setIsConfigOpen(false);
                 }
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                ['pessoas', 'veiculos', 'formapagamento', 'centrocusto'].includes(currentTab)
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['pessoas', 'veiculos', 'formapagamento', 'centrocusto'].includes(currentTab)
                   ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                   : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Database className={`h-4.5 w-4.5 transition-transform ${['pessoas', 'veiculos', 'formapagamento', 'centrocusto'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
@@ -1087,11 +1118,10 @@ const App: React.FC = () => {
                   {/* Pessoas */}
                   <button
                     onClick={() => setCurrentTab('pessoas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'pessoas'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'pessoas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Users className="h-4.5 w-4.5" />
                     <span>Pessoas</span>
@@ -1100,11 +1130,10 @@ const App: React.FC = () => {
                   {/* Veículos */}
                   <button
                     onClick={() => setCurrentTab('veiculos')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'veiculos'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'veiculos'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Car className="h-4.5 w-4.5" />
                     <span>Veículos</span>
@@ -1113,11 +1142,10 @@ const App: React.FC = () => {
                   {/* Formas de Pagamento */}
                   <button
                     onClick={() => setCurrentTab('formapagamento')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'formapagamento'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'formapagamento'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Wallet className="h-4.5 w-4.5" />
                     <span>Formas de Pagamento</span>
@@ -1126,11 +1154,10 @@ const App: React.FC = () => {
                   {/* Centro de Custos */}
                   <button
                     onClick={() => setCurrentTab('centrocusto')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'centrocusto'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'centrocusto'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Layers className="h-4.5 w-4.5" />
                     <span>Centro de Custos</span>
@@ -1143,11 +1170,10 @@ const App: React.FC = () => {
           {/* Ordem de Serviço */}
           <button
             onClick={() => setCurrentTab('ordemservico')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${
-              currentTab === 'ordemservico'
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${currentTab === 'ordemservico'
                 ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                 : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
-            }`}
+              }`}
           >
             {currentTab === 'ordemservico' && (
               <motion.div
@@ -1163,11 +1189,10 @@ const App: React.FC = () => {
           {/* Laudo de Higienização */}
           <button
             onClick={() => setCurrentTab('laudo')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${
-              currentTab === 'laudo'
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${currentTab === 'laudo'
                 ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                 : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
-            }`}
+              }`}
           >
             {currentTab === 'laudo' && (
               <motion.div
@@ -1191,11 +1216,10 @@ const App: React.FC = () => {
                   setIsCadastrosOpen(false);
                 }
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                currentTab === 'migracoes'
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${currentTab === 'migracoes'
                   ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                   : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
-              }`}
+                }`}
             >
               <div className="flex items-center gap-3">
                 <Settings className={`h-4.5 w-4.5 ${currentTab === 'migracoes' ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
@@ -1218,11 +1242,10 @@ const App: React.FC = () => {
                 >
                   <button
                     onClick={() => setCurrentTab('migracoes')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${
-                      currentTab === 'migracoes'
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'migracoes'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                    }`}
+                      }`}
                   >
                     <Cloud className="h-4.5 w-4.5" />
                     <span>Migrações Bubble.io</span>
@@ -1240,12 +1263,12 @@ const App: React.FC = () => {
             <div className="relative z-10 flex flex-col gap-2">
               <span className="text-[10px] font-bold text-violet-400 light-theme:text-cyan-300 uppercase tracking-widest flex items-center gap-1">
                 <Award className="h-3.5 w-3.5" />
-                LAVADO PRO
+                TECHNOCODE Soluções
               </span>
-              <p className="text-xxs text-[#94a3b8] light-theme:text-slate-200/90 leading-relaxed">
-                Acesse fluxos avançados n8n e exportação em massa.
+              <p className="text-xs text-[#94a3b8] light-theme:text-slate-200/90 leading-relaxed">
+                Automação inteligente e controle total da sua frota em uma única plataforma de alta performance.
               </p>
-              <button 
+              <button
                 type="button"
                 onClick={() => alert("Obrigado pelo interesse! Esta funcionalidade está sendo preparada em conjunto com sua integração n8n.")}
                 className="mt-1 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-lg py-1.5 font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-violet-900/30 light-theme:shadow-indigo-950/50 transition-transform active:scale-95"
@@ -1354,7 +1377,7 @@ const App: React.FC = () => {
           {/* User profile capsule */}
           <div className="flex items-center gap-3 pl-3 border-l border-[#1f2433] light-theme:border-slate-200">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs tracking-wide shadow-md shadow-violet-900/20 uppercase" title={userProfile?.nome_completo || session?.user?.email}>
-              {userProfile?.nome_completo 
+              {userProfile?.nome_completo
                 ? userProfile.nome_completo.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                 : session?.user?.email?.slice(0, 2).toUpperCase() || 'US'}
             </div>
@@ -1410,7 +1433,7 @@ const App: React.FC = () => {
   const renderDashboard = () => {
     const { months, entradas, despesas } = getCashflowData();
     const maxVal = Math.max(...entradas, ...despesas, 10000) * 1.15;
-    
+
     const getSvgCoords = (data: number[]) => {
       return data.map((val, idx) => {
         const x = (idx / (data.length - 1)) * 380 + 30;
@@ -1422,14 +1445,14 @@ const App: React.FC = () => {
     const coordsEntradas = getSvgCoords(entradas);
     const coordsDespesas = getSvgCoords(despesas);
 
-    const getBezierPath = (coords: {x: number, y: number}[]) => {
+    const getBezierPath = (coords: { x: number, y: number }[]) => {
       let path = `M ${coords[0].x} ${coords[0].y}`;
       for (let i = 0; i < coords.length - 1; i++) {
         const cp1x = coords[i].x + 40;
         const cp1y = coords[i].y;
-        const cp2x = coords[i+1].x - 40;
-        const cp2y = coords[i+1].y;
-        path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${coords[i+1].x} ${coords[i+1].y}`;
+        const cp2x = coords[i + 1].x - 40;
+        const cp2y = coords[i + 1].y;
+        path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${coords[i + 1].x} ${coords[i + 1].y}`;
       }
       return path;
     };
@@ -1437,8 +1460,8 @@ const App: React.FC = () => {
     const pathEntradas = getBezierPath(coordsEntradas);
     const pathDespesas = getBezierPath(coordsDespesas);
 
-    const fillEntradas = `${pathEntradas} L ${coordsEntradas[coordsEntradas.length-1].x} 170 L ${coordsEntradas[0].x} 170 Z`;
-    const fillDespesas = `${pathDespesas} L ${coordsDespesas[coordsDespesas.length-1].x} 170 L ${coordsDespesas[0].x} 170 Z`;
+    const fillEntradas = `${pathEntradas} L ${coordsEntradas[coordsEntradas.length - 1].x} 170 L ${coordsEntradas[0].x} 170 Z`;
+    const fillDespesas = `${pathDespesas} L ${coordsDespesas[coordsDespesas.length - 1].x} 170 L ${coordsDespesas[0].x} 170 Z`;
 
     const combinedTransactions = [
       ...supabaseEntradas.map(item => ({
@@ -1482,7 +1505,7 @@ const App: React.FC = () => {
         alert("Preencha todos os campos do Caixa!");
         return;
       }
-      
+
       const newCard = {
         id: (dashboardCards.length + 1).toString(),
         type: newCardType,
@@ -1565,7 +1588,7 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
           {/* Main 2-column block */}
           <div className="lg:col-span-2 flex flex-col gap-6">
-            
+
 
             {/* Cash Flow Line Chart */}
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-4">
@@ -1669,11 +1692,10 @@ const App: React.FC = () => {
                           {item.type === 'entrada' ? '+' : '-'} {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
                         </td>
                         <td className="py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            item.type === 'entrada'
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.type === 'entrada'
                               ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                               : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                          }`}>
+                            }`}>
                             {item.badge}
                           </span>
                         </td>
@@ -1688,7 +1710,7 @@ const App: React.FC = () => {
 
           {/* Right sidebar column: stats + new card form */}
           <div className="flex flex-col gap-6 w-full">
-            
+
             {/* Apple Activity concentric rings breakdown */}
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-5">
               <div>
@@ -1800,39 +1822,119 @@ const App: React.FC = () => {
   };
 
   const renderEntradas = () => {
-    const totalEntradasVal = supabaseEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    // 1. Cálculos dos Indicadores (com base no supabaseEntradas geral)
+    const todayObj = new Date();
+
+    // Entradas do Dia (Formato YYYY-MM-DD)
+    const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+    const entradasDoDia = supabaseEntradas
+      .filter(item => {
+        const dateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
+        return dateStr === todayStr;
+      })
+      .reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
+    // Entradas da Semana (Domingo a Sábado calendar week)
+    const getWeekStringRange = () => {
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0 = Sunday
+
+      const start = new Date(now);
+      start.setDate(now.getDate() - dayOfWeek);
+
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+
+      const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+      const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
+
+      return { startStr, endStr };
+    };
+    const { startStr, endStr } = getWeekStringRange();
+    const entradasDaSemana = supabaseEntradas
+      .filter(item => {
+        const dateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
+        return dateStr && dateStr >= startStr && dateStr <= endStr;
+      })
+      .reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
+    // Entradas do Mês (Formato YYYY-MM)
+    const currentMonthStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}`;
+    const entradasDoMes = supabaseEntradas
+      .filter(item => {
+        const dateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
+        return dateStr && dateStr.substring(0, 7) === currentMonthStr;
+      })
+      .reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
+    // Média por Lançamento
+    const mediaPorLancamento = supabaseEntradas.length > 0
+      ? (supabaseEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / supabaseEntradas.length)
+      : 0;
+
+    // 2. Ordenação e Paginação dos Itens Filtrados
+    const sortedSupabaseEntradas = [...filteredSupabaseEntradas].sort((a, b) => {
+      const dateA = a.data_entrada ? new Date(a.data_entrada).getTime() : 0;
+      const dateB = b.data_entrada ? new Date(b.data_entrada).getTime() : 0;
+      return dateB - dateA; // Decrescente (mais recentes primeiro)
+    });
+
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(sortedSupabaseEntradas.length / itemsPerPage);
+    const activePage = Math.max(1, Math.min(currentPageEntradas, totalPages || 1));
+    const indexOfLastItem = activePage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedSupabaseEntradas.slice(indexOfFirstItem, indexOfLastItem);
+
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Aggregated Finance Stats header */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+          {/* Entradas do Dia */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
               <TrendingUp className="h-4 w-4" />
             </div>
             <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">TOTAL ENTRADAS</span>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ENTRADAS DO DIA</span>
               <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalEntradasVal)}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoDia)}
               </h4>
             </div>
           </div>
+          {/* Entradas da Semana */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Plus className="h-4 w-4" />
+              <Calendar className="h-4 w-4" />
             </div>
             <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">QUANTIDADE</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">{supabaseEntradas.length} Lançamentos</h4>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ENTRADAS DA SEMANA</span>
+              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDaSemana)}
+              </h4>
             </div>
           </div>
+          {/* Entradas do Mês */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <Car className="h-4 w-4" />
+              <Wallet className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ENTRADAS DO MÊS</span>
+              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoMes)}
+              </h4>
+            </div>
+          </div>
+          {/* Média por Lançamento */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400 flex-shrink-0">
+              <Activity className="h-4 w-4" />
             </div>
             <div>
               <span className="text-[10px] text-[#64748b] font-bold block leading-none">MÉDIA POR LANÇAMENTO</span>
               <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseEntradas.length > 0 ? (totalEntradasVal / supabaseEntradas.length) : 0)}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaPorLancamento)}
               </h4>
             </div>
           </div>
@@ -1840,118 +1942,564 @@ const App: React.FC = () => {
 
         {/* Content Box */}
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Tabela de Receitas</h3>
-            
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Filtro por Período */}
-              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
-                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Período:</span>
-                <input
-                  type="date"
-                  value={periodoInicioEntradas}
-                  onChange={e => setPeriodoInicioEntradas(e.target.value)}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
-                />
-                <span className="text-[#64748b] px-0.5">até</span>
-                <input
-                  type="date"
-                  value={periodoFimEntradas}
-                  onChange={e => setPeriodoFimEntradas(e.target.value)}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
-                />
-                {(periodoInicioEntradas || periodoFimEntradas) && (
-                  <button
-                    onClick={() => {
-                      setPeriodoInicioEntradas('');
-                      setPeriodoFimEntradas('');
-                    }}
-                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
-                    title="Limpar período"
+          {entradaFormMode !== 'list' ? (
+            <form onSubmit={handleSaveEntrada} className="flex flex-col gap-5 w-full max-w-4xl mr-auto ml-0 py-2 text-left">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {entradaFormMode === 'create' ? 'Lançar Nova Entrada/Receita' : 'Editar Entrada/Receita'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do lançamento financeiro.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEntradaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
+                </button>
+              </div>
+
+              {formEntradaError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formEntradaError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[60vh]">
+                {/* Data */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Data do Lançamento *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formDataEntrada}
+                    onChange={e => setFormDataEntrada(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Centro de Custo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Centro de Custo *</label>
+                  <select
+                    required
+                    value={formCentroCustoId}
+                    onChange={e => setFormCentroCustoId(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
                   >
-                    Limpar
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                    {supabaseCentroCusto.map(cc => (
+                      <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {cc.nome_centro_custo || cc.descricao}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Forma de Pagamento */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Forma de Pagamento *</label>
+                  <select
+                    required
+                    value={formFormaPagamentoId}
+                    onChange={e => setFormFormaPagamentoId(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                    {supabaseFormaPagamento.map(fp => (
+                      <option key={fp.id} value={fp.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {fp.descricao} ({fp.tipo_transacao})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Valor */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor (R$) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="0.00"
+                    value={formValorEntrada}
+                    onChange={e => setFormValorEntrada(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors font-bold"
+                  />
+                </div>
+
+                {/* Descrição / Referente a (Linha inteira) */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Descrição / Referente a *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Lavagem Completa"
+                    value={formDescricaoEntrada}
+                    onChange={e => setFormDescricaoEntrada(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Veículo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Veículo (Opcional)</label>
+                  <select
+                    value={formVeiculoId}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormVeiculoId(val);
+                      const selectedVei = supabaseVehicles.find(v => v.id === val);
+                      if (selectedVei) {
+                        setFormPlacaVeiculo(selectedVei.placa || '');
+                        if (selectedVei.pessoa_id) {
+                          setFormPessoaId(selectedVei.pessoa_id);
+                        }
+                      }
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Nenhum</option>
+                    {supabaseVehicles.map(v => (
+                      <option key={v.id} value={v.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {v.marca_modelo} - {v.placa}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Placa do Veículo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Placa do Veículo (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: ABC1D23"
+                    value={formPlacaVeiculo}
+                    onChange={e => setFormPlacaVeiculo(e.target.value.toUpperCase())}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase"
+                  />
+                </div>
+
+                {/* Cliente Pagante */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Cliente Pagante (Opcional)</label>
+                  <select
+                    value={formPessoaId}
+                    onChange={e => setFormPessoaId(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Nenhum</option>
+                    {supabaseData.map(p => (
+                      <option key={p.id} value={p.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {p.nome_pessoa}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start gap-3 mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setEntradaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formEntradaSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formEntradaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Lançamento</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Tabela de Receitas</h3>
+                  {!periodoInicioEntradas && !periodoFimEntradas && (
+                    <p className="text-[10px] text-cyan-400 font-semibold mt-1">Exibindo apenas lançamentos do mês atual</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão para Lançamento de Nova Entrada */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateEntrada}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova Entrada</span>
                   </button>
+
+                  {/* Filtro por Centro de Custos */}
+                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+                    <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
+                    <select
+                      value={selectedCentroCustoEntradas}
+                      onChange={e => {
+                        setSelectedCentroCustoEntradas(e.target.value);
+                        setCurrentPageEntradas(1);
+                      }}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px] font-medium max-w-[150px] cursor-pointer"
+                    >
+                      <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
+                      {supabaseCentroCusto.map(cc => (
+                        <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                          {cc.nome_centro_custo || cc.descricao}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedCentroCustoEntradas && (
+                      <button
+                        onClick={() => {
+                          setSelectedCentroCustoEntradas('');
+                          setCurrentPageEntradas(1);
+                        }}
+                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+                        title="Limpar centro de custo"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filtro por Período */}
+                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+                    <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Período:</span>
+                    <input
+                      type="date"
+                      value={periodoInicioEntradas}
+                      onChange={e => {
+                        setPeriodoInicioEntradas(e.target.value);
+                        setCurrentPageEntradas(1);
+                      }}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
+                    />
+                    <span className="text-[#64748b] px-0.5">até</span>
+                    <input
+                      type="date"
+                      value={periodoFimEntradas}
+                      onChange={e => {
+                        setPeriodoFimEntradas(e.target.value);
+                        setCurrentPageEntradas(1);
+                      }}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
+                    />
+                    {(periodoInicioEntradas || periodoFimEntradas) && (
+                      <button
+                        onClick={() => {
+                          setPeriodoInicioEntradas('');
+                          setPeriodoFimEntradas('');
+                          setCurrentPageEntradas(1);
+                        }}
+                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+                        title="Limpar período"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar receitas..."
+                      value={searchSupabaseEntradas}
+                      onChange={e => {
+                        setSearchSupabaseEntradas(e.target.value);
+                        setCurrentPageEntradas(1);
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {sortedSupabaseEntradas.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhuma receita registrada no Supabase</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+                        <th className="pb-3 pr-6">Data</th>
+                        <th className="pb-3 pr-6">Centro de Custo</th>
+                        <th className="pb-3 pr-6">Referente a</th>
+                        <th className="pb-3 pr-6">Forma de Pagamento</th>
+                        <th className="pb-3 text-right pr-6">Valor</th>
+                        <th className="pb-3 pr-6">Veículo placa</th>
+                        <th className="pb-3 pr-6">Pessoa pagante</th>
+                        <th className="pb-3 text-center w-24">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+                      {currentItems.map(item => (
+                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                          <td className="py-3.5 pr-6 font-medium text-[#64748b]">{item.data_entrada ? new Date(item.data_entrada).toLocaleDateString('pt-BR') : 'N/A'}</td>
+                          <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.nome_centro_custo || 'Operacional Geral'}</td>
+                          <td className="py-3.5 pr-6 font-semibold text-white light-theme:text-slate-800">{item.descricao_entrada || 'Serviço Lavatório'}</td>
+                          <td className="py-3.5 pr-6 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
+                          <td className="py-3.5 text-right pr-6 font-bold text-emerald-400">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
+                          </td>
+                          <td className="py-3.5 pr-6 font-mono font-bold uppercase tracking-wider text-cyan-400">{item.placa_veiculo || ''}</td>
+                          <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.nome_pessoa || ''}</td>
+                          <td className="py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditEntrada(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Editar Lançamento"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsExcluindoEntrada(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Lançamento"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
 
-              {/* Search bar */}
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar receitas..."
-                  value={searchSupabaseEntradas}
-                  onChange={e => setSearchSupabaseEntradas(e.target.value)}
-                  className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
+                  <span className="text-[11px] text-[#64748b] font-medium">
+                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseEntradas.length)} de {sortedSupabaseEntradas.length} registros
+                  </span>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {supabaseEntradas.length === 0 ? (
-              <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-                <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-                <span className="text-xs">Nenhuma receita registrada no Supabase</span>
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                    <th className="pb-3">Descrição da Entrada</th>
-                    <th className="pb-3">Cliente / Proprietário</th>
-                    <th className="pb-3">Placa Veículo</th>
-                    <th className="pb-3">Forma Pagamento</th>
-                    <th className="pb-3">Data</th>
-                    <th className="pb-3 text-right">Valor</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                  {filteredSupabaseEntradas.map(item => (
-                    <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 font-semibold text-white light-theme:text-slate-800">{item.descricao_entrada || 'Serviço Lavatório'}</td>
-                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.nome_pessoa || 'Balcão/Avulso'}</td>
-                      <td className="py-3.5 font-mono font-bold uppercase tracking-wider text-cyan-400">{item.placa_veiculo || 'N/A'}</td>
-                      <td className="py-3.5 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
-                      <td className="py-3.5 font-medium text-[#64748b]">{item.data_entrada ? new Date(item.data_entrada).toLocaleDateString('pt-BR') : 'N/A'}</td>
-                      <td className="py-3.5 text-right font-bold text-emerald-400">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPageEntradas(prev => Math.max(1, prev - 1))}
+                      disabled={activePage === 1}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => {
+                      const pageNum = idx + 1;
+                      const isNearCurrent = Math.abs(pageNum - activePage) <= 1;
+                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                      if (!isNearCurrent && !isFirstOrLast) {
+                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                          return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPageEntradas(pageNum)}
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xxs font-bold transition-all ${activePage === pageNum
+                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPageEntradas(prev => Math.min(totalPages, prev + 1))}
+                      disabled={activePage === totalPages}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão da Entrada */}
+        <AnimatePresence>
+          {isExcluindoEntrada && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingEntrada && setIsExcluindoEntrada(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Lançamento?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir o lançamento <strong>"{isExcluindoEntrada.descricao_entrada || 'Serviço'}"</strong> no valor de <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isExcluindoEntrada.valor || 0)}</strong>? Esta ação não pode ser desfeita.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoEntrada(null)}
+                    disabled={isDeletingEntrada}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteEntrada}
+                    disabled={isDeletingEntrada}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingEntrada ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderDespesas = () => {
+    // Current date helpers for indicator cards
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local format
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    // Despesas do dia (soma das despesas do dia)
+    const despesasDia = supabaseDespesas.reduce((acc, curr) => {
+      if (!curr.data_despesa) return acc;
+      const dateStr = curr.data_despesa.split('T')[0];
+      if (dateStr === todayStr) {
+        return acc + (curr.valor || 0);
+      }
+      return acc;
+    }, 0);
+
+    // Get start of this week (Sunday, 00:00:00 local time)
+    const startOfWeek = new Date();
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Get end of this week (Saturday, 23:59:59 local time)
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    // Despesas da semana (soma das despesas da semana)
+    const despesasSemana = supabaseDespesas.reduce((acc, curr) => {
+      if (!curr.data_despesa) return acc;
+      const itemDate = new Date(curr.data_despesa.split('T')[0] + 'T12:00:00');
+      if (itemDate >= startOfWeek && itemDate <= endOfWeek) {
+        return acc + (curr.valor || 0);
+      }
+      return acc;
+    }, 0);
+
+    // Despesas do mês (soma das despesas do mês)
+    const despesasMes = supabaseDespesas.reduce((acc, curr) => {
+      if (!curr.data_despesa) return acc;
+      const itemDate = new Date(curr.data_despesa.split('T')[0] + 'T12:00:00');
+      if (itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth) {
+        return acc + (curr.valor || 0);
+      }
+      return acc;
+    }, 0);
+
+    // Média por lançamento (média de valor de despesas)
+    const mediaLancamento = supabaseDespesas.length > 0
+      ? (supabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / supabaseDespesas.length)
+      : 0;
+
+    // Pagination calculations
+    const indexOfLastItem = currentPageDespesas * 10;
+    const indexOfFirstItem = indexOfLastItem - 10;
+    const totalPages = Math.ceil(sortedSupabaseDespesas.length / 10);
+    const currentItems = sortedSupabaseDespesas.slice(indexOfFirstItem, indexOfLastItem);
+
+    // Helper to format date safely in local time as DD/MM/YYYY without timezone shift issues
+    const formatDate = (dateStr?: string) => {
+      if (!dateStr) return 'N/A';
+      const cleanDate = dateStr.split('T')[0];
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    };
+
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Finance Stats header */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
               <TrendingDown className="h-4 w-4" />
             </div>
             <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">TOTAL CUSTOS EFETUADOS</span>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">DESPESAS DO DIA</span>
               <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0))}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasDia)}
               </h4>
             </div>
           </div>
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400 flex-shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
               <Layers className="h-4 w-4" />
             </div>
             <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">TOTAL PROVISÕES</span>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">DESPESAS DA SEMANA</span>
               <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseDespesas.reduce((acc, curr) => acc + (curr.valor_provisao || 0), 0))}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasSemana)}
+              </h4>
+            </div>
+          </div>
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <div>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">DESPESAS DO MÊS</span>
+              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasMes)}
               </h4>
             </div>
           </div>
@@ -1960,31 +2508,71 @@ const App: React.FC = () => {
               <Target className="h-4 w-4" />
             </div>
             <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">QUANTIDADE CUSTOS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">{supabaseDespesas.length} Despesas</h4>
+              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">MÉDIA POR LANÇAMENTO</span>
+              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaLancamento)}
+              </h4>
             </div>
           </div>
         </div>
 
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Tabela de Despesas</h3>
-            
+            <h3 className="text-sm font-bold text-white light-theme:text-slate-800 font-sans">Tabela de Despesas</h3>
+
             <div className="flex items-center gap-3 flex-wrap">
+              {/* Filtro por Centro de Custos */}
+              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
+                <select
+                  value={selectedCentroCustoDespesas}
+                  onChange={e => {
+                    setSelectedCentroCustoDespesas(e.target.value);
+                    setCurrentPageDespesas(1);
+                  }}
+                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px] font-medium max-w-[150px] cursor-pointer"
+                >
+                  <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
+                  {supabaseCentroCusto.map(cc => (
+                    <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                      {cc.nome_centro_custo || cc.descricao}
+                    </option>
+                  ))}
+                </select>
+                {selectedCentroCustoDespesas && (
+                  <button
+                    onClick={() => {
+                      setSelectedCentroCustoDespesas('');
+                      setCurrentPageDespesas(1);
+                    }}
+                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+                    title="Limpar centro de custo"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
               {/* Filtro por Período */}
               <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
                 <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Período:</span>
                 <input
                   type="date"
                   value={periodoInicioDespesas}
-                  onChange={e => setPeriodoInicioDespesas(e.target.value)}
+                  onChange={e => {
+                    setPeriodoInicioDespesas(e.target.value);
+                    setCurrentPageDespesas(1);
+                  }}
                   className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
                 />
                 <span className="text-[#64748b] px-0.5">até</span>
                 <input
                   type="date"
                   value={periodoFimDespesas}
-                  onChange={e => setPeriodoFimDespesas(e.target.value)}
+                  onChange={e => {
+                    setPeriodoFimDespesas(e.target.value);
+                    setCurrentPageDespesas(1);
+                  }}
                   className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
                 />
                 {(periodoInicioDespesas || periodoFimDespesas) && (
@@ -1992,6 +2580,7 @@ const App: React.FC = () => {
                     onClick={() => {
                       setPeriodoInicioDespesas('');
                       setPeriodoFimDespesas('');
+                      setCurrentPageDespesas(1);
                     }}
                     className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
                     title="Limpar período"
@@ -2008,7 +2597,10 @@ const App: React.FC = () => {
                   type="text"
                   placeholder="Buscar despesas..."
                   value={searchSupabaseDespesas}
-                  onChange={e => setSearchSupabaseDespesas(e.target.value)}
+                  onChange={e => {
+                    setSearchSupabaseDespesas(e.target.value);
+                    setCurrentPageDespesas(1);
+                  }}
                   className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
                 />
               </div>
@@ -2016,7 +2608,7 @@ const App: React.FC = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {supabaseDespesas.length === 0 ? (
+            {sortedSupabaseDespesas.length === 0 ? (
               <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
                 <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
                 <span className="text-xs">Nenhuma despesa registrada no Supabase</span>
@@ -2025,24 +2617,26 @@ const App: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                    <th className="pb-3">Centro de Custo</th>
-                    <th className="pb-3">Forma Pagamento</th>
                     <th className="pb-3">Data</th>
-                    <th className="pb-3 text-right">Valor Provisão</th>
-                    <th className="pb-3 text-right">Valor Efetuado</th>
+                    <th className="pb-3">Centro de Custo</th>
+                    <th className="pb-3">Referente a</th>
+                    <th className="pb-3">Forma de Pagamento</th>
+                    <th className="pb-3 text-right">Valor</th>
+                    <th className="pb-3 text-right">Valor provisão</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                  {filteredSupabaseDespesas.map(item => (
+                  {currentItems.map(item => (
                     <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                      <td className="py-3.5 font-medium text-[#64748b]">{formatDate(item.data_despesa)}</td>
                       <td className="py-3.5 font-semibold text-white light-theme:text-slate-800">{item.nome_centro_custos || 'Operacional Geral'}</td>
+                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.descricao_despesa || 'N/A'}</td>
                       <td className="py-3.5 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
-                      <td className="py-3.5 font-medium text-[#64748b]">{item.data_despesa ? new Date(item.data_despesa).toLocaleDateString('pt-BR') : 'N/A'}</td>
-                      <td className="py-3.5 text-right font-medium text-yellow-500">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
-                      </td>
                       <td className="py-3.5 text-right font-bold text-rose-400">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
+                      </td>
+                      <td className="py-3.5 text-right font-medium text-yellow-500">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
                       </td>
                     </tr>
                   ))}
@@ -2050,6 +2644,59 @@ const App: React.FC = () => {
               </table>
             )}
           </div>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
+              <span className="text-[11px] text-[#64748b] font-medium">
+                Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseDespesas.length)} de {sortedSupabaseDespesas.length} registros
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPageDespesas(prev => Math.max(1, prev - 1))}
+                  disabled={currentPageDespesas === 1}
+                  className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {Array.from({ length: totalPages }, (_, idx) => {
+                  const pageNum = idx + 1;
+                  const isNearCurrent = Math.abs(pageNum - currentPageDespesas) <= 1;
+                  const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                  if (!isNearCurrent && !isFirstOrLast) {
+                    if (pageNum === 2 || pageNum === totalPages - 1) {
+                      return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPageDespesas(pageNum)}
+                      className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xxs font-bold transition-all ${currentPageDespesas === pageNum
+                          ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                          : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                        }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setCurrentPageDespesas(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPageDespesas === totalPages}
+                  className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -2099,7 +2746,7 @@ const App: React.FC = () => {
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
             <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Gestão de Mensalistas</h3>
-            
+
             <div className="flex items-center gap-3 flex-wrap">
               {/* Filtro por Período */}
               <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
@@ -2190,11 +2837,10 @@ const App: React.FC = () => {
                         {item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : 'N/A'}
                       </td>
                       <td className="py-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          item.ativo
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                             : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                        }`}>
+                          }`}>
                           {item.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
@@ -2252,7 +2898,7 @@ const App: React.FC = () => {
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
             <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Diretório de Clientes e Pessoas (Supabase)</h3>
-            
+
             <div className="relative w-72">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
               <input
@@ -2301,11 +2947,10 @@ const App: React.FC = () => {
                         </a>
                       </td>
                       <td className="py-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          item.ativo
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                             : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                        }`}>
+                          }`}>
                           {item.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
@@ -2361,7 +3006,7 @@ const App: React.FC = () => {
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
             <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Listagem de Veículos (Supabase)</h3>
-            
+
             <div className="relative w-72">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
               <input
@@ -2407,11 +3052,10 @@ const App: React.FC = () => {
                         {item.motorista && item.motorista.length > 0 ? (Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista) : 'Proprietário'}
                       </td>
                       <td className="py-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          item.ativo
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                             : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                        }`}>
+                          }`}>
                           {item.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </td>
@@ -2434,7 +3078,7 @@ const App: React.FC = () => {
             <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Formas de Pagamento (Supabase)</h3>
             <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Métodos ativos configurados para o fluxo financeiro.</p>
           </div>
-          
+
           <div className="relative w-72">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
             <input
@@ -2457,7 +3101,7 @@ const App: React.FC = () => {
             filteredSupabaseFormaPagamento.map(item => (
               <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col justify-between h-36 relative overflow-hidden group">
                 <div className="absolute right-0 bottom-0 h-10 w-10 bg-violet-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-                
+
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center flex-shrink-0">
@@ -2491,7 +3135,7 @@ const App: React.FC = () => {
             <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Centro de Custos / Categorias</h3>
             <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Agrupadores de despesas e receitas para análise fiscal.</p>
           </div>
-          
+
           <div className="relative w-72">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
             <input
@@ -2511,41 +3155,70 @@ const App: React.FC = () => {
               <span className="text-xs">Nenhum centro de custo registrado</span>
             </div>
           ) : (
-            filteredSupabaseCentroCusto.map(item => (
-              <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col gap-4 relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 h-10 w-10 bg-cyan-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-                
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-cyan-600/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
-                      <Layers className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white light-theme:text-slate-800 text-xs leading-none">{item.nome_centro_custo}</h4>
-                      <p className="text-xxs text-[#64748b] mt-1.5 leading-relaxed">{item.descricao || 'Operação e faturamento'}</p>
-                    </div>
-                  </div>
-                  <span className={`h-2.5 w-2.5 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                </div>
+            filteredSupabaseCentroCusto.map(item => {
+              const movLower = String(item.tipo_movimentacao || '').toLowerCase();
+              const isEntrada = movLower.includes('entrada') || movLower.includes('receita');
+              const isDespesa = movLower.includes('despesa') || movLower.includes('custo') || movLower.includes('saida') || movLower.includes('saída');
 
-                <div className="grid grid-cols-3 gap-3 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-3 text-[10px] font-bold text-[#64748b]">
-                  <div>
-                    <span className="block text-[8px] text-[#64748b]/60 uppercase tracking-widest leading-none">Recorrência</span>
-                    <span className="text-white light-theme:text-slate-700 font-medium block mt-1.5 leading-none">{item.tipo_recorrencia || 'Semestral'}</span>
-                  </div>
-                  <div>
-                    <span className="block text-[8px] text-[#64748b]/60 uppercase tracking-widest leading-none">Movimento</span>
-                    <span className="text-white light-theme:text-slate-700 font-medium block mt-1.5 leading-none">{item.tipo_movimentacao || 'Lançamento'}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="block text-[8px] text-[#64748b]/60 uppercase tracking-widest leading-none">Provisão</span>
-                    <span className="text-cyan-400 font-bold block mt-1.5 leading-none">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
-                    </span>
+              let dotBg = 'bg-slate-500';
+              let typeLabel = 'Outros';
+              if (isEntrada) {
+                dotBg = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                typeLabel = 'Entrada';
+              } else if (isDespesa) {
+                dotBg = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
+                typeLabel = 'Despesa';
+              }
+
+              const recStr = String(item.tipo_recorrencia || '').trim();
+              const hasRecorrencia = recStr.length > 0 && recStr.toLowerCase() !== 'não informado' && recStr.toLowerCase() !== 'null';
+
+              return (
+                <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col justify-between min-h-[110px] flex-shrink-0 relative overflow-hidden group hover:border-violet-500/30 transition-all" style={{ minHeight: '110px' }}>
+                  <div className="absolute right-0 bottom-0 h-10 w-10 bg-cyan-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
+
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-cyan-600/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                          <Layers className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-bold text-white light-theme:text-slate-800 text-xs leading-none">
+                              {item.nome_centro_custo}
+                            </h4>
+                            {hasRecorrencia && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-violet-600/15 text-violet-400 light-theme:bg-slate-200 light-theme:text-slate-600 border border-violet-500/10 leading-none">
+                                {recStr.toLowerCase().includes('fixo') ? 'Fixo' :
+                                  recStr.toLowerCase().includes('varia') ? 'Variável' :
+                                    recStr}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-[#090b11]/40 light-theme:bg-slate-200/50 px-2 py-1 rounded-lg border border-[#1f2433]/30">
+                        <span className={`h-2 w-2 rounded-full ${dotBg} animate-pulse`} title={typeLabel} />
+                        <span className="text-[8px] font-bold text-[#64748b] light-theme:text-slate-500 uppercase tracking-wider leading-none">{typeLabel}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-between ml-12 gap-4">
+                      <p className="text-slate-400 light-theme:text-slate-600 text-xs leading-snug flex-1" style={{ fontSize: '12px', lineHeight: '1.2' }}>
+                        {item.descricao || 'Sem Descrição'}
+                      </p>
+                      <div className="text-right flex-shrink-0">
+                        <span className="block text-[8px] text-[#64748b]/60 uppercase tracking-widest leading-none">Provisão</span>
+                        <span className="text-cyan-400 font-bold block mt-1 text-[11px] leading-none">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -2702,8 +3375,8 @@ const App: React.FC = () => {
                         type="button"
                         onClick={() => { setActiveForm(opt.id as any); setIsMenuOpen(false); }}
                         className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${activeForm === opt.id
-                            ? 'bg-violet-600 text-white'
-                            : 'hover:bg-white/5 text-[#94a3b8]'
+                          ? 'bg-violet-600 text-white'
+                          : 'hover:bg-white/5 text-[#94a3b8]'
                           }`}
                       >
                         <OptIcon className="h-4 w-4" />
@@ -4104,6 +4777,121 @@ const App: React.FC = () => {
     }
   };
 
+  // Funções CRUD para gerenciamento de Entradas/Receitas
+  const handleOpenCreateEntrada = () => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    setFormDataEntrada(todayStr);
+    setFormDescricaoEntrada('');
+    setFormValorEntrada('');
+    setFormCentroCustoId('');
+    setFormFormaPagamentoId('');
+    setFormPessoaId('');
+    setFormVeiculoId('');
+    setFormPlacaVeiculo('');
+    setFormEntradaError(null);
+    setSelectedEntrada(null);
+    setEntradaFormMode('create');
+  };
+
+  const handleOpenEditEntrada = (entrada: Entrada) => {
+    setSelectedEntrada(entrada);
+    setFormDataEntrada(entrada.data_entrada ? entrada.data_entrada.split('T')[0] : '');
+    setFormDescricaoEntrada(entrada.descricao_entrada || '');
+    setFormValorEntrada(entrada.valor !== undefined ? String(entrada.valor) : '');
+    setFormCentroCustoId(entrada.centro_custo_id || '');
+    setFormFormaPagamentoId(entrada.forma_pagamento_id || '');
+    setFormPessoaId(entrada.pessoa_id || '');
+    setFormVeiculoId(entrada.veiculo_id || '');
+    setFormPlacaVeiculo(entrada.placa_veiculo || '');
+    setFormEntradaError(null);
+    setEntradaFormMode('edit');
+  };
+
+  const handleSaveEntrada = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormEntradaSubmitting(true);
+    setFormEntradaError(null);
+
+    try {
+      const valorNum = parseFloat(formValorEntrada.replace(',', '.'));
+      if (isNaN(valorNum)) {
+        throw new Error('Por favor, informe um valor numérico válido.');
+      }
+
+      const cc = supabaseCentroCusto.find(c => c.id === formCentroCustoId);
+      const fp = supabaseFormaPagamento.find(f => f.id === formFormaPagamentoId);
+      const pes = supabaseData.find(p => p.id === formPessoaId);
+      const vei = supabaseVehicles.find(v => v.id === formVeiculoId);
+
+      const payload: any = {
+        data_entrada: formDataEntrada ? `${formDataEntrada}T12:00:00` : null,
+        descricao_entrada: formDescricaoEntrada || null,
+        valor: valorNum,
+        centro_custo_id: formCentroCustoId || null,
+        nome_centro_custo: cc ? (cc.nome_centro_custo || cc.descricao) : null,
+        forma_pagamento_id: formFormaPagamentoId || null,
+        descricao_forma_pagamento: fp ? fp.descricao : null,
+        pessoa_id: formPessoaId || null,
+        nome_pessoa: pes ? pes.nome_pessoa : null,
+        veiculo_id: formVeiculoId || null,
+        placa_veiculo: formPlacaVeiculo || (vei ? vei.placa : null) || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (entradaFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('entradas')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (entradaFormMode === 'edit' && selectedEntrada) {
+        const { error } = await supabase
+          .from('entradas')
+          .update(payload)
+          .eq('id', selectedEntrada.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseEntradas();
+      setEntradaFormMode('list');
+      setSelectedEntrada(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormEntradaError(err.message || 'Erro ao salvar a entrada.');
+    } finally {
+      setFormEntradaSubmitting(false);
+    }
+  };
+
+  const handleDeleteEntrada = async () => {
+    if (!isExcluindoEntrada) return;
+    setIsDeletingEntrada(true);
+
+    try {
+      const { error } = await supabase
+        .from('entradas')
+        .delete()
+        .eq('id', isExcluindoEntrada.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseEntradas();
+      setIsExcluindoEntrada(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir a entrada.');
+    } finally {
+      setIsDeletingEntrada(false);
+    }
+  };
+
   // Start the Entradas Migration Process
   const handleStartEntradasMigration = async () => {
     if (bubbleEntradas.length === 0) {
@@ -4317,13 +5105,29 @@ const App: React.FC = () => {
       (item.descricao_despesa || '').toLowerCase().includes(searchSupabaseDespesas.toLowerCase());
 
     if (!matchesSearch) return false;
-    if (periodoInicioDespesas || periodoFimDespesas) {
+
+    // Filtro de Centro de Custos
+    if (selectedCentroCustoDespesas) {
+      const cc = supabaseCentroCusto.find(c => c.id === selectedCentroCustoDespesas);
+      const ccName = cc?.nome_centro_custo || cc?.descricao || '';
+      const matchId = item.centro_custo_id === selectedCentroCustoDespesas;
+      const matchName = ccName && (item.nome_centro_custos || '').toLowerCase() === ccName.toLowerCase();
+      if (!matchId && !matchName) return false;
+    }
+
+    if (currentTab === 'despesas' && (periodoInicioDespesas || periodoFimDespesas)) {
       const itemDateStr = item.data_despesa ? item.data_despesa.split('T')[0] : '';
       if (!itemDateStr) return false;
       if (periodoInicioDespesas && itemDateStr < periodoInicioDespesas) return false;
       if (periodoFimDespesas && itemDateStr > periodoFimDespesas) return false;
     }
     return true;
+  });
+
+  const sortedSupabaseDespesas = [...filteredSupabaseDespesas].sort((a, b) => {
+    const dateA = a.data_despesa || '';
+    const dateB = b.data_despesa || '';
+    return dateB.localeCompare(dateA);
   });
 
   // Filter local rows (Entradas)
@@ -4341,11 +5145,36 @@ const App: React.FC = () => {
       (item.placa_veiculo || '').toLowerCase().includes(searchSupabaseEntradas.toLowerCase());
 
     if (!matchesSearch) return false;
+
+    // Filtro de Centro de Custos
+    if (selectedCentroCustoEntradas) {
+      const cc = supabaseCentroCusto.find(c => c.id === selectedCentroCustoEntradas);
+      const ccName = cc?.nome_centro_custo || cc?.descricao || '';
+      const matchId = item.centro_custo_id === selectedCentroCustoEntradas;
+      const matchName = ccName && (item.nome_centro_custo || '').toLowerCase() === ccName.toLowerCase();
+      if (!matchId && !matchName) return false;
+    }
+
+    // Filtro de Período ou Mês Atual por padrão
     if (periodoInicioEntradas || periodoFimEntradas) {
       const itemDateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
       if (!itemDateStr) return false;
       if (periodoInicioEntradas && itemDateStr < periodoInicioEntradas) return false;
       if (periodoFimEntradas && itemDateStr > periodoFimEntradas) return false;
+    } else {
+      // Exibe apenas o mês atual inicialmente na abertura
+      const itemDateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
+      if (!itemDateStr) return false;
+
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = String(today.getMonth() + 1).padStart(2, '0');
+      const currentYearMonth = `${currentYear}-${currentMonth}`; // ex: "2026-05"
+
+      const itemYearMonth = itemDateStr.substring(0, 7); // ex: "2026-05"
+      if (itemYearMonth !== currentYearMonth) {
+        return false;
+      }
     }
     return true;
   });
@@ -4382,7 +5211,7 @@ const App: React.FC = () => {
 
         {/* Workspace Display Area */}
         <main className="flex-1 overflow-hidden p-6 md:p-8 flex flex-col min-h-0 relative">
-          
+
           {/* Dynamic Background subtle glows */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-600/5 via-transparent to-transparent -z-10 pointer-events-none" />
 
@@ -4405,1657 +5234,1719 @@ const App: React.FC = () => {
               <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0 overflow-hidden">
                 {/* LEFT COLUMN: Bubble.io Grid */}
                 <section className="bg-palette-dark/40 border border-palette-medium/30 rounded-2xl p-5 flex flex-col backdrop-blur-md">
-          {activeForm === 'pessoas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Pessoas</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleData.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleData}
-                    disabled={loadingBubble}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubble ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, CPF ou CNPJ..."
-                  value={searchBubble}
-                  onChange={e => setSearchBubble(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubble && bubbleData.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubble.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/30 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhum registro encontrado</span>
-                  </div>
-                ) : (
-                  filteredBubble.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <User className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_pessoa}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              <CreditCard className="h-3 w-3" />
-                              {item.cpf && item.cpf !== 'N/A' ? `CPF: ${item.cpf}` : item.cnpj && item.cnpj !== 'N/A' ? `CNPJ: ${item.cnpj}` : 'Sem Documento'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> {item.celular_whatsapp}
-                            </span>
+                  {activeForm === 'pessoas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Pessoas</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
-                          {item.tipo_pessoa}
-                        </span>
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'veiculos' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Veículos</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleVehicles.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleVehicles}
-                    disabled={loadingBubbleVehicles}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleVehicles ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por placa, modelo ou proprietário..."
-                  value={searchBubbleVehicles}
-                  onChange={e => setSearchBubbleVehicles(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleVehicles && bubbleVehicles.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleVehicles.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhum veículo encontrado</span>
-                  </div>
-                ) : (
-                  filteredBubbleVehicles.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Car className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/40 text-palette-light text-xxs font-bold uppercase tracking-wide">
-                              {item.placa}
-                            </span>
-                            <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                              {item.marca_modelo}
-                            </h4>
-                          </div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" /> Proprietário: {item.pessoa_nome}
-                            </span>
-                            {item.motorista && item.motorista.length > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light/45">
-                                🚘 Motorista: {Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
-                          {item.tipo}
-                        </span>
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'centrocusto' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Centro de Custos</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleCentroCusto.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleCentroCusto}
-                    disabled={loadingBubbleCentroCusto}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleCentroCusto ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, descrição ou recorrência..."
-                  value={searchBubbleCentroCusto}
-                  onChange={e => setSearchBubbleCentroCusto(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleCentroCusto && bubbleCentroCusto.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleCentroCusto.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhum centro de custo encontrado</span>
-                  </div>
-                ) : (
-                  filteredBubbleCentroCusto.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <CreditCard className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_centro_custo}
-                          </h4>
-                          <p className="text-xxs text-palette-light/75 mt-0.5 font-medium">{item.descricao}</p>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              🔄 Recorrência: <strong className="text-palette-light/75">{item.tipo_recorrencia}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📈 Tipo: <strong className="text-palette-light/75">{item.tipo_movimentacao}</strong>
-                            </span>
-                            {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Provisão: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'formapagamento' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Formas de Pagamento</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleFormaPagamento.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleFormaPagamento}
-                    disabled={loadingBubbleFormaPagamento}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleFormaPagamento ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por descrição ou tipo..."
-                  value={searchBubbleFormaPagamento}
-                  onChange={e => setSearchBubbleFormaPagamento(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleFormaPagamento && bubbleFormaPagamento.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleFormaPagamento.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhuma forma de pagamento encontrada</span>
-                  </div>
-                ) : (
-                  filteredBubbleFormaPagamento.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Wallet className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.descricao}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              💳 Tipo de Transação: <strong className="text-palette-light/75">{item.tipo_transacao}</strong>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'mensalistas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Mensalistas</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleMensalistas.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleMensalistas}
-                    disabled={loadingBubbleMensalistas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleMensalistas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, placa, modelo ou plano..."
-                  value={searchBubbleMensalistas}
-                  onChange={e => setSearchBubbleMensalistas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleMensalistas && bubbleMensalistas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleMensalistas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhum mensalista encontrado</span>
-                  </div>
-                ) : (
-                  filteredBubbleMensalistas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Calendar className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_pessoa}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            {item.plano && (
-                              <span className="flex items-center gap-1">
-                                📋 Plano: <strong className="text-palette-light/75">{item.plano}</strong>
-                              </span>
-                            )}
-                            {item.placa && (
-                              <span className="flex items-center gap-1 bg-palette-medium/20 px-1 py-0.2 rounded border border-palette-medium/30 text-palette-light text-xxs">
-                                🚗 {item.placa} ({item.marca_modelo || 'N/A'})
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              📅 Vencimento: <strong className="text-palette-light/75">Dia {item.dia_vencimento || 'N/A'}</strong>
-                            </span>
-                            {item.valor_original !== undefined && item.valor_original > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'mensalistaparcelas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Mensalistas Parcelas</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleMensalistaParcelas.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleMensalistaParcelas}
-                    disabled={loadingBubbleMensalistaParcelas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleMensalistaParcelas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, ID ou ID do mensalista..."
-                  value={searchBubbleMensalistaParcelas}
-                  onChange={e => setSearchBubbleMensalistaParcelas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleMensalistaParcelas && bubbleMensalistaParcelas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleMensalistaParcelas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhuma parcela encontrada</span>
-                  </div>
-                ) : (
-                  filteredBubbleMensalistaParcelas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Layers className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_pessoa || 'Parcela Sem Nome'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              📅 Ref: <strong className="text-palette-light/75">{item.referencia || 'N/A'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              💰 Parcela: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_parcela || 0)}</strong>
-                            </span>
-                            {item.valor_pago !== undefined && item.valor_pago > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💸 Pago: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_pago)}</strong>
-                              </span>
-                            )}
-                            {item.data_pagamento && (
-                              <span className="flex items-center gap-1 text-palette-light/45">
-                                ✅ Pago em: {new Date(item.data_pagamento).toLocaleDateString('pt-BR')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
-                          {item.status || 'Pendente'}
-                        </span>
-                        <span className={`h-2 w-2 rounded-full ${item.status === 'Pago' ? 'bg-emerald-500' : item.status === 'Atrasado' ? 'bg-red-500' : 'bg-amber-500'}`} title={item.status || 'Pendente'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'metas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Metas</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleMetas.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleMetas}
-                    disabled={loadingBubbleMetas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleMetas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por mês/ano ou transação..."
-                  value={searchBubbleMetas}
-                  onChange={e => setSearchBubbleMetas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleMetas && bubbleMetas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleMetas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhuma meta encontrada</span>
-                  </div>
-                ) : (
-                  filteredBubbleMetas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Target className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.mes_ano || 'Sem Mês/Ano'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              🔄 Transação: <strong className={item.transacao === 'Entradas' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{item.transacao || 'Não Informado'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📅 Data Meta: <strong>{item.data_meta ? new Date(item.data_meta).toLocaleDateString('pt-BR') : 'N/A'}</strong>
-                            </span>
-                            {item.valor !== undefined && item.valor > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
-                          {item.transacao === 'Entradas' ? 'Receita' : 'Despesa'}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'despesas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Despesas</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleDespesas.length} total
-                  </span>
-                  <button
-                    onClick={fetchBubbleDespesas}
-                    disabled={loadingBubbleDespesas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleDespesas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por centro de custos ou forma de pagamento..."
-                  value={searchBubbleDespesas}
-                  onChange={e => setSearchBubbleDespesas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleDespesas && bubbleDespesas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Carregando dados da API do Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleDespesas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhuma despesa encontrada</span>
-                  </div>
-                ) : (
-                  filteredBubbleDespesas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <DollarSign className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_centro_custos || 'Sem Centro de Custo'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📅 Data: <strong>{item.data_despesa ? new Date(item.data_despesa).toLocaleDateString('pt-BR') : 'N/A'}</strong>
-                            </span>
-                            {item.valor !== undefined && item.valor > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
-                          <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light" title="Valor Provisão">
-                            Provisão: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleData.length} total
                           </span>
+                          <button
+                            onClick={fetchBubbleData}
+                            disabled={loadingBubble}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubble ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, CPF ou CNPJ..."
+                          value={searchBubble}
+                          onChange={e => setSearchBubble(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubble && bubbleData.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubble.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/30 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhum registro encontrado</span>
+                          </div>
+                        ) : (
+                          filteredBubble.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <User className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_pessoa}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      <CreditCard className="h-3 w-3" />
+                                      {item.cpf && item.cpf !== 'N/A' ? `CPF: ${item.cpf}` : item.cnpj && item.cnpj !== 'N/A' ? `CNPJ: ${item.cnpj}` : 'Sem Documento'}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="h-3 w-3" /> {item.celular_whatsapp}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
+                                  {item.tipo_pessoa}
+                                </span>
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Cloud className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Entradas</h2>
-                    <p className="text-xxs text-palette-light/50">Dados da API de Desenvolvimento</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {bubbleEntradas.length} registros
-                  </span>
-                  <button
-                    onClick={fetchBubbleEntradas}
-                    disabled={loadingBubbleEntradas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleEntradas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por descrição, pessoa, veículo ou centro..."
-                  value={searchBubbleEntradas}
-                  onChange={e => setSearchBubbleEntradas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingBubbleEntradas ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Bubble.io...</span>
-                  </div>
-                ) : filteredBubbleEntradas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhuma entrada encontrada</span>
-                  </div>
-                ) : (
-                  filteredBubbleEntradas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <ArrowRightLeft className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.descricao_entrada || 'Sem Descrição'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            {item.nome_pessoa && (
-                              <span className="flex items-center gap-1 text-palette-light/75">
-                                👤 Pessoa: <strong>{item.nome_pessoa}</strong>
-                              </span>
-                            )}
-                            {item.placa_veiculo && (
-                              <span className="flex items-center gap-1 text-palette-light/60">
-                                🚗 Placa: <strong className="uppercase">{item.placa_veiculo}</strong>
-                              </span>
-                            )}
-                            {item.nome_centro_custo && (
-                              <span className="flex items-center gap-1 text-palette-light/60">
-                                📁 C. Custo: <strong>{item.nome_centro_custo}</strong>
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📅 Data: <strong>{item.data_entrada ? new Date(item.data_entrada).toLocaleDateString('pt-BR') : 'N/A'}</strong>
-                            </span>
-                            {item.valor !== undefined && item.valor > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
-                              </span>
-                            )}
+                    </>
+                  ) : activeForm === 'veiculos' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Veículos</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          )}
-        </section>
-
-        {/* RIGHT COLUMN: Supabase Grid */}
-        <section className="bg-palette-dark/40 border border-palette-medium/30 rounded-2xl p-5 flex flex-col backdrop-blur-md">
-          {activeForm === 'pessoas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Pessoas</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseData.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseData}
-                    disabled={loadingSupabase}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabase ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, CPF ou CNPJ..."
-                  value={searchSupabase}
-                  onChange={e => setSearchSupabase(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabase && supabaseData.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabase.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela pessoas.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabase.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <User className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_pessoa}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              <CreditCard className="h-3 w-3" />
-                              {item.cpf && item.cpf !== 'N/A' ? `CPF: ${item.cpf}` : item.cnpj && item.cnpj !== 'N/A' ? `CNPJ: ${item.cnpj}` : 'Sem Documento'}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> {item.celular_whatsapp}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
-                          {item.tipo_pessoa}
-                        </span>
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'veiculos' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-slate-200 text-sm md:text-base">Supabase Veículos</h2>
-                    <p className="text-xxs text-slate-500">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
-                    {supabaseVehicles.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseVehicles}
-                    disabled={loadingSupabaseVehicles}
-                    className="h-8 w-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-slate-800 active:bg-slate-900 transition-colors disabled:opacity-50 text-slate-400 hover:text-white"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseVehicles ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por placa, modelo ou proprietário..."
-                  value={searchSupabaseVehicles}
-                  onChange={e => setSearchSupabaseVehicles(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseVehicles && supabaseVehicles.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseVehicles.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela veiculos.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseVehicles.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Car className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/40 text-palette-light text-xxs font-bold uppercase tracking-wide">
-                              {item.placa}
-                            </span>
-                            <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                              {item.marca_modelo}
-                            </h4>
-                          </div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              <User className="h-3 w-3" /> Proprietário: {item.pessoa_nome}
-                            </span>
-                            {item.motorista && item.motorista.length > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light/45">
-                                🚘 Motorista: {Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
-                          {item.tipo}
-                        </span>
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'centrocusto' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Centro de Custos</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseCentroCusto.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseCentroCusto}
-                    disabled={loadingSupabaseCentroCusto}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseCentroCusto ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, descrição ou recorrência..."
-                  value={searchSupabaseCentroCusto}
-                  onChange={e => setSearchSupabaseCentroCusto(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseCentroCusto && supabaseCentroCusto.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseCentroCusto.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela centro_custo.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseCentroCusto.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/25 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <CreditCard className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_centro_custo}
-                          </h4>
-                          <p className="text-xxs text-palette-light/75 mt-0.5 font-medium">{item.descricao}</p>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              🔄 Recorrência: <strong className="text-palette-light/75">{item.tipo_recorrencia}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📈 Tipo: <strong className="text-palette-light/75">{item.tipo_movimentacao}</strong>
-                            </span>
-                            {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Provisão: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'formapagamento' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Formas de Pagamento</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseFormaPagamento.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseFormaPagamento}
-                    disabled={loadingSupabaseFormaPagamento}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseFormaPagamento ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por descrição ou tipo..."
-                  value={searchSupabaseFormaPagamento}
-                  onChange={e => setSearchSupabaseFormaPagamento(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseFormaPagamento && supabaseFormaPagamento.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseFormaPagamento.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela formapagamento.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseFormaPagamento.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Wallet className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.descricao}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              💳 Tipo de Transação: <strong className="text-palette-light/75">{item.tipo_transacao}</strong>
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'mensalistas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Mensalistas</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseMensalistas.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseMensalistas}
-                    disabled={loadingSupabaseMensalistas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseMensalistas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, placa, modelo ou plano..."
-                  value={searchSupabaseMensalistas}
-                  onChange={e => setSearchSupabaseMensalistas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseMensalistas && supabaseMensalistas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseMensalistas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela mensalistas.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseMensalistas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Calendar className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_pessoa}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            {item.plano && (
-                              <span className="flex items-center gap-1">
-                                📋 Plano: <strong className="text-palette-light/75">{item.plano}</strong>
-                              </span>
-                            )}
-                            {item.placa && (
-                              <span className="flex items-center gap-1 bg-palette-medium/20 px-1 py-0.2 rounded border border-palette-medium/30 text-palette-light text-xxs">
-                                🚗 {item.placa} ({item.marca_modelo || 'N/A'})
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              📅 Vencimento: <strong className="text-palette-light/75">Dia {item.dia_vencimento || 'N/A'}</strong>
-                            </span>
-                            {item.valor_original !== undefined && item.valor_original > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'mensalistaparcelas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Mensalistas Parcelas</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseMensalistaParcelas.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseMensalistaParcelas}
-                    disabled={loadingSupabaseMensalistaParcelas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseMensalistaParcelas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, ID ou ID do mensalista..."
-                  value={searchSupabaseMensalistaParcelas}
-                  onChange={e => setSearchSupabaseMensalistaParcelas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseMensalistaParcelas && supabaseMensalistaParcelas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseMensalistaParcelas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela mensalistas_parcelas.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseMensalistaParcelas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Layers className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_pessoa || 'Parcela Sem Nome'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              📅 Ref: <strong className="text-palette-light/75">{item.referencia || 'N/A'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              💰 Parcela: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_parcela || 0)}</strong>
-                            </span>
-                            {item.valor_pago !== undefined && item.valor_pago > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💸 Pago: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_pago)}</strong>
-                              </span>
-                            )}
-                            {item.data_pagamento && (
-                              <span className="flex items-center gap-1 text-palette-light/45">
-                                ✅ Pago em: {new Date(item.data_pagamento).toLocaleDateString('pt-BR')}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
-                          {item.status || 'Pendente'}
-                        </span>
-                        <span className={`h-2 w-2 rounded-full ${item.status === 'Pago' ? 'bg-emerald-500' : item.status === 'Atrasado' ? 'bg-red-500' : 'bg-amber-500'}`} title={item.status || 'Pendente'} />
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'metas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Metas</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseMetas.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseMetas}
-                    disabled={loadingSupabaseMetas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseMetas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por mês/ano ou transação..."
-                  value={searchSupabaseMetas}
-                  onChange={e => setSearchSupabaseMetas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseMetas && supabaseMetas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseMetas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela metas.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseMetas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <Target className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.mes_ano || 'Sem Mês/Ano'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              🔄 Transação: <strong className={item.transacao === 'Entradas' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{item.transacao || 'Não Informado'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📅 Data Meta: <strong>{item.data_meta ? new Date(item.data_meta).toLocaleDateString('pt-BR') : 'N/A'}</strong>
-                            </span>
-                            {item.valor !== undefined && item.valor > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
-                          {item.transacao === 'Entradas' ? 'Receita' : 'Despesa'}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : activeForm === 'despesas' ? (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Despesas</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseDespesas.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseDespesas}
-                    disabled={loadingSupabaseDespesas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseDespesas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por centro de custos ou forma de pagamento..."
-                  value={searchSupabaseDespesas}
-                  onChange={e => setSearchSupabaseDespesas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseDespesas && supabaseDespesas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseDespesas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
-                    <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
-                      <Database className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
-                      <span className="text-xxs text-palette-light/50 block mt-1">
-                        Não existem registros importados na tabela despesas.
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  filteredSupabaseDespesas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <DollarSign className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.nome_centro_custos || 'Sem Centro de Custo'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            <span className="flex items-center gap-1">
-                              💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📅 Data: <strong>{item.data_despesa ? new Date(item.data_despesa).toLocaleDateString('pt-BR') : 'N/A'}</strong>
-                            </span>
-                            {item.valor !== undefined && item.valor > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 self-end md:self-center">
-                        {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
-                          <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light" title="Valor Provisão">
-                            Provisão: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleVehicles.length} total
                           </span>
+                          <button
+                            onClick={fetchBubbleVehicles}
+                            disabled={loadingBubbleVehicles}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleVehicles ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por placa, modelo ou proprietário..."
+                          value={searchBubbleVehicles}
+                          onChange={e => setSearchBubbleVehicles(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleVehicles && bubbleVehicles.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleVehicles.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhum veículo encontrado</span>
+                          </div>
+                        ) : (
+                          filteredBubbleVehicles.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Car className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/40 text-palette-light text-xxs font-bold uppercase tracking-wide">
+                                      {item.placa}
+                                    </span>
+                                    <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                      {item.marca_modelo}
+                                    </h4>
+                                  </div>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      <User className="h-3 w-3" /> Proprietário: {item.pessoa_nome}
+                                    </span>
+                                    {item.motorista && item.motorista.length > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light/45">
+                                        🚘 Motorista: {Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
+                                  {item.tipo}
+                                </span>
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
                         )}
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Entradas</h2>
-                    <p className="text-xxs text-palette-light/50">Registros em Produção</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
-                    {supabaseEntradas.length} total
-                  </span>
-                  <button
-                    onClick={fetchSupabaseEntradas}
-                    disabled={loadingSupabaseEntradas}
-                    className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseEntradas ? 'animate-spin' : ''}`} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar por descrição, pessoa, veículo ou centro..."
-                  value={searchSupabaseEntradas}
-                  onChange={e => setSearchSupabaseEntradas(e.target.value)}
-                  className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
-                />
-              </div>
-
-              {/* Records List */}
-              <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
-                {loadingSupabaseEntradas ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
-                    <span className="text-xs">Consultando banco de dados no Supabase...</span>
-                  </div>
-                ) : filteredSupabaseEntradas.length === 0 ? (
-                  <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
-                    <Info className="h-6 w-6 text-palette-light/40" />
-                    <span className="text-xs font-medium">Nenhuma entrada importada</span>
-                  </div>
-                ) : (
-                  filteredSupabaseEntradas.map(item => (
-                    <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
-                          <ArrowRightLeft className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
-                            {item.descricao_entrada || 'Sem Descrição'}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
-                            {item.nome_pessoa && (
-                              <span className="flex items-center gap-1 text-palette-light/75">
-                                👤 Pessoa: <strong>{item.nome_pessoa}</strong>
-                              </span>
-                            )}
-                            {item.placa_veiculo && (
-                              <span className="flex items-center gap-1 text-palette-light/60">
-                                🚗 Placa: <strong className="uppercase">{item.placa_veiculo}</strong>
-                              </span>
-                            )}
-                            {item.nome_centro_custo && (
-                              <span className="flex items-center gap-1 text-palette-light/60">
-                                📁 C. Custo: <strong>{item.nome_centro_custo}</strong>
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              📅 Data: <strong>{item.data_entrada ? new Date(item.data_entrada).toLocaleDateString('pt-BR') : 'N/A'}</strong>
-                            </span>
-                            {item.valor !== undefined && item.valor > 0 && (
-                              <span className="flex items-center gap-1 text-palette-light font-bold">
-                                💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
-                              </span>
-                            )}
+                    </>
+                  ) : activeForm === 'centrocusto' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Centro de Custos</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
                           </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleCentroCusto.length} total
+                          </span>
+                          <button
+                            onClick={fetchBubbleCentroCusto}
+                            disabled={loadingBubbleCentroCusto}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleCentroCusto ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </>
-          )}
-        </section>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, descrição ou recorrência..."
+                          value={searchBubbleCentroCusto}
+                          onChange={e => setSearchBubbleCentroCusto(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleCentroCusto && bubbleCentroCusto.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleCentroCusto.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhum centro de custo encontrado</span>
+                          </div>
+                        ) : (
+                          filteredBubbleCentroCusto.map(item => {
+                            const movLower = String(item.tipo_movimentacao || '').toLowerCase();
+                            const isEntrada = movLower.includes('entrada') || movLower.includes('receita');
+                            const isDespesa = movLower.includes('despesa') || movLower.includes('custo') || movLower.includes('saida') || movLower.includes('saída');
+
+                            let dotBg = 'bg-slate-500';
+                            let typeLabel = 'Outros';
+                            if (isEntrada) {
+                              dotBg = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                              typeLabel = 'Entrada';
+                            } else if (isDespesa) {
+                              dotBg = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
+                              typeLabel = 'Despesa';
+                            }
+
+                            const recStr = String(item.tipo_recorrencia || '').trim();
+                            const hasRecorrencia = recStr.length > 0 && recStr.toLowerCase() !== 'não informado' && recStr.toLowerCase() !== 'null';
+
+                            return (
+                              <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                                <div className="flex items-start gap-3">
+                                  <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                    <CreditCard className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                        {item.nome_centro_custo}
+                                      </h4>
+                                      {hasRecorrencia && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-palette-medium/20 text-palette-light/75 border border-palette-medium/30 leading-none">
+                                          {recStr.toLowerCase().includes('fixo') ? 'Fixo' :
+                                            recStr.toLowerCase().includes('varia') ? 'Variável' :
+                                              recStr}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xxs text-palette-light/75 mt-0.5 font-medium">{item.descricao}</p>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-palette-light/50 text-xxs font-medium">
+                                      <span className="flex items-center gap-1">
+                                        🔄 Recorrência: <strong className="text-palette-light/75">{item.tipo_recorrencia}</strong>
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        📈 Tipo: <strong className="text-palette-light/75">{item.tipo_movimentacao}</strong>
+                                      </span>
+                                      {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
+                                        <span className="flex items-center gap-1 text-palette-light font-bold">
+                                          💰 Provisão: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}</strong>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 self-end md:self-center">
+                                  <div className="flex items-center gap-1.5 bg-palette-deep/80 px-2 py-1 rounded-lg border border-palette-medium/30">
+                                    <span className={`h-2 w-2 rounded-full ${dotBg} animate-pulse`} title={typeLabel} />
+                                    <span className="text-[8px] font-bold text-palette-light/60 uppercase tracking-wider leading-none">{typeLabel}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'formapagamento' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Formas de Pagamento</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleFormaPagamento.length} total
+                          </span>
+                          <button
+                            onClick={fetchBubbleFormaPagamento}
+                            disabled={loadingBubbleFormaPagamento}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleFormaPagamento ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por descrição ou tipo..."
+                          value={searchBubbleFormaPagamento}
+                          onChange={e => setSearchBubbleFormaPagamento(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleFormaPagamento && bubbleFormaPagamento.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleFormaPagamento.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhuma forma de pagamento encontrada</span>
+                          </div>
+                        ) : (
+                          filteredBubbleFormaPagamento.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Wallet className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.descricao}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      💳 Tipo de Transação: <strong className="text-palette-light/75">{item.tipo_transacao}</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'mensalistas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Mensalistas</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleMensalistas.length} total
+                          </span>
+                          <button
+                            onClick={fetchBubbleMensalistas}
+                            disabled={loadingBubbleMensalistas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleMensalistas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, placa, modelo ou plano..."
+                          value={searchBubbleMensalistas}
+                          onChange={e => setSearchBubbleMensalistas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleMensalistas && bubbleMensalistas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleMensalistas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhum mensalista encontrado</span>
+                          </div>
+                        ) : (
+                          filteredBubbleMensalistas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Calendar className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_pessoa}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    {item.plano && (
+                                      <span className="flex items-center gap-1">
+                                        📋 Plano: <strong className="text-palette-light/75">{item.plano}</strong>
+                                      </span>
+                                    )}
+                                    {item.placa && (
+                                      <span className="flex items-center gap-1 bg-palette-medium/20 px-1 py-0.2 rounded border border-palette-medium/30 text-palette-light text-xxs">
+                                        🚗 {item.placa} ({item.marca_modelo || 'N/A'})
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      📅 Vencimento: <strong className="text-palette-light/75">Dia {item.dia_vencimento || 'N/A'}</strong>
+                                    </span>
+                                    {item.valor_original !== undefined && item.valor_original > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'mensalistaparcelas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Mensalistas Parcelas</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleMensalistaParcelas.length} total
+                          </span>
+                          <button
+                            onClick={fetchBubbleMensalistaParcelas}
+                            disabled={loadingBubbleMensalistaParcelas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleMensalistaParcelas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, ID ou ID do mensalista..."
+                          value={searchBubbleMensalistaParcelas}
+                          onChange={e => setSearchBubbleMensalistaParcelas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleMensalistaParcelas && bubbleMensalistaParcelas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleMensalistaParcelas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhuma parcela encontrada</span>
+                          </div>
+                        ) : (
+                          filteredBubbleMensalistaParcelas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Layers className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_pessoa || 'Parcela Sem Nome'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      📅 Ref: <strong className="text-palette-light/75">{item.referencia || 'N/A'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      💰 Parcela: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_parcela || 0)}</strong>
+                                    </span>
+                                    {item.valor_pago !== undefined && item.valor_pago > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💸 Pago: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_pago)}</strong>
+                                      </span>
+                                    )}
+                                    {item.data_pagamento && (
+                                      <span className="flex items-center gap-1 text-palette-light/45">
+                                        ✅ Pago em: {new Date(item.data_pagamento).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
+                                  {item.status || 'Pendente'}
+                                </span>
+                                <span className={`h-2 w-2 rounded-full ${item.status === 'Pago' ? 'bg-emerald-500' : item.status === 'Atrasado' ? 'bg-red-500' : 'bg-amber-500'}`} title={item.status || 'Pendente'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'metas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Metas</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleMetas.length} total
+                          </span>
+                          <button
+                            onClick={fetchBubbleMetas}
+                            disabled={loadingBubbleMetas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleMetas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por mês/ano ou transação..."
+                          value={searchBubbleMetas}
+                          onChange={e => setSearchBubbleMetas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleMetas && bubbleMetas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleMetas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhuma meta encontrada</span>
+                          </div>
+                        ) : (
+                          filteredBubbleMetas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Target className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.mes_ano || 'Sem Mês/Ano'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      🔄 Transação: <strong className={item.transacao === 'Entradas' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{item.transacao || 'Não Informado'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      📅 Data Meta: <strong>{item.data_meta ? new Date(item.data_meta).toLocaleDateString('pt-BR') : 'N/A'}</strong>
+                                    </span>
+                                    {item.valor !== undefined && item.valor > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
+                                  {item.transacao === 'Entradas' ? 'Receita' : 'Despesa'}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'despesas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Despesas</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Origem</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleDespesas.length} total
+                          </span>
+                          <button
+                            onClick={fetchBubbleDespesas}
+                            disabled={loadingBubbleDespesas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleDespesas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por centro de custos ou forma de pagamento..."
+                          value={searchBubbleDespesas}
+                          onChange={e => setSearchBubbleDespesas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleDespesas && bubbleDespesas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Carregando dados da API do Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleDespesas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhuma despesa encontrada</span>
+                          </div>
+                        ) : (
+                          filteredBubbleDespesas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <DollarSign className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_centro_custos || 'Sem Centro de Custo'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      📅 Data: <strong>{item.data_despesa ? new Date(item.data_despesa).toLocaleDateString('pt-BR') : 'N/A'}</strong>
+                                    </span>
+                                    {item.valor !== undefined && item.valor > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
+                                  <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light" title="Valor Provisão">
+                                    Provisão: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Cloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Bubble.io Entradas</h2>
+                            <p className="text-xxs text-palette-light/50">Dados da API de Desenvolvimento</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {bubbleEntradas.length} registros
+                          </span>
+                          <button
+                            onClick={fetchBubbleEntradas}
+                            disabled={loadingBubbleEntradas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingBubbleEntradas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por descrição, pessoa, veículo ou centro..."
+                          value={searchBubbleEntradas}
+                          onChange={e => setSearchBubbleEntradas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingBubbleEntradas ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Bubble.io...</span>
+                          </div>
+                        ) : filteredBubbleEntradas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhuma entrada encontrada</span>
+                          </div>
+                        ) : (
+                          filteredBubbleEntradas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <ArrowRightLeft className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.descricao_entrada || 'Sem Descrição'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    {item.nome_pessoa && (
+                                      <span className="flex items-center gap-1 text-palette-light/75">
+                                        👤 Pessoa: <strong>{item.nome_pessoa}</strong>
+                                      </span>
+                                    )}
+                                    {item.placa_veiculo && (
+                                      <span className="flex items-center gap-1 text-palette-light/60">
+                                        🚗 Placa: <strong className="uppercase">{item.placa_veiculo}</strong>
+                                      </span>
+                                    )}
+                                    {item.nome_centro_custo && (
+                                      <span className="flex items-center gap-1 text-palette-light/60">
+                                        📁 C. Custo: <strong>{item.nome_centro_custo}</strong>
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      📅 Data: <strong>{item.data_entrada ? new Date(item.data_entrada).toLocaleDateString('pt-BR') : 'N/A'}</strong>
+                                    </span>
+                                    {item.valor !== undefined && item.valor > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </section>
+
+                {/* RIGHT COLUMN: Supabase Grid */}
+                <section className="bg-palette-dark/40 border border-palette-medium/30 rounded-2xl p-5 flex flex-col backdrop-blur-md">
+                  {activeForm === 'pessoas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Pessoas</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseData.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseData}
+                            disabled={loadingSupabase}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabase ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, CPF ou CNPJ..."
+                          value={searchSupabase}
+                          onChange={e => setSearchSupabase(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabase && supabaseData.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabase.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela pessoas.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabase.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <User className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_pessoa}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      <CreditCard className="h-3 w-3" />
+                                      {item.cpf && item.cpf !== 'N/A' ? `CPF: ${item.cpf}` : item.cnpj && item.cnpj !== 'N/A' ? `CNPJ: ${item.cnpj}` : 'Sem Documento'}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="h-3 w-3" /> {item.celular_whatsapp}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
+                                  {item.tipo_pessoa}
+                                </span>
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'veiculos' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-slate-200 text-sm md:text-base">Supabase Veículos</h2>
+                            <p className="text-xxs text-slate-500">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-400 px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800">
+                            {supabaseVehicles.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseVehicles}
+                            disabled={loadingSupabaseVehicles}
+                            className="h-8 w-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center hover:bg-slate-800 active:bg-slate-900 transition-colors disabled:opacity-50 text-slate-400 hover:text-white"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseVehicles ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por placa, modelo ou proprietário..."
+                          value={searchSupabaseVehicles}
+                          onChange={e => setSearchSupabaseVehicles(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseVehicles && supabaseVehicles.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseVehicles.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela veiculos.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseVehicles.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Car className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/40 text-palette-light text-xxs font-bold uppercase tracking-wide">
+                                      {item.placa}
+                                    </span>
+                                    <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                      {item.marca_modelo}
+                                    </h4>
+                                  </div>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      <User className="h-3 w-3" /> Proprietário: {item.pessoa_nome}
+                                    </span>
+                                    {item.motorista && item.motorista.length > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light/45">
+                                        🚘 Motorista: {Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-semibold px-2 py-0.5 rounded-full bg-palette-deep border border-palette-medium/40 text-palette-light/75 capitalize">
+                                  {item.tipo}
+                                </span>
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'centrocusto' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Centro de Custos</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseCentroCusto.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseCentroCusto}
+                            disabled={loadingSupabaseCentroCusto}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseCentroCusto ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, descrição ou recorrência..."
+                          value={searchSupabaseCentroCusto}
+                          onChange={e => setSearchSupabaseCentroCusto(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseCentroCusto && supabaseCentroCusto.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseCentroCusto.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela centro_custo.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseCentroCusto.map(item => {
+                            const movLower = String(item.tipo_movimentacao || '').toLowerCase();
+                            const isEntrada = movLower.includes('entrada') || movLower.includes('receita');
+                            const isDespesa = movLower.includes('despesa') || movLower.includes('custo') || movLower.includes('saida') || movLower.includes('saída');
+
+                            let dotBg = 'bg-slate-500';
+                            let typeLabel = 'Outros';
+                            if (isEntrada) {
+                              dotBg = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                              typeLabel = 'Entrada';
+                            } else if (isDespesa) {
+                              dotBg = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
+                              typeLabel = 'Despesa';
+                            }
+
+                            const recStr = String(item.tipo_recorrencia || '').trim();
+                            const hasRecorrencia = recStr.length > 0 && recStr.toLowerCase() !== 'não informado' && recStr.toLowerCase() !== 'null';
+
+                            return (
+                              <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                                <div className="flex items-start gap-3">
+                                  <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/25 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                    <CreditCard className="h-4 w-4" />
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                        {item.nome_centro_custo}
+                                      </h4>
+                                      {hasRecorrencia && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-palette-medium/20 text-palette-light/75 border border-palette-medium/30 leading-none">
+                                          {recStr.toLowerCase().includes('fixo') ? 'Fixo' :
+                                            recStr.toLowerCase().includes('varia') ? 'Variável' :
+                                              recStr}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-xxs text-palette-light/75 mt-0.5 font-medium">{item.descricao}</p>
+                                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-palette-light/50 text-xxs font-medium">
+                                      <span className="flex items-center gap-1">
+                                        🔄 Recorrência: <strong className="text-palette-light/75">{item.tipo_recorrencia}</strong>
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        📈 Tipo: <strong className="text-palette-light/75">{item.tipo_movimentacao}</strong>
+                                      </span>
+                                      {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
+                                        <span className="flex items-center gap-1 text-palette-light font-bold">
+                                          💰 Provisão: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}</strong>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 self-end md:self-center">
+                                  <div className="flex items-center gap-1.5 bg-palette-deep/80 px-2 py-1 rounded-lg border border-palette-medium/30">
+                                    <span className={`h-2 w-2 rounded-full ${dotBg} animate-pulse`} title={typeLabel} />
+                                    <span className="text-[8px] font-bold text-palette-light/60 uppercase tracking-wider leading-none">{typeLabel}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'formapagamento' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Formas de Pagamento</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseFormaPagamento.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseFormaPagamento}
+                            disabled={loadingSupabaseFormaPagamento}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseFormaPagamento ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por descrição ou tipo..."
+                          value={searchSupabaseFormaPagamento}
+                          onChange={e => setSearchSupabaseFormaPagamento(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseFormaPagamento && supabaseFormaPagamento.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseFormaPagamento.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela formapagamento.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseFormaPagamento.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Wallet className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.descricao}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      💳 Tipo de Transação: <strong className="text-palette-light/75">{item.tipo_transacao}</strong>
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'mensalistas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Mensalistas</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseMensalistas.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseMensalistas}
+                            disabled={loadingSupabaseMensalistas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseMensalistas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, placa, modelo ou plano..."
+                          value={searchSupabaseMensalistas}
+                          onChange={e => setSearchSupabaseMensalistas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseMensalistas && supabaseMensalistas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseMensalistas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela mensalistas.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseMensalistas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Calendar className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_pessoa}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    {item.plano && (
+                                      <span className="flex items-center gap-1">
+                                        📋 Plano: <strong className="text-palette-light/75">{item.plano}</strong>
+                                      </span>
+                                    )}
+                                    {item.placa && (
+                                      <span className="flex items-center gap-1 bg-palette-medium/20 px-1 py-0.2 rounded border border-palette-medium/30 text-palette-light text-xxs">
+                                        🚗 {item.placa} ({item.marca_modelo || 'N/A'})
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      📅 Vencimento: <strong className="text-palette-light/75">Dia {item.dia_vencimento || 'N/A'}</strong>
+                                    </span>
+                                    {item.valor_original !== undefined && item.valor_original > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-red-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'mensalistaparcelas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Mensalistas Parcelas</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseMensalistaParcelas.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseMensalistaParcelas}
+                            disabled={loadingSupabaseMensalistaParcelas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseMensalistaParcelas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por nome, ID ou ID do mensalista..."
+                          value={searchSupabaseMensalistaParcelas}
+                          onChange={e => setSearchSupabaseMensalistaParcelas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseMensalistaParcelas && supabaseMensalistaParcelas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseMensalistaParcelas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela mensalistas_parcelas.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseMensalistaParcelas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Layers className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_pessoa || 'Parcela Sem Nome'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      📅 Ref: <strong className="text-palette-light/75">{item.referencia || 'N/A'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      💰 Parcela: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_parcela || 0)}</strong>
+                                    </span>
+                                    {item.valor_pago !== undefined && item.valor_pago > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💸 Pago: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_pago)}</strong>
+                                      </span>
+                                    )}
+                                    {item.data_pagamento && (
+                                      <span className="flex items-center gap-1 text-palette-light/45">
+                                        ✅ Pago em: {new Date(item.data_pagamento).toLocaleDateString('pt-BR')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
+                                  {item.status || 'Pendente'}
+                                </span>
+                                <span className={`h-2 w-2 rounded-full ${item.status === 'Pago' ? 'bg-emerald-500' : item.status === 'Atrasado' ? 'bg-red-500' : 'bg-amber-500'}`} title={item.status || 'Pendente'} />
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'metas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Metas</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseMetas.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseMetas}
+                            disabled={loadingSupabaseMetas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseMetas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por mês/ano ou transação..."
+                          value={searchSupabaseMetas}
+                          onChange={e => setSearchSupabaseMetas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseMetas && supabaseMetas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseMetas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela metas.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseMetas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <Target className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.mes_ano || 'Sem Mês/Ano'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      🔄 Transação: <strong className={item.transacao === 'Entradas' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{item.transacao || 'Não Informado'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      📅 Data Meta: <strong>{item.data_meta ? new Date(item.data_meta).toLocaleDateString('pt-BR') : 'N/A'}</strong>
+                                    </span>
+                                    {item.valor !== undefined && item.valor > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light">
+                                  {item.transacao === 'Entradas' ? 'Receita' : 'Despesa'}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : activeForm === 'despesas' ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Despesas</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseDespesas.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseDespesas}
+                            disabled={loadingSupabaseDespesas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseDespesas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por centro de custos ou forma de pagamento..."
+                          value={searchSupabaseDespesas}
+                          onChange={e => setSearchSupabaseDespesas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseDespesas && supabaseDespesas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseDespesas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-3 text-center p-6">
+                            <div className="h-10 w-10 rounded-full bg-palette-deep border border-palette-medium/30 flex items-center justify-center text-palette-light/40 mx-auto">
+                              <Database className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-palette-light block">Supabase Vazio</span>
+                              <span className="text-xxs text-palette-light/50 block mt-1">
+                                Não existem registros importados na tabela despesas.
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredSupabaseDespesas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <DollarSign className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.nome_centro_custos || 'Sem Centro de Custo'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    <span className="flex items-center gap-1">
+                                      💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      📅 Data: <strong>{item.data_despesa ? new Date(item.data_despesa).toLocaleDateString('pt-BR') : 'N/A'}</strong>
+                                    </span>
+                                    {item.valor !== undefined && item.valor > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2 self-end md:self-center">
+                                {item.valor_provisao !== undefined && item.valor_provisao > 0 && (
+                                  <span className="text-xxs font-bold px-2 py-0.5 rounded bg-palette-medium/20 border border-palette-medium/30 text-palette-light" title="Valor Provisão">
+                                    Provisão: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-8 w-8 rounded-lg bg-palette-medium/20 flex items-center justify-center text-palette-light">
+                            <Database className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h2 className="font-bold text-palette-light text-sm md:text-base">Supabase Entradas</h2>
+                            <p className="text-xxs text-palette-light/50">Registros em Produção</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-palette-light/80 px-2 py-0.5 rounded-md bg-palette-deep border border-palette-medium/40">
+                            {supabaseEntradas.length} total
+                          </span>
+                          <button
+                            onClick={fetchSupabaseEntradas}
+                            disabled={loadingSupabaseEntradas}
+                            className="h-8 w-8 rounded-lg bg-palette-deep border border-palette-medium/40 flex items-center justify-center hover:bg-palette-medium/20 active:bg-palette-deep transition-colors disabled:opacity-50 text-palette-light/75 hover:text-palette-light"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loadingSupabaseEntradas ? 'animate-spin' : ''}`} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-palette-light/40 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por descrição, pessoa, veículo ou centro..."
+                          value={searchSupabaseEntradas}
+                          onChange={e => setSearchSupabaseEntradas(e.target.value)}
+                          className="w-full bg-palette-deep/60 border border-palette-medium/40 rounded-xl py-2 pl-10 pr-4 text-sm text-palette-light placeholder:text-palette-light/30 focus:outline-none focus:border-palette-medium transition-colors"
+                        />
+                      </div>
+
+                      {/* Records List */}
+                      <div className="flex-1 overflow-y-auto h-[calc(100vh-230px)] pr-2 space-y-2 custom-scrollbar">
+                        {loadingSupabaseEntradas ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/40 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-palette-light" />
+                            <span className="text-xs">Consultando banco de dados no Supabase...</span>
+                          </div>
+                        ) : filteredSupabaseEntradas.length === 0 ? (
+                          <div className="h-60 flex flex-col items-center justify-center text-palette-light/35 border border-dashed border-palette-medium/30 rounded-2xl gap-2">
+                            <Info className="h-6 w-6 text-palette-light/40" />
+                            <span className="text-xs font-medium">Nenhuma entrada importada</span>
+                          </div>
+                        ) : (
+                          filteredSupabaseEntradas.map(item => (
+                            <div key={item.id} className="p-3.5 rounded-xl bg-palette-deep/60 border border-palette-medium/30 hover:border-palette-medium/80 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 group">
+                              <div className="flex items-start gap-3">
+                                <div className="h-9 w-9 rounded-lg bg-palette-medium/10 border border-palette-medium/20 text-palette-light flex items-center justify-center mt-0.5 group-hover:bg-palette-medium/20 transition-colors">
+                                  <ArrowRightLeft className="h-4 w-4" />
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-palette-light text-sm group-hover:text-palette-light/95 transition-colors">
+                                    {item.descricao_entrada || 'Sem Descrição'}
+                                  </h4>
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1 text-palette-light/50 text-xxs font-medium">
+                                    {item.nome_pessoa && (
+                                      <span className="flex items-center gap-1 text-palette-light/75">
+                                        👤 Pessoa: <strong>{item.nome_pessoa}</strong>
+                                      </span>
+                                    )}
+                                    {item.placa_veiculo && (
+                                      <span className="flex items-center gap-1 text-palette-light/60">
+                                        🚗 Placa: <strong className="uppercase">{item.placa_veiculo}</strong>
+                                      </span>
+                                    )}
+                                    {item.nome_centro_custo && (
+                                      <span className="flex items-center gap-1 text-palette-light/60">
+                                        📁 C. Custo: <strong>{item.nome_centro_custo}</strong>
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      💳 Forma: <strong>{item.descricao_forma_pagamento || 'N/A'}</strong>
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                      📅 Data: <strong>{item.data_entrada ? new Date(item.data_entrada).toLocaleDateString('pt-BR') : 'N/A'}</strong>
+                                    </span>
+                                    {item.valor !== undefined && item.valor > 0 && (
+                                      <span className="flex items-center gap-1 text-palette-light font-bold">
+                                        💰 Valor: <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor)}</strong>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </section>
 
               </div>
             </div>

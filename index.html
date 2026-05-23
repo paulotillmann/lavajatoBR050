@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>React Starter</title>
+    <title>LavajatoBR050 - Gestão Financeira</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
@@ -134,6 +134,72 @@
       /* Transition all elements for rich visual aesthetic */
       div, header, main, section, button, input, select, textarea {
         transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      /* Global input, select, and textarea focus styles only in light mode (white background and brand blue border) */
+      .light-theme input:focus, .light-theme select:focus, .light-theme textarea:focus {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+        outline: none !important;
+      }
+
+      /* Legible placeholder color when inputs are focused on white background in light mode */
+      .light-theme input:focus::placeholder, .light-theme textarea:focus::placeholder {
+        color: #94a3b8 !important;
+      }
+
+      /* Global primary buttons in light mode (excluding sidebar): matches the light mode menu area background (#18224f) */
+      .light-theme button.bg-gradient-to-r:not(aside *),
+      .light-theme button.bg-gradient-to-tr:not(aside *),
+      .light-theme button[class*="bg-violet-"]:not(aside *),
+      .light-theme button[class*="bg-indigo-"]:not(aside *),
+      .light-theme button[class*="bg-cyan-"]:not(aside *),
+      .light-theme button[class*="bg-blue-"]:not(aside *),
+      .light-theme button[class*="bg-purple-"]:not(aside *) {
+        background-image: none !important;
+        background-color: #18224f !important;
+        color: #ffffff !important;
+        border-color: #18224f !important;
+      }
+
+      .light-theme button.bg-gradient-to-r:hover:not(aside *),
+      .light-theme button.bg-gradient-to-tr:hover:not(aside *),
+      .light-theme button[class*="bg-violet-"]:hover:not(aside *),
+      .light-theme button[class*="bg-indigo-"]:hover:not(aside *),
+      .light-theme button[class*="bg-cyan-"]:hover:not(aside *),
+      .light-theme button[class*="bg-blue-"]:hover:not(aside *),
+      .light-theme button[class*="bg-purple-"]:hover:not(aside *) {
+        background-image: none !important;
+        background-color: #222f6d !important;
+        border-color: #222f6d !important;
+      }
+
+      /* Global primary buttons in dark mode (excluding sidebar): matches the dark mode menu area background (#0e111a) */
+      body:not(.light-theme) button.bg-gradient-to-r:not(aside *),
+      body:not(.light-theme) button.bg-gradient-to-tr:not(aside *),
+      body:not(.light-theme) button[class*="bg-violet-"]:not(aside *),
+      body:not(.light-theme) button[class*="bg-indigo-"]:not(aside *),
+      body:not(.light-theme) button[class*="bg-cyan-"]:not(aside *),
+      body:not(.light-theme) button[class*="bg-blue-"]:not(aside *),
+      body:not(.light-theme) button[class*="bg-purple-"]:not(aside *) {
+        background-image: none !important;
+        background-color: #0e111a !important;
+        color: #ffffff !important;
+        border: 1px solid #1f2433 !important;
+      }
+
+      body:not(.light-theme) button.bg-gradient-to-r:hover:not(aside *),
+      body:not(.light-theme) button.bg-gradient-to-tr:hover:not(aside *),
+      body:not(.light-theme) button[class*="bg-violet-"]:hover:not(aside *),
+      body:not(.light-theme) button[class*="bg-indigo-"]:hover:not(aside *),
+      body:not(.light-theme) button[class*="bg-cyan-"]:hover:not(aside *),
+      body:not(.light-theme) button[class*="bg-blue-"]:hover:not(aside *),
+      body:not(.light-theme) button[class*="bg-purple-"]:hover:not(aside *) {
+        background-image: none !important;
+        background-color: #151926 !important;
+        border-color: #3b82f6 !important;
       }
       
       /* Custom scrollbar matching palette */
