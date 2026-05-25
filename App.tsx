@@ -423,10 +423,10 @@ const App: React.FC = () => {
         {/* Outer Split Card Container */}
         <div className="w-full max-w-5xl bg-[#0e111a]/40 light-theme:bg-white/80 backdrop-blur-xl border border-[#1f2433] light-theme:border-slate-200 rounded-3xl overflow-hidden shadow-2xl flex flex-col lg:flex-row relative z-10 min-h-[600px]">
 
-          <div className="w-full lg:w-1/2 bg-gradient-to-br from-[#121626] to-[#0a0c14] light-theme:from-indigo-950 light-theme:to-slate-900 p-8 sm:p-12 flex flex-col justify-between relative border-b lg:border-b-0 lg:border-r border-[#1f2433] light-theme:border-slate-800/40">
+          <div className="w-full lg:w-1/2 bg-gradient-to-br from-[#141414] to-[#080808] light-theme:from-neutral-900 light-theme:to-neutral-950 p-8 sm:p-12 flex flex-col justify-between relative">
             {/* Background Image with slight blur */}
             <div
-              className="absolute inset-0 bg-cover bg-center opacity-35 light-theme:opacity-[0.25] blur-[1px] pointer-events-none"
+              className="absolute inset-0 bg-cover bg-center opacity-100 pointer-events-none"
               style={{ backgroundImage: `url(${carretaImg})` }}
             />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(139,92,246,0.08),transparent_50%)] pointer-events-none" />
@@ -825,6 +825,25 @@ const App: React.FC = () => {
   const [searchBubble, setSearchBubble] = useState('');
   const [searchSupabase, setSearchSupabase] = useState('');
 
+  // Pessoas CRUD states
+  const [pessoaFormMode, setPessoaFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedPessoa, setSelectedPessoa] = useState<Pessoa | null>(null);
+  const [isExcluindoPessoa, setIsExcluindoPessoa] = useState<Pessoa | null>(null);
+  const [isDeletingPessoa, setIsDeletingPessoa] = useState(false);
+  const [formPessoaSubmitting, setFormPessoaSubmitting] = useState(false);
+  const [formPessoaError, setFormPessoaError] = useState<string | null>(null);
+  const [currentPagePessoas, setCurrentPagePessoas] = useState(1);
+
+  // Pessoas Form states
+  const [formPessoaNome, setFormPessoaNome] = useState('');
+  const [formPessoaTipo, setFormPessoaTipo] = useState<string>('Cliente');
+  const [formPessoaCelular, setFormPessoaCelular] = useState('');
+  const [formPessoaCpf, setFormPessoaCpf] = useState('');
+  const [formPessoaCnpj, setFormPessoaCnpj] = useState('');
+  const [formPessoaCidade, setFormPessoaCidade] = useState('');
+  const [formPessoaUf, setFormPessoaUf] = useState('');
+  const [formPessoaAtivo, setFormPessoaAtivo] = useState(true);
+
   // Veiculos Data states
   const [bubbleVehicles, setBubbleVehicles] = useState<Veiculo[]>([]);
   const [supabaseVehicles, setSupabaseVehicles] = useState<Veiculo[]>([]);
@@ -834,6 +853,24 @@ const App: React.FC = () => {
   // Veiculos Filter/Search states
   const [searchBubbleVehicles, setSearchBubbleVehicles] = useState('');
   const [searchSupabaseVehicles, setSearchSupabaseVehicles] = useState('');
+
+  // Veiculos CRUD states
+  const [veiculoFormMode, setVeiculoFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedVeiculo, setSelectedVeiculo] = useState<Veiculo | null>(null);
+  const [isExcluindoVeiculo, setIsExcluindoVeiculo] = useState<Veiculo | null>(null);
+  const [isDeletingVeiculo, setIsDeletingVeiculo] = useState(false);
+  const [formVeiculoSubmitting, setFormVeiculoSubmitting] = useState(false);
+  const [formVeiculoError, setFormVeiculoError] = useState<string | null>(null);
+  const [currentPageVeiculos, setCurrentPageVeiculos] = useState(1);
+
+  // Veiculos Form inputs
+  const [formVeiculoPlaca, setFormVeiculoPlaca] = useState('');
+  const [formVeiculoMarcaModelo, setFormVeiculoMarcaModelo] = useState('');
+  const [formVeiculoTipo, setFormVeiculoTipo] = useState('CARRETA');
+  const [formVeiculoPessoaId, setFormVeiculoPessoaId] = useState(''); // Proprietário
+  const [formVeiculoMotorista, setFormVeiculoMotorista] = useState(''); // Authorized Driver (comma-separated string)
+  const [formVeiculoAtivo, setFormVeiculoAtivo] = useState(true);
+
 
   // Centro Custo Data states
   const [bubbleCentroCusto, setBubbleCentroCusto] = useState<CentroCusto[]>([]);
@@ -845,6 +882,23 @@ const App: React.FC = () => {
   const [searchBubbleCentroCusto, setSearchBubbleCentroCusto] = useState('');
   const [searchSupabaseCentroCusto, setSearchSupabaseCentroCusto] = useState('');
 
+  // Centro Custo CRUD states
+  const [centroCustoFormMode, setCentroCustoFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedCentroCusto, setSelectedCentroCusto] = useState<CentroCusto | null>(null);
+  const [isExcluindoCentroCusto, setIsExcluindoCentroCusto] = useState<CentroCusto | null>(null);
+  const [isDeletingCentroCusto, setIsDeletingCentroCusto] = useState(false);
+  const [formCentroCustoSubmitting, setFormCentroCustoSubmitting] = useState(false);
+  const [formCentroCustoError, setFormCentroCustoError] = useState<string | null>(null);
+  const [currentPageCentroCusto, setCurrentPageCentroCusto] = useState(1);
+
+  // Centro Custo Form inputs
+  const [formCentroCustoNome, setFormCentroCustoNome] = useState('');
+  const [formCentroCustoDescricao, setFormCentroCustoDescricao] = useState('');
+  const [formCentroCustoTipoMovimentacao, setFormCentroCustoTipoMovimentacao] = useState('DESPESA');
+  const [formCentroCustoTipoRecorrencia, setFormCentroCustoTipoRecorrencia] = useState('Não Informado');
+  const [formCentroCustoValorProvisao, setFormCentroCustoValorProvisao] = useState<number>(0);
+  const [formCentroCustoAtivo, setFormCentroCustoAtivo] = useState(true);
+
   // Forma Pagamento Data states
   const [bubbleFormaPagamento, setBubbleFormaPagamento] = useState<FormaPagamento[]>([]);
   const [supabaseFormaPagamento, setSupabaseFormaPagamento] = useState<FormaPagamento[]>([]);
@@ -854,6 +908,20 @@ const App: React.FC = () => {
   // Forma Pagamento Filter/Search states
   const [searchBubbleFormaPagamento, setSearchBubbleFormaPagamento] = useState('');
   const [searchSupabaseFormaPagamento, setSearchSupabaseFormaPagamento] = useState('');
+
+  // Forma Pagamento CRUD states
+  const [formaPagamentoFormMode, setFormaPagamentoFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedFormaPagamento, setSelectedFormaPagamento] = useState<FormaPagamento | null>(null);
+  const [isExcluindoFormaPagamento, setIsExcluindoFormaPagamento] = useState<FormaPagamento | null>(null);
+  const [isDeletingFormaPagamento, setIsDeletingFormaPagamento] = useState(false);
+  const [formFormaPagamentoSubmitting, setFormFormaPagamentoSubmitting] = useState(false);
+  const [formFormaPagamentoError, setFormFormaPagamentoError] = useState<string | null>(null);
+  const [currentPageFormaPagamento, setCurrentPageFormaPagamento] = useState(1);
+
+  // Forma Pagamento Form inputs
+  const [formFormaPagamentoDescricao, setFormFormaPagamentoDescricao] = useState('');
+  const [formFormaPagamentoTipoTransacao, setFormFormaPagamentoTipoTransacao] = useState('PIX');
+  const [formFormaPagamentoAtivo, setFormFormaPagamentoAtivo] = useState(true);
 
   // Mensalistas Data states
   const [bubbleMensalistas, setBubbleMensalistas] = useState<Mensalista[]>([]);
@@ -894,6 +962,68 @@ const App: React.FC = () => {
   // Despesas Filter/Search states
   const [searchBubbleDespesas, setSearchBubbleDespesas] = useState('');
   const [searchSupabaseDespesas, setSearchSupabaseDespesas] = useState('');
+
+  // States adicionais para o CRUD e Formulário de Despesas
+  const [despesaFormMode, setDespesaFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
+  const [isExcluindoDespesa, setIsExcluindoDespesa] = useState<Despesa | null>(null);
+  const [isDeletingDespesa, setIsDeletingDespesa] = useState(false);
+
+  // States do formulário de despesa
+  const [formDataDespesa, setFormDataDespesa] = useState('');
+  const [formDescricaoDespesa, setFormDescricaoDespesa] = useState('');
+  const [formValorDespesa, setFormValorDespesa] = useState('');
+  const [formValorProvisaoDespesa, setFormValorProvisaoDespesa] = useState('');
+  const [formCentroCustoIdDespesa, setFormCentroCustoIdDespesa] = useState('');
+  const [formFormaPagamentoIdDespesa, setFormFormaPagamentoIdDespesa] = useState('');
+
+  const [formDespesaSubmitting, setFormDespesaSubmitting] = useState(false);
+  const [formDespesaError, setFormDespesaError] = useState<string | null>(null);
+
+  // States adicionais para o CRUD e Formulário de Mensalistas
+  const [mensalistaFormMode, setMensalistaFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedMensalista, setSelectedMensalista] = useState<Mensalista | null>(null);
+  const [isExcluindoMensalista, setIsExcluindoMensalista] = useState<Mensalista | null>(null);
+  const [isDeletingMensalista, setIsDeletingMensalista] = useState(false);
+
+  // Inputs do formulário de Mensalista
+  const [formAtivoMensalista, setFormAtivoMensalista] = useState(true);
+  const [formCentroCustoIdMensalista, setFormCentroCustoIdMensalista] = useState('');
+  const [formDiaVencimentoMensalista, setFormDiaVencimentoMensalista] = useState('');
+  const [formMarcaModeloMensalista, setFormMarcaModeloMensalista] = useState('');
+  const [formNomePessoaMensalista, setFormNomePessoaMensalista] = useState('');
+  const [formObservacaoMensalista, setFormObservacaoMensalista] = useState('');
+  const [formPlacaMensalista, setFormPlacaMensalista] = useState('');
+  const [formPlanoMensalista, setFormPlanoMensalista] = useState('Mensal VIP');
+  const [formValorOriginalMensalista, setFormValorOriginalMensalista] = useState('');
+  const [formVeiculoIdMensalista, setFormVeiculoIdMensalista] = useState('');
+
+  const [formMensalistaSubmitting, setFormMensalistaSubmitting] = useState(false);
+  const [formMensalistaError, setFormMensalistaError] = useState<string | null>(null);
+
+  // Estados adicionais para Gerenciamento Financeiro (Parcelas)
+  const [activeMensalistaFinanceiro, setActiveMensalistaFinanceiro] = useState<Mensalista | null>(null);
+  const [isGeneratingParcelas, setIsGeneratingParcelas] = useState(false);
+  const [isPayingParcela, setIsPayingParcela] = useState<MensalistaParcela | null>(null);
+
+  // Inputs para Geração de Parcelas
+  const [genQtyParcelas, setGenQtyParcelas] = useState(12);
+  const [genValorParcela, setGenValorParcela] = useState('');
+  const [genDiaVencimento, setGenDiaVencimento] = useState(10);
+  const [genMesAnoInicio, setGenMesAnoInicio] = useState('');
+  const [genSubmitting, setGenSubmitting] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  // Inputs para Baixa de Parcela
+  const [payDataPagamento, setPayDataPagamento] = useState('');
+  const [payValorPago, setPayValorPago] = useState('');
+  const [payFormaPagamentoId, setPayFormaPagamentoId] = useState('');
+  const [payCentroCustoId, setPayCentroCustoId] = useState('');
+  const [paySubmitting, setPaySubmitting] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const [isRevertingParcela, setIsRevertingParcela] = useState<any | null>(null);
+  const [revertSubmitting, setRevertSubmitting] = useState(false);
+  const [revertError, setRevertError] = useState<string | null>(null);
 
   // Entradas Data states
   const [bubbleEntradas, setBubbleEntradas] = useState<Entrada[]>([]);
@@ -1043,7 +1173,7 @@ const App: React.FC = () => {
                   {/* Entradas */}
                   <button
                     onClick={() => setCurrentTab('entradas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'entradas'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'entradas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1055,7 +1185,7 @@ const App: React.FC = () => {
                   {/* Despesas */}
                   <button
                     onClick={() => setCurrentTab('despesas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'despesas'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'despesas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1067,7 +1197,7 @@ const App: React.FC = () => {
                   {/* Mensalistas */}
                   <button
                     onClick={() => setCurrentTab('mensalistas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'mensalistas'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'mensalistas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1118,7 +1248,7 @@ const App: React.FC = () => {
                   {/* Pessoas */}
                   <button
                     onClick={() => setCurrentTab('pessoas')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'pessoas'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'pessoas'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1130,7 +1260,7 @@ const App: React.FC = () => {
                   {/* Veículos */}
                   <button
                     onClick={() => setCurrentTab('veiculos')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'veiculos'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'veiculos'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1142,7 +1272,7 @@ const App: React.FC = () => {
                   {/* Formas de Pagamento */}
                   <button
                     onClick={() => setCurrentTab('formapagamento')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'formapagamento'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'formapagamento'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1154,7 +1284,7 @@ const App: React.FC = () => {
                   {/* Centro de Custos */}
                   <button
                     onClick={() => setCurrentTab('centrocusto')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'centrocusto'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'centrocusto'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -1242,7 +1372,7 @@ const App: React.FC = () => {
                 >
                   <button
                     onClick={() => setCurrentTab('migracoes')}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'migracoes'
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'migracoes'
                         ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
                         : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
@@ -2023,9 +2153,19 @@ const App: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="0.00"
+                    placeholder="0,00"
                     value={formValorEntrada}
-                    onChange={e => setFormValorEntrada(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const cleanValue = val.replace(/\D/g, '');
+                      if (!cleanValue) {
+                        setFormValorEntrada('');
+                        return;
+                      }
+                      const cents = parseInt(cleanValue, 10);
+                      const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+                      setFormValorEntrada(formatted);
+                    }}
                     className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors font-bold"
                   />
                 </div>
@@ -2141,14 +2281,14 @@ const App: React.FC = () => {
 
                   {/* Filtro por Centro de Custos */}
                   <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
-                    <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
+                    <span className="font-semibold text-xs uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
                     <select
                       value={selectedCentroCustoEntradas}
                       onChange={e => {
                         setSelectedCentroCustoEntradas(e.target.value);
                         setCurrentPageEntradas(1);
                       }}
-                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px] font-medium max-w-[150px] cursor-pointer"
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs font-medium max-w-[150px] cursor-pointer"
                     >
                       <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
                       {supabaseCentroCusto.map(cc => (
@@ -2173,7 +2313,7 @@ const App: React.FC = () => {
 
                   {/* Filtro por Período */}
                   <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
-                    <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Período:</span>
+                    <span className="font-semibold text-xs uppercase tracking-wider text-[#64748b]">Período:</span>
                     <input
                       type="date"
                       value={periodoInicioEntradas}
@@ -2181,7 +2321,7 @@ const App: React.FC = () => {
                         setPeriodoInicioEntradas(e.target.value);
                         setCurrentPageEntradas(1);
                       }}
-                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs"
                     />
                     <span className="text-[#64748b] px-0.5">até</span>
                     <input
@@ -2191,7 +2331,7 @@ const App: React.FC = () => {
                         setPeriodoFimEntradas(e.target.value);
                         setCurrentPageEntradas(1);
                       }}
-                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs"
                     />
                     {(periodoInicioEntradas || periodoFimEntradas) && (
                       <button
@@ -2316,7 +2456,7 @@ const App: React.FC = () => {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPageEntradas(pageNum)}
-                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xxs font-bold transition-all ${activePage === pageNum
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
                               ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
                               : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
@@ -2517,193 +2657,989 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800 font-sans">Tabela de Despesas</h3>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Filtro por Centro de Custos */}
-              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
-                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
-                <select
-                  value={selectedCentroCustoDespesas}
-                  onChange={e => {
-                    setSelectedCentroCustoDespesas(e.target.value);
-                    setCurrentPageDespesas(1);
-                  }}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px] font-medium max-w-[150px] cursor-pointer"
-                >
-                  <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
-                  {supabaseCentroCusto.map(cc => (
-                    <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
-                      {cc.nome_centro_custo || cc.descricao}
-                    </option>
-                  ))}
-                </select>
-                {selectedCentroCustoDespesas && (
-                  <button
-                    onClick={() => {
-                      setSelectedCentroCustoDespesas('');
-                      setCurrentPageDespesas(1);
-                    }}
-                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
-                    title="Limpar centro de custo"
-                  >
-                    Limpar
-                  </button>
-                )}
-              </div>
-
-              {/* Filtro por Período */}
-              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
-                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Período:</span>
-                <input
-                  type="date"
-                  value={periodoInicioDespesas}
-                  onChange={e => {
-                    setPeriodoInicioDespesas(e.target.value);
-                    setCurrentPageDespesas(1);
-                  }}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
-                />
-                <span className="text-[#64748b] px-0.5">até</span>
-                <input
-                  type="date"
-                  value={periodoFimDespesas}
-                  onChange={e => {
-                    setPeriodoFimDespesas(e.target.value);
-                    setCurrentPageDespesas(1);
-                  }}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
-                />
-                {(periodoInicioDespesas || periodoFimDespesas) && (
-                  <button
-                    onClick={() => {
-                      setPeriodoInicioDespesas('');
-                      setPeriodoFimDespesas('');
-                      setCurrentPageDespesas(1);
-                    }}
-                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
-                    title="Limpar período"
-                  >
-                    Limpar
-                  </button>
-                )}
-              </div>
-
-              {/* Search bar */}
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar despesas..."
-                  value={searchSupabaseDespesas}
-                  onChange={e => {
-                    setSearchSupabaseDespesas(e.target.value);
-                    setCurrentPageDespesas(1);
-                  }}
-                  className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {sortedSupabaseDespesas.length === 0 ? (
-              <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-                <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-                <span className="text-xs">Nenhuma despesa registrada no Supabase</span>
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                    <th className="pb-3">Data</th>
-                    <th className="pb-3">Centro de Custo</th>
-                    <th className="pb-3">Referente a</th>
-                    <th className="pb-3">Forma de Pagamento</th>
-                    <th className="pb-3 text-right">Valor</th>
-                    <th className="pb-3 text-right">Valor provisão</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                  {currentItems.map(item => (
-                    <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 font-medium text-[#64748b]">{formatDate(item.data_despesa)}</td>
-                      <td className="py-3.5 font-semibold text-white light-theme:text-slate-800">{item.nome_centro_custos || 'Operacional Geral'}</td>
-                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.descricao_despesa || 'N/A'}</td>
-                      <td className="py-3.5 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
-                      <td className="py-3.5 text-right font-bold text-rose-400">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
-                      </td>
-                      <td className="py-3.5 text-right font-medium text-yellow-500">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
-              <span className="text-[11px] text-[#64748b] font-medium">
-                Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseDespesas.length)} de {sortedSupabaseDespesas.length} registros
-              </span>
-
-              <div className="flex items-center gap-1.5">
+          {despesaFormMode !== 'list' ? (
+            <form onSubmit={handleSaveDespesa} className="flex flex-col gap-5 w-full max-w-4xl mr-auto ml-0 py-2 text-left">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {despesaFormMode === 'create' ? 'Lançar Nova Despesa/Custo' : 'Editar Despesa/Custo'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do lançamento de despesa.</p>
+                </div>
                 <button
-                  onClick={() => setCurrentPageDespesas(prev => Math.max(1, prev - 1))}
-                  disabled={currentPageDespesas === 1}
-                  className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                  type="button"
+                  onClick={() => setDespesaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <ChevronLeft className="h-4 w-4" />
-                </button>
-
-                {Array.from({ length: totalPages }, (_, idx) => {
-                  const pageNum = idx + 1;
-                  const isNearCurrent = Math.abs(pageNum - currentPageDespesas) <= 1;
-                  const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
-
-                  if (!isNearCurrent && !isFirstOrLast) {
-                    if (pageNum === 2 || pageNum === totalPages - 1) {
-                      return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
-                    }
-                    return null;
-                  }
-
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPageDespesas(pageNum)}
-                      className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xxs font-bold transition-all ${currentPageDespesas === pageNum
-                          ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                          : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
-                        }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-
-                <button
-                  onClick={() => setCurrentPageDespesas(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPageDespesas === totalPages}
-                  className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-                >
-                  <ChevronRight className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
                 </button>
               </div>
-            </div>
+
+              {formDespesaError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formDespesaError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[60vh]">
+                {/* Data */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Data do Lançamento *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formDataDespesa}
+                    onChange={e => setFormDataDespesa(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Centro de Custo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Centro de Custo *</label>
+                  <select
+                    required
+                    value={formCentroCustoIdDespesa}
+                    onChange={e => setFormCentroCustoIdDespesa(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                    {supabaseCentroCusto.map(cc => (
+                      <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {cc.nome_centro_custo || cc.descricao}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Forma de Pagamento */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Forma de Pagamento *</label>
+                  <select
+                    required
+                    value={formFormaPagamentoIdDespesa}
+                    onChange={e => setFormFormaPagamentoIdDespesa(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                    {supabaseFormaPagamento.map(fp => (
+                      <option key={fp.id} value={fp.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {fp.descricao} ({fp.tipo_transacao})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Valor */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor (R$) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="0,00"
+                    value={formValorDespesa}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const cleanValue = val.replace(/\D/g, '');
+                      if (!cleanValue) {
+                        setFormValorDespesa('');
+                        return;
+                      }
+                      const cents = parseInt(cleanValue, 10);
+                      const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+                      setFormValorDespesa(formatted);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors font-bold"
+                  />
+                </div>
+
+                {/* Valor Provisão */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor Provisão (R$ - Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="0,00"
+                    value={formValorProvisaoDespesa}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const cleanValue = val.replace(/\D/g, '');
+                      if (!cleanValue) {
+                        setFormValorProvisaoDespesa('');
+                        return;
+                      }
+                      const cents = parseInt(cleanValue, 10);
+                      const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+                      setFormValorProvisaoDespesa(formatted);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Descrição / Referente a */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Descrição / Referente a *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Compra de insumos de limpeza"
+                    value={formDescricaoDespesa}
+                    onChange={e => setFormDescricaoDespesa(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start gap-3 mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setDespesaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formDespesaSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formDespesaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Lançamento</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Tabela de Despesas</h3>
+                  {!periodoInicioDespesas && !periodoFimDespesas && (
+                    <p className="text-[10px] text-rose-400 font-semibold mt-1">Exibindo apenas lançamentos do mês atual</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão para Lançamento de Nova Despesa */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateDespesa}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova Despesa</span>
+                  </button>
+
+                  {/* Filtro por Centro de Custos */}
+                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+                    <span className="font-semibold text-xs uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
+                    <select
+                      value={selectedCentroCustoDespesas}
+                      onChange={e => {
+                        setSelectedCentroCustoDespesas(e.target.value);
+                        setCurrentPageDespesas(1);
+                      }}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs font-medium max-w-[150px] cursor-pointer"
+                    >
+                      <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
+                      {supabaseCentroCusto.map(cc => (
+                        <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                          {cc.nome_centro_custo || cc.descricao}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedCentroCustoDespesas && (
+                      <button
+                        onClick={() => {
+                          setSelectedCentroCustoDespesas('');
+                          setCurrentPageDespesas(1);
+                        }}
+                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+                        title="Limpar centro de custo"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Filtro por Período */}
+                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+                    <span className="font-semibold text-xs uppercase tracking-wider text-[#64748b]">Período:</span>
+                    <input
+                      type="date"
+                      value={periodoInicioDespesas}
+                      onChange={e => {
+                        setPeriodoInicioDespesas(e.target.value);
+                        setCurrentPageDespesas(1);
+                      }}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs"
+                    />
+                    <span className="text-[#64748b] px-0.5">até</span>
+                    <input
+                      type="date"
+                      value={periodoFimDespesas}
+                      onChange={e => {
+                        setPeriodoFimDespesas(e.target.value);
+                        setCurrentPageDespesas(1);
+                      }}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs"
+                    />
+                    {(periodoInicioDespesas || periodoFimDespesas) && (
+                      <button
+                        onClick={() => {
+                          setPeriodoInicioDespesas('');
+                          setPeriodoFimDespesas('');
+                          setCurrentPageDespesas(1);
+                        }}
+                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+                        title="Limpar período"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar despesas..."
+                      value={searchSupabaseDespesas}
+                      onChange={e => {
+                        setSearchSupabaseDespesas(e.target.value);
+                        setCurrentPageDespesas(1);
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {sortedSupabaseDespesas.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhuma despesa registrada no Supabase</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+                        <th className="pb-3 pr-6">Data</th>
+                        <th className="pb-3 pr-6">Centro de Custo</th>
+                        <th className="pb-3 pr-6">Referente a</th>
+                        <th className="pb-3 pr-6">Forma de Pagamento</th>
+                        <th className="pb-3 text-right pr-6">Valor</th>
+                        <th className="pb-3 text-right pr-6">Valor provisão</th>
+                        <th className="pb-3 text-center w-24">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+                      {currentItems.map(item => (
+                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                          <td className="py-3.5 pr-6 font-medium text-[#64748b]">{formatDate(item.data_despesa)}</td>
+                          <td className="py-3.5 pr-6 font-semibold text-white light-theme:text-slate-800">{item.nome_centro_custos || 'Operacional Geral'}</td>
+                          <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.descricao_despesa || 'N/A'}</td>
+                          <td className="py-3.5 pr-6 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
+                          <td className="py-3.5 text-right pr-6 font-bold text-rose-400">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
+                          </td>
+                          <td className="py-3.5 text-right pr-6 font-medium text-yellow-500">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditDespesa(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Editar Lançamento"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsExcluindoDespesa(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Lançamento"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
+                  <span className="text-[11px] text-[#64748b] font-medium">
+                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseDespesas.length)} de {sortedSupabaseDespesas.length} registros
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPageDespesas(prev => Math.max(1, prev - 1))}
+                      disabled={currentPageDespesas === 1}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => {
+                      const pageNum = idx + 1;
+                      const isNearCurrent = Math.abs(pageNum - currentPageDespesas) <= 1;
+                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                      if (!isNearCurrent && !isFirstOrLast) {
+                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                          return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPageDespesas(pageNum)}
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${currentPageDespesas === pageNum
+                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPageDespesas(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPageDespesas === totalPages}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão da Despesa */}
+        <AnimatePresence>
+          {isExcluindoDespesa && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingDespesa && setIsExcluindoDespesa(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Lançamento?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir o lançamento de despesa <strong>"{isExcluindoDespesa.descricao_despesa || 'Serviço'}"</strong> no valor de <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isExcluindoDespesa.valor || 0)}</strong>? Esta ação não pode ser desfeita.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoDespesa(null)}
+                    disabled={isDeletingDespesa}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteDespesa}
+                    disabled={isDeletingDespesa}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingDespesa ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderMensalistas = () => {
     const totalVipRevenue = supabaseMensalistas.reduce((acc, curr) => acc + (curr.valor_original || 0), 0);
+
+    // Helpers para data
+    const formatDate = (dateStr?: string) => {
+      if (!dateStr) return 'N/D';
+      const cleanDate = dateStr.split('T')[0];
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return new Date(dateStr).toLocaleDateString('pt-BR');
+    };
+
+    // Sub-view do Financeiro do Mensalista
+    if (activeMensalistaFinanceiro) {
+      const myParcelas = supabaseMensalistaParcelas
+        .filter(p => p.mensalista_id === activeMensalistaFinanceiro.id)
+        .sort((a, b) => {
+          const dateA = a.data_vencimento ? new Date(a.data_vencimento).getTime() : 0;
+          const dateB = b.data_vencimento ? new Date(b.data_vencimento).getTime() : 0;
+          return dateA - dateB; // Cronológica crescente (vence primeiro primeiro)
+        });
+
+      const totalRecebido = myParcelas
+        .filter(p => p.data_pagamento)
+        .reduce((acc, curr) => acc + (curr.valor_pago || 0), 0);
+
+      const totalPendente = myParcelas
+        .filter(p => !p.data_pagamento)
+        .reduce((acc, curr) => acc + (curr.valor_original || 0), 0);
+
+      return (
+        <div className="h-full flex flex-col gap-4 w-full">
+          {/* Header Stats Financeiro */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                <CheckCircle className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">TOTAL RECEBIDO</span>
+                <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalRecebido)}
+                </h4>
+              </div>
+            </div>
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
+                <Clock className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">TOTAL PENDENTE</span>
+                <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPendente)}
+                </h4>
+              </div>
+            </div>
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
+                <Layers className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">PARCELAS LANÇADAS</span>
+                <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
+                  {myParcelas.length} parcelas registradas
+                </h4>
+              </div>
+            </div>
+          </div>
+
+          {/* Painel de Parcelas */}
+          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between mb-4 border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-wrap gap-4">
+              <div>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800 flex items-center gap-2">
+                  <CreditCard className="h-4.5 w-4.5 text-violet-400" />
+                  <span>Mensalidades: {activeMensalistaFinanceiro.nome_pessoa}</span>
+                </h3>
+                <p className="text-[10px] text-[#64748b] mt-1">Controle de carnê de cobranças e baixas automáticas de mensalidades.</p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const year = new Date().getFullYear();
+                    const month = String(new Date().getMonth() + 1).padStart(2, '0');
+                    setGenMesAnoInicio(`${year}-${month}`);
+                    const formattedValor = activeMensalistaFinanceiro.valor_original !== undefined
+                      ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(activeMensalistaFinanceiro.valor_original)
+                      : '';
+                    setGenValorParcela(formattedValor);
+                    setGenDiaVencimento(activeMensalistaFinanceiro.dia_vencimento || 10);
+                    setGenQtyParcelas(12);
+                    setGenError(null);
+                    setIsGeneratingParcelas(true);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2 flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Gerar Parcelas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveMensalistaFinanceiro(null)}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para Mensalistas</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              {myParcelas.length === 0 ? (
+                <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                  <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                  <span className="text-xs">Nenhuma parcela gerada para este mensalista ainda.</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const year = new Date().getFullYear();
+                      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+                      setGenMesAnoInicio(`${year}-${month}`);
+                      const formattedValor = activeMensalistaFinanceiro.valor_original !== undefined
+                        ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(activeMensalistaFinanceiro.valor_original)
+                        : '';
+                      setGenValorParcela(formattedValor);
+                      setGenDiaVencimento(activeMensalistaFinanceiro.dia_vencimento || 10);
+                      setGenQtyParcelas(12);
+                      setGenError(null);
+                      setIsGeneratingParcelas(true);
+                    }}
+                    className="text-xxs font-bold text-violet-400 hover:text-violet-300 mt-1 transition-colors underline cursor-pointer"
+                  >
+                    Gerar carnê de parcelas inicial agora
+                  </button>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+                      <th className="pb-3">Vencimento</th>
+                      <th className="pb-3 text-right">Valor Original</th>
+                      <th className="pb-3">Data Pagamento</th>
+                      <th className="pb-3 text-right">Valor Pago</th>
+                      <th className="pb-3 text-center">Status</th>
+                      <th className="pb-3 text-center w-24">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+                    {myParcelas.map(p => (
+                      <tr key={p.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                        <td className="py-3.5 font-bold text-slate-300 light-theme:text-slate-700">{formatDate(p.data_vencimento)}</td>
+                        <td className="py-3.5 text-right font-semibold pr-4">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.valor_original || 0)}
+                        </td>
+                        <td className="py-3.5 font-medium text-[#64748b]">{p.data_pagamento ? formatDate(p.data_pagamento) : '-'}</td>
+                        <td className="py-3.5 text-right font-bold text-emerald-400 pr-4">
+                          {p.data_pagamento ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.valor_pago || 0) : '-'}
+                        </td>
+                        <td className="py-3.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${p.data_pagamento
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                              : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                            }`}>
+                            {p.data_pagamento ? 'Paga' : 'Pendente'}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-center">
+                          {!p.data_pagamento ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPayDataPagamento(new Date().toLocaleDateString('en-CA'));
+                                const formattedValor = p.valor_original !== undefined
+                                  ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(p.valor_original)
+                                  : '';
+                                setPayValorPago(formattedValor);
+                                setPayFormaPagamentoId('');
+                                setPayCentroCustoId(activeMensalistaFinanceiro.centro_custo_id || '');
+                                setPayError(null);
+                                setIsPayingParcela(p);
+                              }}
+                              className="px-2.5 py-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-emerald-600/15 light-theme:hover:bg-emerald-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-emerald-500/30 light-theme:hover:border-emerald-500/20 text-emerald-400 font-bold text-[10px] transition-colors cursor-pointer"
+                            >
+                              Dar Baixa
+                            </button>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              <span className="text-[10px] text-emerald-400 font-semibold italic flex items-center justify-center gap-1">
+                                <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                Baixado
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRevertError(null);
+                                  setIsRevertingParcela(p);
+                                }}
+                                className="text-[9px] text-rose-400 hover:text-rose-300 font-bold hover:underline transition-colors cursor-pointer"
+                              >
+                                Estornar Baixa
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {/* Modal de Geração de Parcelas em Lote */}
+          <AnimatePresence>
+            {isGeneratingParcelas && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !genSubmitting && setIsGeneratingParcelas(false)}
+                  className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+                />
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 to-cyan-500" />
+
+                  <div className="text-left">
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Gerar Carnê de Parcelas</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Insira as configurações abaixo para criar em massa as mensalidades de <strong>{activeMensalistaFinanceiro.nome_pessoa}</strong> no Supabase.
+                    </p>
+                  </div>
+
+                  {genError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span>{genError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleGenerateParcelas} className="flex flex-col gap-3.5 text-left">
+                    <div className="grid grid-cols-2 gap-3.5">
+                      {/* Qtd Parcelas */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Quantidade *</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          max="100"
+                          value={genQtyParcelas}
+                          onChange={e => setGenQtyParcelas(parseInt(e.target.value))}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* Valor Parcela */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor Unitário *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="0,00"
+                          value={genValorParcela}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const cleanValue = val.replace(/\D/g, '');
+                            if (!cleanValue) {
+                              setGenValorParcela('');
+                              return;
+                            }
+                            const cents = parseInt(cleanValue, 10);
+                            const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+                            setGenValorParcela(formatted);
+                          }}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 font-bold focus:outline-none focus:border-violet-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3.5">
+                      {/* Dia de Vencimento */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Dia Vencimento *</label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          max="31"
+                          value={genDiaVencimento}
+                          onChange={e => setGenDiaVencimento(parseInt(e.target.value))}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                        />
+                      </div>
+
+                      {/* Mês Inicial */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Mês Inicial *</label>
+                        <input
+                          type="month"
+                          required
+                          value={genMesAnoInicio}
+                          onChange={e => setGenMesAnoInicio(e.target.value)}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 mt-3 pt-3 border-t border-[#1f2433]/40">
+                      <button
+                        type="button"
+                        onClick={() => setIsGeneratingParcelas(false)}
+                        disabled={genSubmitting}
+                        className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={genSubmitting}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/15 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
+                      >
+                        {genSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        <span>Gerar Parcelas</span>
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Modal de Baixa de Parcela Integrada */}
+          <AnimatePresence>
+            {isPayingParcela && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !paySubmitting && setIsPayingParcela(null)}
+                  className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+                />
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500" />
+
+                  <div className="text-left">
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Dar Baixa de Parcela</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Registre o pagamento da mensalidade de <strong>{activeMensalistaFinanceiro.nome_pessoa}</strong>. Isso criará uma entrada de receita automaticamente.
+                    </p>
+                  </div>
+
+                  {payError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span>{payError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePayParcela} className="flex flex-col gap-3.5 text-left">
+                    {/* Data Pagamento */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Data do Pagamento *</label>
+                      <input
+                        type="date"
+                        required
+                        value={payDataPagamento}
+                        onChange={e => setPayDataPagamento(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Valor Pago */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor Efetivamente Pago (R$) *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="0,00"
+                        value={payValorPago}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const cleanValue = val.replace(/\D/g, '');
+                          if (!cleanValue) {
+                            setPayValorPago('');
+                            return;
+                          }
+                          const cents = parseInt(cleanValue, 10);
+                          const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+                          setPayValorPago(formatted);
+                        }}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 font-bold focus:outline-none focus:border-violet-500 transition-colors"
+                      />
+                    </div>
+
+                    {/* Centro de Custo */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Centro de Custo Financeiro *</label>
+                      <select
+                        required
+                        value={payCentroCustoId}
+                        onChange={e => setPayCentroCustoId(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                      >
+                        <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                        {supabaseCentroCusto
+                          .filter(cc => {
+                            const movLower = String(cc.tipo_movimentacao || '').toLowerCase();
+                            return movLower.includes('credito') || movLower.includes('crédito') || movLower.includes('entrada') || movLower.includes('receita');
+                          })
+                          .map(cc => (
+                            <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                              {cc.nome_centro_custo || cc.descricao}
+                            </option>
+                          ))
+                        }
+                      </select>
+                    </div>
+
+                    {/* Forma de Pagamento */}
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Forma de Pagamento *</label>
+                      <select
+                        required
+                        value={payFormaPagamentoId}
+                        onChange={e => setPayFormaPagamentoId(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                      >
+                        <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                        {supabaseFormaPagamento.map(fp => (
+                          <option key={fp.id} value={fp.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                            {fp.descricao} ({fp.tipo_transacao})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 mt-3 pt-3 border-t border-[#1f2433]/40">
+                      <button
+                        type="button"
+                        onClick={() => setIsPayingParcela(null)}
+                        disabled={paySubmitting}
+                        className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={paySubmitting}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-lg shadow-emerald-600/10 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
+                      >
+                        {paySubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        <span>Confirmar Pagamento</span>
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            )}
+
+            {isRevertingParcela && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !revertSubmitting && setIsRevertingParcela(null)}
+                  className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+                />
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+
+                  <div className="flex items-start gap-3.5">
+                    <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                      <ShieldAlert className="h-5 w-5 animate-pulse" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Confirmar Estorno Financeiro?</h3>
+                      <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                        Você está prestes a realizar o estorno da parcela com vencimento em <strong>{formatDate(isRevertingParcela.data_vencimento)}</strong> no valor de <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isRevertingParcela.valor_pago || isRevertingParcela.valor_original || 0)}</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  {revertError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 text-left">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span>{revertError}</span>
+                    </div>
+                  )}
+
+                  {/* Informação de Atenção do Estorno */}
+                  <div className="p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/20 text-[#d97706] text-xxs flex flex-col gap-1.5 text-left">
+                    <span className="font-bold flex items-center gap-1">
+                      ⚠️ ATENÇÃO E EFEITOS DO ESTORNO:
+                    </span>
+                    <ul className="list-disc pl-4 space-y-1 font-medium text-slate-400 light-theme:text-slate-600">
+                      <li>A parcela correspondente será alterada de <strong className="text-emerald-400">Paga</strong> para <strong className="text-yellow-500">Pendente</strong> no sistema.</li>
+                      <li>O lançamento de receita de valor <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isRevertingParcela.valor_pago || 0)}</strong> será **excluído permanentemente** da aba de Entradas.</li>
+                      <li>Esta ação não pode ser desfeita de forma automática após confirmada.</li>
+                    </ul>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 mt-1.5 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-3">
+                    <button
+                      onClick={() => setIsRevertingParcela(null)}
+                      disabled={revertSubmitting}
+                      className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleRevertParcela}
+                      disabled={revertSubmitting}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/15 transition-colors"
+                    >
+                      {revertSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                      <span>Confirmar Estorno</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
+
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Header Stats */}
@@ -2744,122 +3680,472 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Gestão de Mensalistas</h3>
+          {mensalistaFormMode !== 'list' ? (
+            <form onSubmit={handleSaveMensalista} className="flex flex-col justify-between w-full max-w-4xl mr-auto ml-0 py-2 text-left h-full overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {mensalistaFormMode === 'create' ? 'Cadastrar Novo Mensalista' : 'Editar Mensalista'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do mensalista e vincule sua conta de cliente.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMensalistaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
+                </button>
+              </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Filtro por Período */}
-              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
-                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Cadastro:</span>
-                <input
-                  type="date"
-                  value={periodoInicioMensalistas}
-                  onChange={e => setPeriodoInicioMensalistas(e.target.value)}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
-                />
-                <span className="text-[#64748b] px-0.5">até</span>
-                <input
-                  type="date"
-                  value={periodoFimMensalistas}
-                  onChange={e => setPeriodoFimMensalistas(e.target.value)}
-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
-                />
-                {(periodoInicioMensalistas || periodoFimMensalistas) && (
-                  <button
-                    onClick={() => {
-                      setPeriodoInicioMensalistas('');
-                      setPeriodoFimMensalistas('');
+              {formMensalistaError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formMensalistaError}</span>
+                </div>
+              )}
+
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar py-1">
+                {/* Status Ativo Toggle (Alterado para Toggle e colocado no início, antes de Cliente/Pessoa) */}
+                <div className="md:col-span-2">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-slate-200 light-theme:text-slate-700">Mensalista Ativo</span>
+                      <span className="text-[10px] text-[#64748b]">Habilitar cobrança e acesso do cliente</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormAtivoMensalista(prev => !prev)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        formAtivoMensalista ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#161924] light-theme:bg-slate-200'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          formAtivoMensalista ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Integração com Pessoa */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Vincular Cliente (Pessoa) *</label>
+                  <select
+                    required
+                    value={supabaseData.find(p => p.nome_pessoa === formNomePessoaMensalista)?.id || ''}
+                    onChange={e => {
+                      const selectedId = e.target.value;
+                      const p = supabaseData.find(person => person.id === selectedId);
+                      if (p) {
+                        setFormNomePessoaMensalista(p.nome_pessoa || '');
+                      } else {
+                        setFormNomePessoaMensalista('');
+                      }
+                      // Reset vehicle selection when client changes
+                      setFormVeiculoIdMensalista('');
+                      setFormPlacaMensalista('');
+                      setFormMarcaModeloMensalista('');
                     }}
-                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
-                    title="Limpar período"
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
                   >
-                    Limpar
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione uma pessoa...</option>
+                    {supabaseData.map(p => (
+                      <option key={p.id} value={p.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {p.nome_pessoa} {p.cpf ? `(CPF: ${p.cpf})` : p.cnpj ? `(CNPJ: ${p.cnpj})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Integração com Veículo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Vincular Veículo (Opcional)</label>
+                  <select
+                    value={formVeiculoIdMensalista}
+                    onChange={e => {
+                      const selectedId = e.target.value;
+                      setFormVeiculoIdMensalista(selectedId);
+                      const v = supabaseVehicles.find(veh => veh.id === selectedId);
+                      if (v) {
+                        setFormPlacaMensalista(v.placa || '');
+                        setFormMarcaModeloMensalista(v.marca_modelo || '');
+                      } else {
+                        setFormPlacaMensalista('');
+                        setFormMarcaModeloMensalista('');
+                      }
+                    }}
+                    disabled={!formNomePessoaMensalista}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {!formNomePessoaMensalista ? (
+                      <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione o cliente primeiro...</option>
+                    ) : (
+                      <>
+                        <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Nenhum...</option>
+                        {supabaseVehicles
+                          .filter(v => {
+                            const pId = supabaseData.find(p => p.nome_pessoa === formNomePessoaMensalista)?.id;
+                            return (pId && v.pessoa_id === pId) || (v.pessoa_nome === formNomePessoaMensalista);
+                          })
+                          .map(v => (
+                            <option key={v.id} value={v.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                              {v.marca_modelo} - {v.placa}
+                            </option>
+                          ))
+                        }
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Placa do Veículo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Placa do Veículo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: ABC1D23"
+                    value={formPlacaMensalista}
+                    onChange={e => setFormPlacaMensalista(e.target.value.toUpperCase())}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase"
+                  />
+                </div>
+
+                {/* Marca / Modelo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Marca / Modelo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Toyota Corolla 2024"
+                    value={formMarcaModeloMensalista}
+                    onChange={e => setFormMarcaModeloMensalista(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Centro de Custo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Centro de Custo Financeiro *</label>
+                  <select
+                    required
+                    value={formCentroCustoIdMensalista}
+                    onChange={e => setFormCentroCustoIdMensalista(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
+                    {supabaseCentroCusto
+                      .filter(cc => {
+                        const movLower = String(cc.tipo_movimentacao || '').toLowerCase();
+                        return movLower.includes('credito') || movLower.includes('crédito') || movLower.includes('entrada') || movLower.includes('receita');
+                      })
+                      .map(cc => (
+                        <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                          {cc.nome_centro_custo || cc.descricao}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+
+                {/* Valor Mensalidade */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor Mensalidade (R$) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="0,00"
+                    value={formValorOriginalMensalista}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const cleanValue = val.replace(/\D/g, '');
+                      if (!cleanValue) {
+                        setFormValorOriginalMensalista('');
+                        return;
+                      }
+                      const cents = parseInt(cleanValue, 10);
+                      const formatted = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(cents / 100);
+                      setFormValorOriginalMensalista(formatted);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 font-bold focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Dia Vencimento */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Dia de Vencimento *</label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    required
+                    placeholder="Ex: 10"
+                    value={formDiaVencimentoMensalista}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 2);
+                      setFormDiaVencimentoMensalista(val);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Observações */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Observações adicionais</label>
+                  <textarea
+                    placeholder="Insira notas do contrato, descontos especiais ou preferências do mensalista..."
+                    value={formObservacaoMensalista}
+                    onChange={e => setFormObservacaoMensalista(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors h-20"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start gap-3 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4 flex-shrink-0 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setMensalistaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formMensalistaSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formMensalistaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Mensalista</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Gestão de Mensalistas</h3>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão de Novo Mensalista */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateMensalista}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Novo Mensalista</span>
                   </button>
+
+                  {/* Filtro por Período */}
+                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+                    <span className="font-semibold text-xs uppercase tracking-wider text-[#64748b]">Cadastro:</span>
+                    <input
+                      type="date"
+                      value={periodoInicioMensalistas}
+                      onChange={e => setPeriodoInicioMensalistas(e.target.value)}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs"
+                    />
+                    <span className="text-[#64748b] px-0.5">até</span>
+                    <input
+                      type="date"
+                      value={periodoFimMensalistas}
+                      onChange={e => setPeriodoFimMensalistas(e.target.value)}
+                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-xs"
+                    />
+                    {(periodoInicioMensalistas || periodoFimMensalistas) && (
+                      <button
+                        onClick={() => {
+                          setPeriodoInicioMensalistas('');
+                          setPeriodoFimMensalistas('');
+                        }}
+                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+                        title="Limpar período"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search bar */}
+                  <div className="relative w-64">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar mensalistas..."
+                      value={searchSupabaseMensalistas}
+                      onChange={e => setSearchSupabaseMensalistas(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {supabaseMensalistas.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhum mensalista cadastrado no Supabase</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+                        <th className="pb-3 pr-6">Nome / Proprietário</th>
+                        <th className="pb-3 pr-6">Plano</th>
+                        <th className="pb-3 pr-6">Veículo / Placa</th>
+                        <th className="pb-3 text-center pr-6">Dia Vencimento</th>
+                        <th className="pb-3 text-right pr-6">Valor Mensalidade</th>
+                        <th className="pb-3 text-center pr-6">Data Cadastro</th>
+                        <th className="pb-3 text-center pr-6">Status</th>
+                        <th className="pb-3 text-center w-28">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+                      {filteredSupabaseMensalistas.map(item => (
+                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                          <td className="py-3.5 pr-6 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-full bg-violet-600/10 text-violet-400 flex items-center justify-center font-bold text-xxs flex-shrink-0">
+                              {item.nome_pessoa ? item.nome_pessoa.slice(0, 2).toUpperCase() : 'ME'}
+                            </div>
+                            <span>{item.nome_pessoa}</span>
+                          </td>
+                          <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.plano || 'Mensal VIP'}</td>
+                          <td className="py-3.5 pr-6 font-medium">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-white/5 light-theme:bg-slate-100 border border-white/10 light-theme:border-slate-200 text-cyan-400 light-theme:text-blue-500 uppercase tracking-wide text-[10px]">
+                                {item.placa || 'N/A'}
+                              </span>
+                              <span className="text-[10px] text-[#64748b] truncate max-w-[120px]">{item.marca_modelo}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 text-center font-bold pr-6">Dia {item.dia_vencimento || 'N/A'}</td>
+                          <td className="py-3.5 text-right font-bold text-white light-theme:text-slate-800 pr-6">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original || 0)}
+                          </td>
+                          <td className="py-3.5 text-center font-medium text-[#64748b] pr-6">
+                            {item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : 'N/A'}
+                          </td>
+                          <td className="py-3.5 text-center pr-6">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              }`}>
+                              {item.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setActiveMensalistaFinanceiro(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-violet-600/15 light-theme:hover:bg-violet-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-violet-500/30 light-theme:hover:border-violet-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-violet-400 light-theme:hover:text-violet-600 transition-colors cursor-pointer"
+                                title="Gerenciar Financeiro (Parcelas)"
+                              >
+                                <CreditCard className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMensalista(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Editar Cadastro"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsExcluindoMensalista(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Mensalista"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
               </div>
-
-              {/* Search bar */}
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar mensalistas..."
-                  value={searchSupabaseMensalistas}
-                  onChange={e => setSearchSupabaseMensalistas(e.target.value)}
-                  className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {supabaseMensalistas.length === 0 ? (
-              <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-                <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-                <span className="text-xs">Nenhum mensalista cadastrado no Supabase</span>
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                    <th className="pb-3">Nome / Proprietário</th>
-                    <th className="pb-3">Plano</th>
-                    <th className="pb-3">Veículo / Placa</th>
-                    <th className="pb-3 text-center">Dia Vencimento</th>
-                    <th className="pb-3 text-right">Valor Mensalidade</th>
-                    <th className="pb-3 text-center">Data Cadastro</th>
-                    <th className="pb-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                  {filteredSupabaseMensalistas.map(item => (
-                    <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-violet-600/10 text-violet-400 flex items-center justify-center font-bold text-xxs flex-shrink-0">
-                          {item.nome_pessoa ? item.nome_pessoa.slice(0, 2).toUpperCase() : 'ME'}
-                        </div>
-                        <span>{item.nome_pessoa}</span>
-                      </td>
-                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.plano || 'VIP Basic'}</td>
-                      <td className="py-3.5 font-medium">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-white/5 light-theme:bg-slate-100 border border-white/10 light-theme:border-slate-200 text-cyan-400 light-theme:text-blue-500 uppercase tracking-wide text-[10px]">
-                            {item.placa || 'N/A'}
-                          </span>
-                          <span className="text-[10px] text-[#64748b] truncate max-w-[120px]">{item.marca_modelo}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 text-center font-bold">Dia {item.dia_vencimento || 'N/A'}</td>
-                      <td className="py-3.5 text-right font-bold text-white light-theme:text-slate-800">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original || 0)}
-                      </td>
-                      <td className="py-3.5 text-center font-medium text-[#64748b]">
-                        {item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : 'N/A'}
-                      </td>
-                      <td className="py-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                          }`}>
-                          {item.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+            </>
+          )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão de Mensalista */}
+        <AnimatePresence>
+          {isExcluindoMensalista && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingMensalista && setIsExcluindoMensalista(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Mensalista?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir o cadastro do mensalista <strong>"{isExcluindoMensalista.nome_pessoa}"</strong>? Suas parcelas financeiras cadastradas serão excluídas permanentemente do Supabase em cascata.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoMensalista(null)}
+                    disabled={isDeletingMensalista}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteMensalista}
+                    disabled={isDeletingMensalista}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingMensalista ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderPessoas = () => {
+    // 1. Ordenação alfabética (nome_pessoa) e Paginação
+    const sortedSupabasePessoas = [...filteredSupabase].sort((a, b) => {
+      return (a.nome_pessoa || '').localeCompare(b.nome_pessoa || '', 'pt-BR');
+    });
+
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(sortedSupabasePessoas.length / itemsPerPage);
+    const activePage = Math.max(1, Math.min(currentPagePessoas, totalPages || 1));
+    const indexOfLastItem = activePage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedSupabasePessoas.slice(indexOfFirstItem, indexOfLastItem);
+
     return (
-      <div className="h-full flex flex-col gap-4 w-full">
+      <div className="h-full flex flex-col gap-4 w-full min-h-0">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
               <Users className="h-4 w-4" />
@@ -2889,87 +4175,428 @@ const App: React.FC = () => {
             <div>
               <span className="text-[10px] text-[#64748b] font-bold block leading-none">ATIVAS NO SUPABASE</span>
               <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseData.filter(p => p.ativo).length} de {supabaseData.length} Contatos
+                {supabaseData.filter(p => p.ativo !== false).length} de {supabaseData.length} Contatos
               </h4>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Diretório de Clientes e Pessoas (Supabase)</h3>
-
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar por nome, CPF ou WhatsApp..."
-                value={searchSupabase}
-                onChange={e => setSearchSupabase(e.target.value)}
-                className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {supabaseData.length === 0 ? (
-              <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-                <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-                <span className="text-xs">Nenhuma pessoa registrada no Supabase</span>
+        <div className={`${pessoaFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
+          {pessoaFormMode !== 'list' ? (
+            <form onSubmit={handleSavePessoa} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {pessoaFormMode === 'create' ? 'Cadastrar Nova Pessoa/Cliente' : 'Editar Cadastro de Pessoa'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do cadastro no Supabase.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPessoaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
+                </button>
               </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                    <th className="pb-3">Nome Completo</th>
-                    <th className="pb-3">Tipo</th>
-                    <th className="pb-3">Documento (CPF / CNPJ)</th>
-                    <th className="pb-3">WhatsApp / Celular</th>
-                    <th className="pb-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                  {filteredSupabase.map(item => (
-                    <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-xxs flex-shrink-0">
-                          {item.nome_pessoa ? item.nome_pessoa.slice(0, 2).toUpperCase() : 'PE'}
-                        </div>
-                        <span>{item.nome_pessoa}</span>
-                      </td>
-                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.tipo_pessoa || 'Física'}</td>
-                      <td className="py-3.5 font-mono text-xs">
-                        {item.cpf && item.cpf !== 'N/A' ? `CPF: ${item.cpf}` : item.cnpj && item.cnpj !== 'N/A' ? `CNPJ: ${item.cnpj}` : 'Não Informado'}
-                      </td>
-                      <td className="py-3.5 text-cyan-400 font-bold hover:underline">
-                        <a href={`https://wa.me/${(item.celular_whatsapp || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
-                          {item.celular_whatsapp || 'Sem Contato'}
-                        </a>
-                      </td>
-                      <td className="py-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                          }`}>
-                          {item.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+
+              {formPessoaError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 flex-shrink-0">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formPessoaError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0 py-1">
+                {/* Status Toggle Box (Premium Layout from Image) */}
+                <div className="flex items-center justify-between md:col-span-2 bg-[#090b11]/45 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 px-6 py-5 rounded-2xl shadow-sm">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white light-theme:text-[#334155] tracking-wide">
+                      {formPessoaTipo === 'Mensalista' ? (formPessoaAtivo ? 'Mensalista Ativo' : 'Mensalista Inativo') :
+                       formPessoaTipo === 'Cliente' ? (formPessoaAtivo ? 'Cliente Ativo' : 'Cliente Inativo') :
+                       formPessoaTipo === 'Empresa' ? (formPessoaAtivo ? 'Empresa Ativa' : 'Empresa Inativa') :
+                       (formPessoaAtivo ? 'Cadastro Ativo' : 'Cadastro Inativo')}
+                    </span>
+                    <span className="text-[10px] text-[#64748b] font-medium mt-1 leading-relaxed">
+                      {formPessoaTipo === 'Mensalista' ? 'Habilitar cobrança e acesso do cliente' :
+                       formPessoaTipo === 'Cliente' ? 'Habilitar cadastro e movimentação no sistema' :
+                       formPessoaTipo === 'Empresa' ? 'Habilitar faturamento e convênios corporativos' :
+                       'Habilitar registros e movimentação no sistema'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormPessoaAtivo(!formPessoaAtivo)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      formPessoaAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        formPessoaAtivo ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Nome Completo */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Nome Completo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: João da Silva ou Lava Jato LTDA"
+                    value={formPessoaNome}
+                    onChange={e => setFormPessoaNome(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Tipo de Pessoa */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Tipo *</label>
+                  <select
+                    required
+                    value={formPessoaTipo}
+                    onChange={e => setFormPessoaTipo(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="Cliente" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Cliente</option>
+                    <option value="Mensalista" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Mensalista</option>
+                    <option value="Empresa" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Empresa</option>
+                    <option value="Outros" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Outros</option>
+                  </select>
+                </div>
+
+                {/* Documento (CPF / CNPJ) */}
+                {formPessoaTipo !== 'Empresa' ? (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">CPF (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 000.000.000-00"
+                      value={formPessoaCpf}
+                      onChange={e => setFormPessoaCpf(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">CNPJ (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 00.000.000/0000-00"
+                      value={formPessoaCnpj}
+                      onChange={e => setFormPessoaCnpj(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                )}
+
+                {/* WhatsApp / Celular */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">WhatsApp / Celular (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: (11) 99999-9999"
+                    value={formPessoaCelular}
+                    onChange={e => setFormPessoaCelular(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Cidade & UF */}
+                <div className="grid grid-cols-3 gap-3 md:col-span-2">
+                  <div className="col-span-2 flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Cidade (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Uberlândia"
+                      value={formPessoaCidade}
+                      onChange={e => setFormPessoaCidade(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                  <div className="col-span-1 flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">UF (Opcional)</label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      placeholder="Ex: MG"
+                      value={formPessoaUf}
+                      onChange={e => setFormPessoaUf(e.target.value.toUpperCase())}
+                      className="w-full max-w-[80px] bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase text-center"
+                    />
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="flex items-center justify-start gap-3 mt-4 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setPessoaFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formPessoaSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formPessoaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Cadastro</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Diretório de Clientes e Pessoas (Supabase)</h3>
+                  {sortedSupabasePessoas.length > 0 && (
+                    <p className="text-[10px] text-cyan-400 font-semibold mt-1">Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabasePessoas.length)} de {sortedSupabasePessoas.length} registros</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão para Lançamento de Nova Pessoa */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreatePessoa}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova Pessoa</span>
+                  </button>
+
+                  <div className="relative w-72">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nome, CPF, CNPJ ou WhatsApp..."
+                      value={searchSupabase}
+                      onChange={e => {
+                        setSearchSupabase(e.target.value);
+                        setCurrentPagePessoas(1);
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {sortedSupabasePessoas.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhuma pessoa registrada no Supabase</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+                        <th className="pb-3">Nome Completo</th>
+                        <th className="pb-3">Tipo</th>
+                        <th className="pb-3">Documento (CPF / CNPJ)</th>
+                        <th className="pb-3">WhatsApp / Celular</th>
+                        <th className="pb-3">Cidade/UF</th>
+                        <th className="pb-3 text-center">Status</th>
+                        <th className="pb-3 text-center w-24">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+                      {currentItems.map(item => (
+                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                          <td className="py-3.5 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-xxs flex-shrink-0">
+                              {item.nome_pessoa ? item.nome_pessoa.slice(0, 2).toUpperCase() : 'PE'}
+                            </div>
+                            <span>{item.nome_pessoa}</span>
+                          </td>
+                          <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.tipo_pessoa || 'Física'}</td>
+                          <td className="py-3.5 font-mono text-xs">
+                            {item.cpf && item.cpf !== 'N/A' ? `CPF: ${item.cpf}` : item.cnpj && item.cnpj !== 'N/A' ? `CNPJ: ${item.cnpj}` : 'Não Informado'}
+                          </td>
+                          <td className="py-3.5 text-cyan-400 font-bold hover:underline">
+                            {item.celular_whatsapp ? (
+                              <a href={`https://wa.me/${item.celular_whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
+                                {item.celular_whatsapp}
+                              </a>
+                            ) : (
+                              'Sem Contato'
+                            )}
+                          </td>
+                          <td className="py-3.5 font-medium">
+                            {item.cidade ? `${item.cidade}${item.uf ? `/${item.uf}` : ''}` : 'Não Informado'}
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo !== false
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              }`}>
+                              {item.ativo !== false ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditPessoa(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Editar Cadastro"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsExcluindoPessoa(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Cadastro"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
+                  <span className="text-[11px] text-[#64748b] font-medium">
+                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabasePessoas.length)} de {sortedSupabasePessoas.length} registros
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPagePessoas(prev => Math.max(1, prev - 1))}
+                      disabled={activePage === 1}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => {
+                      const pageNum = idx + 1;
+                      const isNearCurrent = Math.abs(pageNum - activePage) <= 1;
+                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                      if (!isNearCurrent && !isFirstOrLast) {
+                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                          return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPagePessoas(pageNum)}
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
+                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPagePessoas(prev => Math.min(totalPages, prev + 1))}
+                      disabled={activePage === totalPages}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão de Pessoa */}
+        <AnimatePresence>
+          {isExcluindoPessoa && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingPessoa && setIsExcluindoPessoa(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Cadastro?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir o cadastro de <strong>"{isExcluindoPessoa.nome_pessoa || 'Sem Nome'}"</strong>? Esta ação não pode ser desfeita e pode afetar lançamentos vinculados.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoPessoa(null)}
+                    disabled={isDeletingPessoa}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeletePessoa}
+                    disabled={isDeletingPessoa}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingPessoa ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderVeiculos = () => {
+    // 1. Ordenação alfabética (placa) e Paginação
+    const sortedSupabaseVehicles = [...filteredSupabaseVehicles].sort((a, b) => {
+      return (a.placa || '').localeCompare(b.placa || '', 'pt-BR');
+    });
+
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(sortedSupabaseVehicles.length / itemsPerPage);
+    const activePage = Math.max(1, Math.min(currentPageVeiculos, totalPages || 1));
+    const indexOfLastItem = activePage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedSupabaseVehicles.slice(indexOfFirstItem, indexOfLastItem);
+
     return (
-      <div className="h-full flex flex-col gap-4 w-full">
+      <div className="h-full flex flex-col gap-4 w-full min-h-0">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
               <Car className="h-4 w-4" />
@@ -3003,224 +4630,1102 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Listagem de Veículos (Supabase)</h3>
-
-            <div className="relative w-72">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Buscar por placa, modelo ou dono..."
-                value={searchSupabaseVehicles}
-                onChange={e => setSearchSupabaseVehicles(e.target.value)}
-                className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {supabaseVehicles.length === 0 ? (
-              <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-                <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-                <span className="text-xs">Nenhum veículo registrado no Supabase</span>
+        <div className={`${veiculoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
+          {veiculoFormMode !== 'list' ? (
+            <form onSubmit={handleSaveVeiculo} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {veiculoFormMode === 'create' ? 'Cadastrar Novo Veículo' : 'Editar Cadastro de Veículo'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do veículo no Supabase.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVeiculoFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
+                </button>
               </div>
-            ) : (
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                    <th className="pb-3">Placa</th>
-                    <th className="pb-3">Marca / Modelo</th>
-                    <th className="pb-3">Categoria</th>
-                    <th className="pb-3">Proprietário</th>
-                    <th className="pb-3">Motorista Autorizado</th>
-                    <th className="pb-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                  {filteredSupabaseVehicles.map(item => (
-                    <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 font-semibold">
-                        <span className="px-2 py-0.5 rounded font-mono font-bold bg-[#161924] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-300 text-cyan-400 light-theme:text-blue-600 uppercase tracking-wide">
-                          {item.placa}
-                        </span>
-                      </td>
-                      <td className="py-3.5 font-bold text-white light-theme:text-slate-800">{item.marca_modelo}</td>
-                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500 capitalize">{item.tipo || 'Passeio'}</td>
-                      <td className="py-3.5 font-medium">{item.pessoa_nome || 'N/A'}</td>
-                      <td className="py-3.5 font-medium text-[#64748b]">
-                        {item.motorista && item.motorista.length > 0 ? (Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista) : 'Proprietário'}
-                      </td>
-                      <td className="py-3.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                          }`}>
-                          {item.ativo ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+
+              {formVeiculoError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 flex-shrink-0">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formVeiculoError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0 py-1">
+                {/* Status Toggle Box (Premium Layout) */}
+                <div className="flex items-center justify-between md:col-span-2 bg-[#090b11]/45 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 px-6 py-5 rounded-2xl shadow-sm">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white light-theme:text-[#334155] tracking-wide">
+                      {formVeiculoAtivo ? 'Veículo Ativo' : 'Veículo Inativo'}
+                    </span>
+                    <span className="text-[10px] text-[#64748b] font-medium mt-1 leading-relaxed">
+                      Habilitar veículo para ordens de serviço e mensalidades
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormVeiculoAtivo(!formVeiculoAtivo)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      formVeiculoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        formVeiculoAtivo ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Placa */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Placa *</label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={8}
+                    placeholder="Ex: ABC-1234 ou ABC1D23"
+                    value={formVeiculoPlaca}
+                    onChange={e => setFormVeiculoPlaca(e.target.value.toUpperCase())}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors uppercase font-mono"
+                  />
+                </div>
+
+                {/* Marca / Modelo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Marca / Modelo *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Toyota Corolla"
+                    value={formVeiculoMarcaModelo}
+                    onChange={e => setFormVeiculoMarcaModelo(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Categoria / Tipo */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Categoria / Tipo</label>
+                  <select
+                    value={formVeiculoTipo}
+                    onChange={e => setFormVeiculoTipo(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="CARRETA" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">CARRETA</option>
+                    <option value="CAVALO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">CAVALO</option>
+                    <option value="CONJUNTO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">CONJUNTO</option>
+                    <option value="BITREM" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">BITREM</option>
+                    <option value="UTILITÁRIO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">UTILITÁRIO</option>
+                    <option value="TANQUE" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">TANQUE</option>
+                    <option value="GRANELEIRO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">GRANELEIRO</option>
+                    <option value="BOIADEIRO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">BOIADEIRO</option>
+                    <option value="BAÚ" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">BAÚ</option>
+                    <option value="CAÇAMBA" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">CAÇAMBA</option>
+                    <option value="CONTAINER" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">CONTAINER</option>
+                  </select>
+                </div>
+
+                {/* Proprietário */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Proprietário (Opcional)</label>
+                  <select
+                    value={formVeiculoPessoaId}
+                    onChange={e => setFormVeiculoPessoaId(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Selecione um Proprietário...</option>
+                    {[...supabaseData].sort((a, b) => (a.nome_pessoa || '').localeCompare(b.nome_pessoa || '')).map(p => (
+                      <option key={p.id} value={p.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                        {p.nome_pessoa} {p.cpf ? `(${p.cpf})` : p.cnpj ? `(${p.cnpj})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Motorista Autorizado */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Motoristas Autorizados (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Carlos Silva, Maria Santos (Separe com vírgula para múltiplos)"
+                    value={formVeiculoMotorista}
+                    onChange={e => setFormVeiculoMotorista(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start gap-3 mt-4 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setVeiculoFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formVeiculoSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formVeiculoSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Veículo</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Listagem de Veículos (Supabase)</h3>
+                  {sortedSupabaseVehicles.length > 0 && (
+                    <p className="text-[10px] text-cyan-400 font-semibold mt-1">
+                      Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseVehicles.length)} de {sortedSupabaseVehicles.length} registros
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão para Lançamento de Novo Veículo */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateVeiculo}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Novo Veículo</span>
+                  </button>
+
+                  <div className="relative w-72">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por placa, modelo ou dono..."
+                      value={searchSupabaseVehicles}
+                      onChange={e => {
+                        setSearchSupabaseVehicles(e.target.value);
+                        setCurrentPageVeiculos(1);
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {sortedSupabaseVehicles.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhum veículo registrado no Supabase</span>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+                        <th className="pb-3">Placa</th>
+                        <th className="pb-3">Marca / Modelo</th>
+                        <th className="pb-3">Categoria</th>
+                        <th className="pb-3">Proprietário</th>
+                        <th className="pb-3">Motorista Autorizado</th>
+                        <th className="pb-3 text-center">Status</th>
+                        <th className="pb-3 text-center w-24">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+                      {currentItems.map(item => (
+                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                          <td className="py-3.5 font-semibold">
+                            <span className="px-2 py-0.5 rounded font-mono font-bold bg-[#161924] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-300 text-cyan-400 light-theme:text-blue-600 uppercase tracking-wide">
+                              {item.placa}
+                            </span>
+                          </td>
+                          <td className="py-3.5 font-bold text-white light-theme:text-slate-800">{item.marca_modelo}</td>
+                          <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500 capitalize">{item.tipo || 'CARRETA'}</td>
+                          <td className="py-3.5 font-medium">{item.pessoa_nome || 'N/A'}</td>
+                          <td className="py-3.5 font-medium text-[#64748b]">
+                            {item.motorista && item.motorista.length > 0 ? (Array.isArray(item.motorista) ? item.motorista.join(', ') : item.motorista) : 'Proprietário'}
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              }`}>
+                              {item.ativo ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditVeiculo(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Editar Cadastro"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsExcluindoVeiculo(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Cadastro"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
+                  <span className="text-[11px] text-[#64748b] font-medium">
+                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseVehicles.length)} de {sortedSupabaseVehicles.length} registros
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPageVeiculos(prev => Math.max(1, prev - 1))}
+                      disabled={activePage === 1}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => {
+                      const pageNum = idx + 1;
+                      const isNearCurrent = Math.abs(pageNum - activePage) <= 1;
+                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                      if (!isNearCurrent && !isFirstOrLast) {
+                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                          return <span key={`dots-v-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPageVeiculos(pageNum)}
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
+                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPageVeiculos(prev => Math.min(totalPages, prev + 1))}
+                      disabled={activePage === totalPages}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão de Veículo */}
+        <AnimatePresence>
+          {isExcluindoVeiculo && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingVeiculo && setIsExcluindoVeiculo(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Veículo?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir o veículo de placa <strong>"{isExcluindoVeiculo.placa || 'Sem Placa'}"</strong>? Esta ação não pode ser desfeita e pode afetar lançamentos vinculados.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoVeiculo(null)}
+                    disabled={isDeletingVeiculo}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteVeiculo}
+                    disabled={isDeletingVeiculo}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingVeiculo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderFormaPagamento = () => {
+    // 1. Ordenação alfabética (descrição) e Paginação
+    const sortedSupabaseFormaPagamento = [...filteredSupabaseFormaPagamento].sort((a, b) => {
+      return (a.descricao || '').localeCompare(b.descricao || '', 'pt-BR');
+    });
+
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(sortedSupabaseFormaPagamento.length / itemsPerPage);
+    const activePage = Math.max(1, Math.min(currentPageFormaPagamento, totalPages || 1));
+    const indexOfLastItem = activePage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedSupabaseFormaPagamento.slice(indexOfFirstItem, indexOfLastItem);
+
     return (
-      <div className="h-full bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden w-full">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Formas de Pagamento (Supabase)</h3>
-            <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Métodos ativos configurados para o fluxo financeiro.</p>
-          </div>
+      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+        <div className={`${formaPagamentoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
+          {formaPagamentoFormMode !== 'list' ? (
+            <form onSubmit={handleSaveFormaPagamento} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {formaPagamentoFormMode === 'create' ? 'Cadastrar Nova Forma de Pagamento' : 'Editar Forma de Pagamento'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do método de pagamento no Supabase.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormaPagamentoFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
+                </button>
+              </div>
 
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar formas de pagamento..."
-              value={searchSupabaseFormaPagamento}
-              onChange={e => setSearchSupabaseFormaPagamento(e.target.value)}
-              className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-            />
-          </div>
-        </div>
+              {formFormaPagamentoError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 flex-shrink-0">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formFormaPagamentoError}</span>
+                </div>
+              )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto pr-2 custom-scrollbar w-full">
-          {filteredSupabaseFormaPagamento.length === 0 ? (
-            <div className="col-span-3 h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-              <Wallet className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-              <span className="text-xs">Nenhuma forma de pagamento registrada</span>
-            </div>
-          ) : (
-            filteredSupabaseFormaPagamento.map(item => (
-              <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col justify-between h-36 relative overflow-hidden group">
-                <div className="absolute right-0 bottom-0 h-10 w-10 bg-violet-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-9 w-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center flex-shrink-0">
-                      <CreditCard className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white light-theme:text-slate-800 text-xs leading-none">{item.descricao}</h4>
-                      <span className="text-[10px] text-[#64748b] font-medium block mt-1.5 leading-none">Tipo: {item.tipo_transacao}</span>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0 py-1">
+                {/* Status Toggle Box (Premium Layout) */}
+                <div className="flex items-center justify-between md:col-span-2 bg-[#090b11]/45 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 px-6 py-5 rounded-2xl shadow-sm">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white light-theme:text-[#334155] tracking-wide">
+                      {formFormaPagamentoAtivo ? 'Forma de Pagamento Ativa' : 'Forma de Pagamento Inativa'}
+                    </span>
+                    <span className="text-[10px] text-[#64748b] font-medium mt-1 leading-relaxed">
+                      Habilitar forma de pagamento para fluxos de entradas e despesas
+                    </span>
                   </div>
-                  <span className={`h-2.5 w-2.5 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  <button
+                    type="button"
+                    onClick={() => setFormFormaPagamentoAtivo(!formFormaPagamentoAtivo)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      formFormaPagamentoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        formFormaPagamentoAtivo ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
                 </div>
 
-                <div className="flex items-center justify-between mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-3">
-                  <span className="text-[9px] text-[#64748b] font-bold uppercase tracking-wider leading-none">ID no Banco</span>
-                  <span className="font-mono text-[9px] text-[#94a3b8] leading-none">{item.id.slice(0, 15)}...</span>
+                {/* Descrição */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Descrição *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Cartão de Crédito Visa, PIX Sicredi"
+                    value={formFormaPagamentoDescricao}
+                    onChange={e => setFormFormaPagamentoDescricao(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Tipo de Transação */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Tipo de Transação *</label>
+                  <select
+                    value={formFormaPagamentoTipoTransacao}
+                    onChange={e => setFormFormaPagamentoTipoTransacao(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="PIX" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">PIX</option>
+                    <option value="DINHEIRO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">DINHEIRO</option>
+                    <option value="CRÉDITO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">CRÉDITO</option>
+                    <option value="DÉBITO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">DÉBITO</option>
+                    <option value="BOLETO" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">BOLETO</option>
+                    <option value="TRANSFERÊNCIA" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">TRANSFERÊNCIA</option>
+                    <option value="OUTROS" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">OUTROS</option>
+                  </select>
                 </div>
               </div>
-            ))
+
+              <div className="flex items-center justify-start gap-3 mt-4 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setFormaPagamentoFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formFormaPagamentoSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formFormaPagamentoSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Forma de Pagamento</span>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Listagem de Formas de Pagamento</h3>
+                  {sortedSupabaseFormaPagamento.length > 0 && (
+                    <p className="text-[10px] text-cyan-400 font-semibold mt-1">
+                      Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseFormaPagamento.length)} de {sortedSupabaseFormaPagamento.length} registros
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão para Lançamento de Nova Forma de Pagamento */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateFormaPagamento}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova Forma de Pagamento</span>
+                  </button>
+
+                  <div className="relative w-72">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por descrição ou tipo..."
+                      value={searchSupabaseFormaPagamento}
+                      onChange={e => {
+                        setSearchSupabaseFormaPagamento(e.target.value);
+                        setCurrentPageFormaPagamento(1);
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar w-full pr-2">
+                {sortedSupabaseFormaPagamento.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Wallet className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhuma forma de pagamento registrada no Supabase</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                    {currentItems.map(item => (
+                      <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col justify-between h-28 relative overflow-hidden group">
+                        <div className="absolute right-0 bottom-0 h-10 w-10 bg-violet-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
+
+                        <div className="flex items-start justify-between w-full">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center flex-shrink-0">
+                              <CreditCard className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-white light-theme:text-slate-800 text-xs leading-none">{item.descricao}</h4>
+                              <span className="text-[10px] text-[#64748b] font-medium block mt-1.5 leading-none">Tipo: {item.tipo_transacao}</span>
+                            </div>
+                          </div>
+
+                          {/* Top-Right status and action buttons */}
+                          <div className="flex items-center gap-2 relative z-10">
+                            <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-rose-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditFormaPagamento(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-200 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-300 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Editar Cadastro"
+                              >
+                                <Pencil className="h-2.5 w-2.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIsExcluindoFormaPagamento(item)}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-200 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-300 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Cadastro"
+                              >
+                                <Trash2 className="h-2.5 w-2.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4 w-full">
+                  <span className="text-[11px] text-[#64748b] font-medium">
+                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseFormaPagamento.length)} de {sortedSupabaseFormaPagamento.length} registros
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPageFormaPagamento(prev => Math.max(1, prev - 1))}
+                      disabled={activePage === 1}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => {
+                      const pageNum = idx + 1;
+                      const isNearCurrent = Math.abs(pageNum - activePage) <= 1;
+                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                      if (!isNearCurrent && !isFirstOrLast) {
+                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                          return <span key={`dots-fp-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPageFormaPagamento(pageNum)}
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
+                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPageFormaPagamento(prev => Math.min(totalPages, prev + 1))}
+                      disabled={activePage === totalPages}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão de Forma de Pagamento */}
+        <AnimatePresence>
+          {isExcluindoFormaPagamento && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingFormaPagamento && setIsExcluindoFormaPagamento(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Forma de Pagamento?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir a forma de pagamento <strong>"{isExcluindoFormaPagamento.descricao || 'Sem Descrição'}"</strong>? Esta ação não pode ser desfeita e pode afetar lançamentos vinculados.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoFormaPagamento(null)}
+                    disabled={isDeletingFormaPagamento}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteFormaPagamento}
+                    disabled={isDeletingFormaPagamento}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingFormaPagamento ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderCentroCusto = () => {
+    // 1. Ordenação alfabética (nome_centro_custo) e Paginação
+    const sortedSupabaseCentroCusto = [...filteredSupabaseCentroCusto].sort((a, b) => {
+      return (a.nome_centro_custo || '').localeCompare(b.nome_centro_custo || '', 'pt-BR');
+    });
+
+    const itemsPerPage = 10;
+    const totalPages = Math.ceil(sortedSupabaseCentroCusto.length / itemsPerPage);
+    const activePage = Math.max(1, Math.min(currentPageCentroCusto, totalPages || 1));
+    const indexOfLastItem = activePage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedSupabaseCentroCusto.slice(indexOfFirstItem, indexOfLastItem);
+
     return (
-      <div className="h-full bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden w-full">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Centro de Custos / Categorias</h3>
-            <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Agrupadores de despesas e receitas para análise fiscal.</p>
-          </div>
+      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+        <div className={`${centroCustoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
+          {centroCustoFormMode !== 'list' ? (
+            <form onSubmit={handleSaveCentroCusto} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {centroCustoFormMode === 'create' ? 'Cadastrar Novo Centro de Custo' : 'Editar Centro de Custo'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do centro de custo no Supabase.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCentroCustoFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span>Voltar para a Lista</span>
+                </button>
+              </div>
 
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Buscar centro de custos..."
-              value={searchSupabaseCentroCusto}
-              onChange={e => setSearchSupabaseCentroCusto(e.target.value)}
-              className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-            />
-          </div>
-        </div>
+              {formCentroCustoError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 flex-shrink-0">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <span>{formCentroCustoError}</span>
+                </div>
+              )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar w-full">
-          {filteredSupabaseCentroCusto.length === 0 ? (
-            <div className="col-span-2 h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
-              <Layers className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
-              <span className="text-xs">Nenhum centro de custo registrado</span>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0 py-1">
+                {/* Status Toggle Box (Premium Layout) */}
+                <div className="flex items-center justify-between md:col-span-2 bg-[#090b11]/45 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 px-6 py-5 rounded-2xl shadow-sm">
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white light-theme:text-[#334155] tracking-wide">
+                      {formCentroCustoAtivo ? 'Centro de Custo Ativo' : 'Centro de Custo Inativo'}
+                    </span>
+                    <span className="text-[10px] text-[#64748b] font-medium mt-1 leading-relaxed">
+                      Habilitar centro de custo para transações e relatórios fiscais
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormCentroCustoAtivo(!formCentroCustoAtivo)}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      formCentroCustoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        formCentroCustoAtivo ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Nome do Centro de Custos */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Nome do Centro de Custos *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Combustível, Salários, Taxas Administrativas"
+                    value={formCentroCustoNome}
+                    onChange={e => setFormCentroCustoNome(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Descrição */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Descrição</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Despesas gerais com a frota ou infraestrutura"
+                    value={formCentroCustoDescricao}
+                    onChange={e => setFormCentroCustoDescricao(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Tipo de Movimentação */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Tipo de Movimentação *</label>
+                  <select
+                    value={formCentroCustoTipoMovimentacao}
+                    onChange={e => setFormCentroCustoTipoMovimentacao(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="ENTRADA" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">ENTRADA</option>
+                    <option value="DESPESA" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">DESPESA</option>
+                    <option value="OUTROS" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">OUTROS</option>
+                  </select>
+                </div>
+
+                {/* Tipo de Recorrência */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Recorrência *</label>
+                  <select
+                    value={formCentroCustoTipoRecorrencia}
+                    onChange={e => setFormCentroCustoTipoRecorrencia(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                  >
+                    <option value="Não Informado" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Não Informado</option>
+                    <option value="Fixo" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Fixo</option>
+                    <option value="Variável" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Variável</option>
+                  </select>
+                </div>
+
+                {/* Valor de Provisão */}
+                <div className="flex flex-col gap-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor Provisão Padrão *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="R$ 0,00"
+                    value={formCentroCustoValorProvisao === 0 ? '' : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(formCentroCustoValorProvisao)}
+                    onChange={e => {
+                      const rawDigits = e.target.value.replace(/\D/g, '');
+                      if (!rawDigits) {
+                        setFormCentroCustoValorProvisao(0);
+                        return;
+                      }
+                      const cents = parseInt(rawDigits, 10);
+                      setFormCentroCustoValorProvisao(cents / 100);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-start gap-3 mt-4 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setCentroCustoFormMode('list')}
+                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={formCentroCustoSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formCentroCustoSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  <span>Salvar Centro de Custo</span>
+                </button>
+              </div>
+            </form>
           ) : (
-            filteredSupabaseCentroCusto.map(item => {
-              const movLower = String(item.tipo_movimentacao || '').toLowerCase();
-              const isEntrada = movLower.includes('entrada') || movLower.includes('receita');
-              const isDespesa = movLower.includes('despesa') || movLower.includes('custo') || movLower.includes('saida') || movLower.includes('saída');
+            <>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Listagem de Centro de Custos</h3>
+                  {sortedSupabaseCentroCusto.length > 0 && (
+                    <p className="text-[10px] text-cyan-400 font-semibold mt-1">
+                      Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseCentroCusto.length)} de {sortedSupabaseCentroCusto.length} registros
+                    </p>
+                  )}
+                </div>
 
-              let dotBg = 'bg-slate-500';
-              let typeLabel = 'Outros';
-              if (isEntrada) {
-                dotBg = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
-                typeLabel = 'Entrada';
-              } else if (isDespesa) {
-                dotBg = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
-                typeLabel = 'Despesa';
-              }
+                <div className="flex items-center gap-3 flex-wrap">
+                  {/* Botão para Lançamento de Novo Centro de Custo */}
+                  <button
+                    type="button"
+                    onClick={handleOpenCreateCentroCusto}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Novo Centro de Custo</span>
+                  </button>
 
-              const recStr = String(item.tipo_recorrencia || '').trim();
-              const hasRecorrencia = recStr.length > 0 && recStr.toLowerCase() !== 'não informado' && recStr.toLowerCase() !== 'null';
-
-              return (
-                <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col justify-between min-h-[110px] flex-shrink-0 relative overflow-hidden group hover:border-violet-500/30 transition-all" style={{ minHeight: '110px' }}>
-                  <div className="absolute right-0 bottom-0 h-10 w-10 bg-cyan-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-xl bg-cyan-600/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
-                          <Layers className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-bold text-white light-theme:text-slate-800 text-xs leading-none">
-                              {item.nome_centro_custo}
-                            </h4>
-                            {hasRecorrencia && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-violet-600/15 text-violet-400 light-theme:bg-slate-200 light-theme:text-slate-600 border border-violet-500/10 leading-none">
-                                {recStr.toLowerCase().includes('fixo') ? 'Fixo' :
-                                  recStr.toLowerCase().includes('varia') ? 'Variável' :
-                                    recStr}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-[#090b11]/40 light-theme:bg-slate-200/50 px-2 py-1 rounded-lg border border-[#1f2433]/30">
-                        <span className={`h-2 w-2 rounded-full ${dotBg} animate-pulse`} title={typeLabel} />
-                        <span className="text-[8px] font-bold text-[#64748b] light-theme:text-slate-500 uppercase tracking-wider leading-none">{typeLabel}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start justify-between ml-12 gap-4">
-                      <p className="text-slate-400 light-theme:text-slate-600 text-xs leading-snug flex-1" style={{ fontSize: '12px', lineHeight: '1.2' }}>
-                        {item.descricao || 'Sem Descrição'}
-                      </p>
-                      <div className="text-right flex-shrink-0">
-                        <span className="block text-[8px] text-[#64748b]/60 uppercase tracking-widest leading-none">Provisão</span>
-                        <span className="text-cyan-400 font-bold block mt-1 text-[11px] leading-none">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="relative w-72">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Buscar centro de custos..."
+                      value={searchSupabaseCentroCusto}
+                      onChange={e => {
+                        setSearchSupabaseCentroCusto(e.target.value);
+                        setCurrentPageCentroCusto(1);
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                    />
                   </div>
                 </div>
-              );
-            })
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar w-full pr-2">
+                {sortedSupabaseCentroCusto.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Layers className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+                    <span className="text-xs">Nenhum centro de custo registrado no Supabase</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                    {currentItems.map(item => {
+                      const movLower = String(item.tipo_movimentacao || '').toLowerCase();
+                      const isEntrada = movLower.includes('entrada') || movLower.includes('receita');
+                      const isDespesa = movLower.includes('despesa') || movLower.includes('custo') || movLower.includes('saida') || movLower.includes('saída');
+
+                      let dotBg = 'bg-slate-500';
+                      let typeLabel = 'Outros';
+                      if (isEntrada) {
+                        dotBg = 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                        typeLabel = 'Entrada';
+                      } else if (isDespesa) {
+                        dotBg = 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]';
+                        typeLabel = 'Despesa';
+                      }
+
+                      const recStr = String(item.tipo_recorrencia || '').trim();
+                      const hasRecorrencia = recStr.length > 0 && recStr.toLowerCase() !== 'não informado' && recStr.toLowerCase() !== 'null';
+
+                      return (
+                        <div key={item.id} className="p-5 rounded-2xl bg-[#090b11]/55 light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 flex flex-col justify-between h-28 relative overflow-hidden group">
+                          <div className="absolute right-0 bottom-0 h-10 w-10 bg-cyan-600/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
+
+                          <div className="flex items-start justify-between w-full">
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 rounded-xl bg-cyan-600/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                                <Layers className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="font-bold text-white light-theme:text-slate-800 text-xs leading-none">
+                                    {item.nome_centro_custo}
+                                  </h4>
+                                  {hasRecorrencia && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider bg-violet-600/15 text-violet-400 light-theme:bg-slate-200 light-theme:text-slate-600 border border-violet-500/10 leading-none">
+                                      {recStr.toLowerCase().includes('fixo') ? 'Fixo' :
+                                        recStr.toLowerCase().includes('varia') ? 'Variável' :
+                                          recStr}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-[#64748b] font-medium block mt-1.5 leading-none">
+                                  {item.descricao || 'Sem Descrição'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Top-Right status, type badge and action buttons */}
+                            <div className="flex items-center gap-2 relative z-10">
+                              <div className="flex items-center gap-1 bg-[#090b11]/40 light-theme:bg-slate-200/50 px-1.5 py-0.5 rounded border border-[#1f2433]/30">
+                                <span className={`h-1.5 w-1.5 rounded-full ${dotBg} animate-pulse`} />
+                                <span className="text-[7px] font-bold text-[#64748b] light-theme:text-slate-500 uppercase tracking-wider">{typeLabel}</span>
+                              </div>
+                              <span className={`h-2 w-2 rounded-full ${item.ativo ? 'bg-emerald-500' : 'bg-rose-500'}`} title={item.ativo ? 'Ativo' : 'Inativo'} />
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditCentroCusto(item)}
+                                  className="p-1 rounded bg-[#161924] light-theme:bg-slate-200 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-300 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Editar Cadastro"
+                                >
+                                  <Pencil className="h-2.5 w-2.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsExcluindoCentroCusto(item)}
+                                  className="p-1 rounded bg-[#161924] light-theme:bg-slate-200 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-300 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Excluir Cadastro"
+                                >
+                                  <Trash2 className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-2 w-full">
+                            <span className="text-[8px] text-[#64748b]/60 uppercase tracking-widest leading-none">Provisão</span>
+                            <span className="text-cyan-400 font-bold text-[11px] leading-none">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Paginação */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4 w-full">
+                  <span className="text-[11px] text-[#64748b] font-medium">
+                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseCentroCusto.length)} de {sortedSupabaseCentroCusto.length} registros
+                  </span>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCurrentPageCentroCusto(prev => Math.max(1, prev - 1))}
+                      disabled={activePage === 1}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, idx) => {
+                      const pageNum = idx + 1;
+                      const isNearCurrent = Math.abs(pageNum - activePage) <= 1;
+                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+
+                      if (!isNearCurrent && !isFirstOrLast) {
+                        if (pageNum === 2 || pageNum === totalPages - 1) {
+                          return <span key={`dots-cc-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+                        }
+                        return null;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setCurrentPageCentroCusto(pageNum)}
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
+                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+
+                    <button
+                      onClick={() => setCurrentPageCentroCusto(prev => Math.min(totalPages, prev + 1))}
+                      disabled={activePage === totalPages}
+                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
+
+        {/* Modal de Confirmação de Exclusão de Centro de Custo */}
+        <AnimatePresence>
+          {isExcluindoCentroCusto && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isDeletingCentroCusto && setIsExcluindoCentroCusto(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                    <Trash2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Centro de Custo?</h3>
+                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                      Você tem certeza que deseja excluir o centro de custo <strong>"{isExcluindoCentroCusto.nome_centro_custo || 'Sem Nome'}"</strong>? Esta ação não pode ser desfeita e pode afetar lançamentos vinculados.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-2">
+                  <button
+                    onClick={() => setIsExcluindoCentroCusto(null)}
+                    disabled={isDeletingCentroCusto}
+                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteCentroCusto}
+                    disabled={isDeletingCentroCusto}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                  >
+                    {isDeletingCentroCusto ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
@@ -4777,6 +7282,481 @@ const App: React.FC = () => {
     }
   };
 
+  // Funções CRUD para gerenciamento de Despesas/Custos
+  const handleOpenCreateDespesa = () => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    setFormDataDespesa(todayStr);
+    setFormDescricaoDespesa('');
+    setFormValorDespesa('');
+    setFormValorProvisaoDespesa('');
+    setFormCentroCustoIdDespesa('');
+    setFormFormaPagamentoIdDespesa('');
+    setFormDespesaError(null);
+    setSelectedDespesa(null);
+    setDespesaFormMode('create');
+  };
+
+  const handleOpenEditDespesa = (despesa: Despesa) => {
+    setSelectedDespesa(despesa);
+    setFormDataDespesa(despesa.data_despesa ? despesa.data_despesa.split('T')[0] : '');
+    setFormDescricaoDespesa(despesa.descricao_despesa || '');
+    const formattedValor = despesa.valor !== undefined
+      ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(despesa.valor)
+      : '';
+    const formattedProvisao = despesa.valor_provisao !== undefined
+      ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(despesa.valor_provisao)
+      : '';
+    setFormValorDespesa(formattedValor);
+    setFormValorProvisaoDespesa(formattedProvisao);
+    setFormCentroCustoIdDespesa(despesa.centro_custo_id || '');
+    setFormFormaPagamentoIdDespesa(despesa.forma_pagamento_id || '');
+    setFormDespesaError(null);
+    setDespesaFormMode('edit');
+  };
+
+  const handleSaveDespesa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormDespesaSubmitting(true);
+    setFormDespesaError(null);
+
+    try {
+      const valorNum = parseFloat(formValorDespesa.replace(/\./g, '').replace(',', '.'));
+      if (isNaN(valorNum)) {
+        throw new Error('Por favor, informe um valor numérico válido.');
+      }
+      
+      let provisaoNum = 0;
+      if (formValorProvisaoDespesa) {
+        provisaoNum = parseFloat(formValorProvisaoDespesa.replace(/\./g, '').replace(',', '.'));
+        if (isNaN(provisaoNum)) {
+          throw new Error('Por favor, informe um valor de provisão válido.');
+        }
+      }
+
+      const cc = supabaseCentroCusto.find(c => c.id === formCentroCustoIdDespesa);
+      const fp = supabaseFormaPagamento.find(f => f.id === formFormaPagamentoIdDespesa);
+
+      const payload: any = {
+        data_despesa: formDataDespesa ? `${formDataDespesa}T12:00:00` : null,
+        descricao_despesa: formDescricaoDespesa || null,
+        valor: valorNum,
+        valor_provisao: provisaoNum,
+        centro_custo_id: formCentroCustoIdDespesa || null,
+        nome_centro_custos: cc ? (cc.nome_centro_custo || cc.descricao) : null,
+        forma_pagamento_id: formFormaPagamentoIdDespesa || null,
+        descricao_forma_pagamento: fp ? fp.descricao : null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (despesaFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('despesas')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (despesaFormMode === 'edit' && selectedDespesa) {
+        const { error } = await supabase
+          .from('despesas')
+          .update(payload)
+          .eq('id', selectedDespesa.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseDespesas();
+      setDespesaFormMode('list');
+      setSelectedDespesa(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormDespesaError(err.message || 'Erro ao salvar a despesa.');
+    } finally {
+      setFormDespesaSubmitting(false);
+    }
+  };
+
+  const handleDeleteDespesa = async () => {
+    if (!isExcluindoDespesa) return;
+    setIsDeletingDespesa(true);
+
+    try {
+      const { error } = await supabase
+        .from('despesas')
+        .delete()
+        .eq('id', isExcluindoDespesa.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseDespesas();
+      setIsExcluindoDespesa(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir a despesa.');
+    } finally {
+      setIsDeletingDespesa(false);
+    }
+  };
+
+  // Funções CRUD para gerenciamento de Mensalistas
+  const handleOpenCreateMensalista = () => {
+    setFormAtivoMensalista(true);
+    setFormCentroCustoIdMensalista('');
+    setFormDiaVencimentoMensalista('');
+    setFormMarcaModeloMensalista('');
+    setFormNomePessoaMensalista('');
+    setFormObservacaoMensalista('');
+    setFormPlacaMensalista('');
+    setFormPlanoMensalista('Mensal VIP');
+    setFormValorOriginalMensalista('');
+    setFormVeiculoIdMensalista('');
+    setFormMensalistaError(null);
+    setSelectedMensalista(null);
+    setMensalistaFormMode('create');
+  };
+
+  const handleOpenEditMensalista = (mensalista: Mensalista) => {
+    setSelectedMensalista(mensalista);
+    setFormAtivoMensalista(mensalista.ativo ?? true);
+    setFormCentroCustoIdMensalista(mensalista.centro_custo_id || '');
+    setFormDiaVencimentoMensalista(mensalista.dia_vencimento !== undefined ? String(mensalista.dia_vencimento) : '');
+    setFormMarcaModeloMensalista(mensalista.marca_modelo || '');
+    setFormNomePessoaMensalista(mensalista.nome_pessoa || '');
+    setFormObservacaoMensalista(mensalista.observacao || '');
+    setFormPlacaMensalista(mensalista.placa || '');
+    setFormPlanoMensalista(mensalista.plano || 'Mensal VIP');
+    const formattedValor = mensalista.valor_original !== undefined
+      ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(mensalista.valor_original)
+      : '';
+    setFormValorOriginalMensalista(formattedValor);
+    setFormVeiculoIdMensalista(mensalista.veiculo_id || '');
+    setFormMensalistaError(null);
+    setMensalistaFormMode('edit');
+  };
+
+  const handleSaveMensalista = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormMensalistaSubmitting(true);
+    setFormMensalistaError(null);
+
+    try {
+      const valorNum = parseFloat(formValorOriginalMensalista.replace(/\./g, '').replace(',', '.'));
+      if (isNaN(valorNum)) {
+        throw new Error('Por favor, informe um valor de mensalidade válido.');
+      }
+      
+      const diaVencNum = parseInt(formDiaVencimentoMensalista);
+      if (isNaN(diaVencNum) || diaVencNum < 1 || diaVencNum > 31) {
+        throw new Error('Por favor, informe um dia de vencimento válido (1 a 31).');
+      }
+
+      const cc = supabaseCentroCusto.find(c => c.id === formCentroCustoIdMensalista);
+      
+      const payload: any = {
+        ativo: formAtivoMensalista,
+        centro_custo_id: formCentroCustoIdMensalista || null,
+        dia_vencimento: diaVencNum,
+        marca_modelo: formMarcaModeloMensalista || null,
+        nome_pessoa: formNomePessoaMensalista || 'Sem nome',
+        observacao: formObservacaoMensalista || null,
+        placa: formPlacaMensalista || null,
+        plano: formPlanoMensalista || null,
+        valor_original: valorNum,
+        veiculo_id: formVeiculoIdMensalista || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (mensalistaFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('mensalistas')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (mensalistaFormMode === 'edit' && selectedMensalista) {
+        const { error } = await supabase
+          .from('mensalistas')
+          .update(payload)
+          .eq('id', selectedMensalista.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseMensalistas();
+      setMensalistaFormMode('list');
+      setSelectedMensalista(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormMensalistaError(err.message || 'Erro ao salvar o mensalista.');
+    } finally {
+      setFormMensalistaSubmitting(false);
+    }
+  };
+
+  const handleDeleteMensalista = async () => {
+    if (!isExcluindoMensalista) return;
+    setIsDeletingMensalista(true);
+
+    try {
+      const { error } = await supabase
+        .from('mensalistas')
+        .delete()
+        .eq('id', isExcluindoMensalista.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseMensalistas();
+      setIsExcluindoMensalista(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir o mensalista.');
+    } finally {
+      setIsDeletingMensalista(false);
+    }
+  };
+
+  const handleGenerateParcelas = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeMensalistaFinanceiro) return;
+    setGenSubmitting(true);
+    setGenError(null);
+
+    try {
+      const valorNum = parseFloat(genValorParcela.replace(/\./g, '').replace(',', '.'));
+      if (isNaN(valorNum) || valorNum <= 0) {
+        throw new Error('Por favor, informe um valor de parcela válido maior que zero.');
+      }
+
+      const qty = parseInt(String(genQtyParcelas));
+      if (isNaN(qty) || qty < 1 || qty > 100) {
+        throw new Error('Por favor, escolha uma quantidade de parcelas válida (entre 1 e 100).');
+      }
+
+      const diaVenc = parseInt(String(genDiaVencimento));
+      if (isNaN(diaVenc) || diaVenc < 1 || diaVenc > 31) {
+        throw new Error('Por favor, informe um dia de vencimento válido (1 a 31).');
+      }
+
+      if (!genMesAnoInicio) {
+        throw new Error('Por favor, selecione o mês/ano de início.');
+      }
+
+      // Parse mes inicial (formato YYYY-MM)
+      const [startYearStr, startMonthStr] = genMesAnoInicio.split('-');
+      let currentYear = parseInt(startYearStr);
+      let currentMonth = parseInt(startMonthStr) - 1; // 0-indexed in JS Date
+
+      const newParcelas: any[] = [];
+      const nowStr = new Date().toISOString();
+
+      for (let i = 0; i < qty; i++) {
+        // Obter a data de vencimento correspondente para o mês i
+        const vencDate = new Date(currentYear, currentMonth, diaVenc, 12, 0, 0);
+        
+        // Se a data pulou de mês por causa do dia (ex: dia 31 em fevereiro), limitamos para o último dia do mês correto
+        if (vencDate.getMonth() !== currentMonth) {
+          const lastDay = new Date(currentYear, currentMonth + 1, 0, 12, 0, 0);
+          vencDate.setDate(lastDay.getDate());
+        }
+
+        const dateStr = vencDate.toISOString().split('T')[0];
+
+        newParcelas.push({
+          id: crypto.randomUUID(),
+          mensalista_id: activeMensalistaFinanceiro.id,
+          nome_pessoa: activeMensalistaFinanceiro.nome_pessoa || 'Sem nome',
+          valor_original: valorNum,
+          valor_pago: 0,
+          data_vencimento: `${dateStr}T12:00:00`,
+          data_pagamento: null,
+          created_at: nowStr,
+          updated_at: nowStr,
+          created_by: session?.user?.id || null,
+          slug: activeMensalistaFinanceiro.slug || null
+        });
+
+        // Avançar para o próximo mês
+        currentMonth++;
+        if (currentMonth > 11) {
+          currentMonth = 0;
+          currentYear++;
+        }
+      }
+
+      // Enviar em massa para a tabela mensalistaparcelas no Supabase
+      const { error } = await supabase
+        .from('mensalistaparcelas')
+        .insert(newParcelas);
+
+      if (error) throw error;
+
+      // Recarregar parcelas
+      await fetchSupabaseMensalistaParcelas();
+      setIsGeneratingParcelas(false);
+      setGenValorParcela('');
+    } catch (err: any) {
+      console.error(err);
+      setGenError(err.message || 'Erro ao gerar as parcelas.');
+    } finally {
+      setGenSubmitting(false);
+    }
+  };
+
+  const handlePayParcela = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPayingParcela || !activeMensalistaFinanceiro) return;
+    setPaySubmitting(true);
+    setPayError(null);
+
+    try {
+      const valorPagoNum = parseFloat(payValorPago.replace(/\./g, '').replace(',', '.'));
+      if (isNaN(valorPagoNum) || valorPagoNum < 0) {
+        throw new Error('Por favor, informe um valor de pagamento válido.');
+      }
+
+      if (!payDataPagamento) {
+        throw new Error('Por favor, selecione a data do pagamento.');
+      }
+
+      if (!payCentroCustoId) {
+        throw new Error('Por favor, selecione o centro de custo financeiro.');
+      }
+
+      if (!payFormaPagamentoId) {
+        throw new Error('Por favor, selecione a forma de pagamento.');
+      }
+
+      const fp = supabaseFormaPagamento.find(f => f.id === payFormaPagamentoId);
+      const cc = supabaseCentroCusto.find(c => c.id === payCentroCustoId);
+
+      // 1. Atualizar a parcela correspondente
+      const { error: updateError } = await supabase
+        .from('mensalistaparcelas')
+        .update({
+          valor_pago: valorPagoNum,
+          data_pagamento: `${payDataPagamento}T12:00:00`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', isPayingParcela.id);
+
+      if (updateError) throw updateError;
+
+      // 2. Inserir a nova Entrada (receita) de forma automática
+      const entradaPayload: any = {
+        id: crypto.randomUUID(),
+        centro_custo_id: payCentroCustoId,
+        nome_centro_custo: cc ? (cc.nome_centro_custo || cc.descricao) : 'Mensalidades / Recorrentes',
+        data_entrada: `${payDataPagamento}T12:00:00`,
+        descricao_entrada: `Mensalidade Baixa - ${activeMensalistaFinanceiro.nome_pessoa || 'Mensalista'}`,
+        valor: valorPagoNum,
+        forma_pagamento_id: payFormaPagamentoId,
+        descricao_forma_pagamento: fp ? fp.descricao : 'PIX',
+        pessoa_id: null,
+        nome_pessoa: activeMensalistaFinanceiro.nome_pessoa || null,
+        veiculo_id: activeMensalistaFinanceiro.veiculo_id || null,
+        placa_veiculo: activeMensalistaFinanceiro.placa || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by: session?.user?.id || null,
+        slug: `parcela_${isPayingParcela.id}`
+      };
+
+      const { error: insertError } = await supabase
+        .from('entradas')
+        .insert([entradaPayload]);
+
+      if (insertError) throw insertError;
+
+      // 3. Recarregar parcelas e entradas
+      await fetchSupabaseMensalistaParcelas();
+      await fetchSupabaseEntradas();
+      setIsPayingParcela(null);
+    } catch (err: any) {
+      console.error(err);
+      setPayError(err.message || 'Erro ao realizar o pagamento da parcela.');
+    } finally {
+      setPaySubmitting(false);
+    }
+  };
+
+  const handleRevertParcela = async () => {
+    if (!isRevertingParcela || !activeMensalistaFinanceiro) return;
+    setRevertSubmitting(true);
+    setRevertError(null);
+
+    try {
+      // 1. Localizar o ID da Entrada a ser excluída
+      let entradaIdToDelete = null;
+
+      // Buscar pelo slug do vínculo exato
+      const { data: bySlug, error: errSlug } = await supabase
+        .from('entradas')
+        .select('id')
+        .eq('slug', `parcela_${isRevertingParcela.id}`)
+        .limit(1);
+
+      if (errSlug) throw errSlug;
+
+      if (bySlug && bySlug.length > 0) {
+        entradaIdToDelete = bySlug[0].id;
+      } else {
+        // Fallback: buscar por combinação de campos do registro legado
+        const { data: byFallback, error: errFallback } = await supabase
+          .from('entradas')
+          .select('id')
+          .eq('nome_pessoa', activeMensalistaFinanceiro.nome_pessoa)
+          .eq('valor', isRevertingParcela.valor_pago || 0)
+          .eq('placa_veiculo', activeMensalistaFinanceiro.placa || '')
+          .limit(1);
+
+        if (errFallback) throw errFallback;
+
+        if (byFallback && byFallback.length > 0) {
+          entradaIdToDelete = byFallback[0].id;
+        }
+      }
+
+      // 2. Se a entrada foi localizada, excluir
+      if (entradaIdToDelete) {
+        const { error: deleteError } = await supabase
+          .from('entradas')
+          .delete()
+          .eq('id', entradaIdToDelete);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // 3. Atualizar a parcela para "Pendente" no Supabase (data_pagamento = null, valor_pago = null)
+      const { error: updateError } = await supabase
+        .from('mensalistaparcelas')
+        .update({
+          valor_pago: null,
+          data_pagamento: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', isRevertingParcela.id);
+
+      if (updateError) throw updateError;
+
+      // 4. Atualizar estados locais e recarregar
+      await fetchSupabaseMensalistaParcelas();
+      await fetchSupabaseEntradas();
+      setIsRevertingParcela(null);
+    } catch (err: any) {
+      console.error(err);
+      setRevertError(err.message || 'Erro ao realizar o estorno da parcela.');
+    } finally {
+      setRevertSubmitting(false);
+    }
+  };
+
   // Funções CRUD para gerenciamento de Entradas/Receitas
   const handleOpenCreateEntrada = () => {
     const today = new Date();
@@ -4799,7 +7779,10 @@ const App: React.FC = () => {
     setSelectedEntrada(entrada);
     setFormDataEntrada(entrada.data_entrada ? entrada.data_entrada.split('T')[0] : '');
     setFormDescricaoEntrada(entrada.descricao_entrada || '');
-    setFormValorEntrada(entrada.valor !== undefined ? String(entrada.valor) : '');
+    const formattedValor = entrada.valor !== undefined
+      ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(entrada.valor)
+      : '';
+    setFormValorEntrada(formattedValor);
     setFormCentroCustoId(entrada.centro_custo_id || '');
     setFormFormaPagamentoId(entrada.forma_pagamento_id || '');
     setFormPessoaId(entrada.pessoa_id || '');
@@ -4815,7 +7798,7 @@ const App: React.FC = () => {
     setFormEntradaError(null);
 
     try {
-      const valorNum = parseFloat(formValorEntrada.replace(',', '.'));
+      const valorNum = parseFloat(formValorEntrada.replace(/\./g, '').replace(',', '.'));
       if (isNaN(valorNum)) {
         throw new Error('Por favor, informe um valor numérico válido.');
       }
@@ -4891,6 +7874,459 @@ const App: React.FC = () => {
       setIsDeletingEntrada(false);
     }
   };
+
+  // Pessoas CRUD handler functions
+  const handleOpenCreatePessoa = () => {
+    setFormPessoaNome('');
+    setFormPessoaTipo('Cliente');
+    setFormPessoaCelular('');
+    setFormPessoaCpf('');
+    setFormPessoaCnpj('');
+    setFormPessoaCidade('');
+    setFormPessoaUf('');
+    setFormPessoaAtivo(true);
+    setFormPessoaError(null);
+    setSelectedPessoa(null);
+    setPessoaFormMode('create');
+  };
+
+  const handleOpenEditPessoa = (pessoa: Pessoa) => {
+    setSelectedPessoa(pessoa);
+    setFormPessoaNome(pessoa.nome_pessoa || '');
+    setFormPessoaTipo(pessoa.tipo_pessoa || 'Cliente');
+    setFormPessoaCelular(pessoa.celular_whatsapp || '');
+    setFormPessoaCpf(pessoa.cpf || '');
+    setFormPessoaCnpj(pessoa.cnpj || '');
+    setFormPessoaCidade(pessoa.cidade || '');
+    setFormPessoaUf(pessoa.uf || '');
+    setFormPessoaAtivo(pessoa.ativo !== false);
+    setFormPessoaError(null);
+    setPessoaFormMode('edit');
+  };
+
+  const handleSavePessoa = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormPessoaSubmitting(true);
+    setFormPessoaError(null);
+
+    try {
+      if (!formPessoaNome.trim()) {
+        throw new Error('Por favor, informe o nome da pessoa.');
+      }
+
+      const payload: any = {
+        nome_pessoa: formPessoaNome.trim(),
+        tipo_pessoa: formPessoaTipo,
+        celular_whatsapp: formPessoaCelular.trim() || null,
+        cpf: formPessoaTipo !== 'Empresa' ? (formPessoaCpf.trim() || null) : null,
+        cnpj: formPessoaTipo === 'Empresa' ? (formPessoaCnpj.trim() || null) : null,
+        cidade: formPessoaCidade.trim() || null,
+        uf: formPessoaUf.trim().toUpperCase() || null,
+        ativo: formPessoaAtivo,
+        updated_at: new Date().toISOString()
+      };
+
+      if (pessoaFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('pessoas')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (pessoaFormMode === 'edit' && selectedPessoa) {
+        const { error } = await supabase
+          .from('pessoas')
+          .update(payload)
+          .eq('id', selectedPessoa.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseData();
+      setPessoaFormMode('list');
+      setSelectedPessoa(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormPessoaError(err.message || 'Erro ao salvar a pessoa.');
+    } finally {
+      setFormPessoaSubmitting(false);
+    }
+  };
+
+  const handleDeletePessoa = async () => {
+    if (!isExcluindoPessoa) return;
+    setIsDeletingPessoa(true);
+
+    try {
+      const { error } = await supabase
+        .from('pessoas')
+        .delete()
+        .eq('id', isExcluindoPessoa.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseData();
+      setIsExcluindoPessoa(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir a pessoa.');
+    } finally {
+      setIsDeletingPessoa(false);
+    }
+  };
+
+  // Veiculos CRUD Handlers
+  const handleOpenCreateVeiculo = () => {
+    setFormVeiculoPlaca('');
+    setFormVeiculoMarcaModelo('');
+    setFormVeiculoTipo('CARRETA');
+    setFormVeiculoPessoaId('');
+    setFormVeiculoMotorista('');
+    setFormVeiculoAtivo(true);
+    setFormVeiculoError(null);
+    setSelectedVeiculo(null);
+    setVeiculoFormMode('create');
+  };
+
+  const handleOpenEditVeiculo = (veiculo: Veiculo) => {
+    setSelectedVeiculo(veiculo);
+    setFormVeiculoPlaca(veiculo.placa || '');
+    setFormVeiculoMarcaModelo(veiculo.marca_modelo || '');
+    setFormVeiculoTipo(veiculo.tipo || 'CARRETA');
+    setFormVeiculoPessoaId(veiculo.pessoa_id || '');
+    
+    if (veiculo.motorista) {
+      if (Array.isArray(veiculo.motorista)) {
+        setFormVeiculoMotorista(veiculo.motorista.join(', '));
+      } else {
+        setFormVeiculoMotorista(String(veiculo.motorista));
+      }
+    } else {
+      setFormVeiculoMotorista('');
+    }
+    
+    setFormVeiculoAtivo(veiculo.ativo !== false);
+    setFormVeiculoError(null);
+    setVeiculoFormMode('edit');
+  };
+
+  const handleSaveVeiculo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormVeiculoSubmitting(true);
+    setFormVeiculoError(null);
+
+    try {
+      if (!formVeiculoPlaca.trim()) {
+        throw new Error('Por favor, informe a placa do veículo.');
+      }
+      if (!formVeiculoMarcaModelo.trim()) {
+        throw new Error('Por favor, informe a marca/modelo do veículo.');
+      }
+
+      let proprietarioNome = '';
+      if (formVeiculoPessoaId) {
+        const found = supabaseData.find(p => p.id === formVeiculoPessoaId);
+        if (found) {
+          proprietarioNome = found.nome_pessoa || '';
+        }
+      }
+
+      const motoristaList = formVeiculoMotorista
+        .split(',')
+        .map(m => m.trim())
+        .filter(m => m.length > 0);
+
+      const payload: any = {
+        placa: formVeiculoPlaca.trim().toUpperCase(),
+        marca_modelo: formVeiculoMarcaModelo.trim(),
+        tipo: formVeiculoTipo,
+        pessoa_id: formVeiculoPessoaId || null,
+        pessoa_nome: proprietarioNome || null,
+        motorista: motoristaList.length > 0 ? motoristaList : null,
+        ativo: formVeiculoAtivo,
+        updated_at: new Date().toISOString()
+      };
+
+      if (veiculoFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('veiculos')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (veiculoFormMode === 'edit' && selectedVeiculo) {
+        const { error } = await supabase
+          .from('veiculos')
+          .update(payload)
+          .eq('id', selectedVeiculo.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseVehicles();
+      setVeiculoFormMode('list');
+      setSelectedVeiculo(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormVeiculoError(err.message || 'Erro ao salvar o veículo.');
+    } finally {
+      setFormVeiculoSubmitting(false);
+    }
+  };
+
+  const handleDeleteVeiculo = async () => {
+    if (!isExcluindoVeiculo) return;
+    setIsDeletingVeiculo(true);
+
+    try {
+      const { error } = await supabase
+        .from('veiculos')
+        .delete()
+        .eq('id', isExcluindoVeiculo.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseVehicles();
+      setIsExcluindoVeiculo(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir o veículo.');
+    } finally {
+      setIsDeletingVeiculo(false);
+    }
+  };
+
+  // Forma Pagamento CRUD Handlers
+  const handleOpenCreateFormaPagamento = () => {
+    setFormFormaPagamentoDescricao('');
+    setFormFormaPagamentoTipoTransacao('PIX');
+    setFormFormaPagamentoAtivo(true);
+    setFormFormaPagamentoError(null);
+    setSelectedFormaPagamento(null);
+    setFormaPagamentoFormMode('create');
+  };
+
+  const handleOpenEditFormaPagamento = (fp: FormaPagamento) => {
+    setSelectedFormaPagamento(fp);
+    setFormFormaPagamentoDescricao(fp.descricao || '');
+    setFormFormaPagamentoTipoTransacao(fp.tipo_transacao || 'PIX');
+    setFormFormaPagamentoAtivo(fp.ativo !== false);
+    setFormFormaPagamentoError(null);
+    setFormaPagamentoFormMode('edit');
+  };
+
+  const handleSaveFormaPagamento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormFormaPagamentoSubmitting(true);
+    setFormFormaPagamentoError(null);
+
+    try {
+      if (!formFormaPagamentoDescricao.trim()) {
+        throw new Error('Por favor, informe a descrição da forma de pagamento.');
+      }
+      if (!formFormaPagamentoTipoTransacao.trim()) {
+        throw new Error('Por favor, informe o tipo de transação.');
+      }
+
+      const payload: any = {
+        descricao: formFormaPagamentoDescricao.trim(),
+        tipo_transacao: formFormaPagamentoTipoTransacao.trim().toUpperCase(),
+        ativo: formFormaPagamentoAtivo,
+        updated_at: new Date().toISOString()
+      };
+
+      if (formaPagamentoFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('formapagamento')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (formaPagamentoFormMode === 'edit' && selectedFormaPagamento) {
+        const { error } = await supabase
+          .from('formapagamento')
+          .update(payload)
+          .eq('id', selectedFormaPagamento.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseFormaPagamento();
+      setFormaPagamentoFormMode('list');
+      setSelectedFormaPagamento(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormFormaPagamentoError(err.message || 'Erro ao salvar a forma de pagamento.');
+    } finally {
+      setFormFormaPagamentoSubmitting(false);
+    }
+  };
+
+  const handleDeleteFormaPagamento = async () => {
+    if (!isExcluindoFormaPagamento) return;
+    setIsDeletingFormaPagamento(true);
+
+    try {
+      // Verificar se existem registros filhos (Entradas ou Despesas) vinculados a esta Forma de Pagamento
+      const temDespesas = supabaseDespesas.some(d => d.forma_pagamento_id === isExcluindoFormaPagamento.id);
+      const temEntradas = supabaseEntradas.some(e => e.forma_pagamento_id === isExcluindoFormaPagamento.id);
+
+      if (temDespesas || temEntradas) {
+        throw new Error('Não é possível excluir esta forma de pagamento pois existem registros de Entradas ou Despesas vinculados a ela.');
+      }
+
+      const { error } = await supabase
+        .from('formapagamento')
+        .delete()
+        .eq('id', isExcluindoFormaPagamento.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseFormaPagamento();
+      setIsExcluindoFormaPagamento(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir a forma de pagamento.');
+      setIsExcluindoFormaPagamento(null);
+    } finally {
+      setIsDeletingFormaPagamento(false);
+    }
+  };
+
+  // Centro Custo CRUD Handlers
+  const handleOpenCreateCentroCusto = () => {
+    setFormCentroCustoNome('');
+    setFormCentroCustoDescricao('');
+    setFormCentroCustoTipoMovimentacao('DESPESA');
+    setFormCentroCustoTipoRecorrencia('Não Informado');
+    setFormCentroCustoValorProvisao(0);
+    setFormCentroCustoAtivo(true);
+    setFormCentroCustoError(null);
+    setSelectedCentroCusto(null);
+    setCentroCustoFormMode('create');
+  };
+
+  const handleOpenEditCentroCusto = (cc: CentroCusto) => {
+    setSelectedCentroCusto(cc);
+    setFormCentroCustoNome(cc.nome_centro_custo || '');
+    setFormCentroCustoDescricao(cc.descricao || '');
+    setFormCentroCustoTipoMovimentacao(cc.tipo_movimentacao || 'DESPESA');
+    setFormCentroCustoTipoRecorrencia(cc.tipo_recorrencia || 'Não Informado');
+    setFormCentroCustoValorProvisao(cc.valor_provisao || 0);
+    setFormCentroCustoAtivo(cc.ativo !== false);
+    setFormCentroCustoError(null);
+    setCentroCustoFormMode('edit');
+  };
+
+  const handleSaveCentroCusto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormCentroCustoSubmitting(true);
+    setFormCentroCustoError(null);
+
+    try {
+      if (!formCentroCustoNome.trim()) {
+        throw new Error('Por favor, informe o nome do centro de custo.');
+      }
+
+      const payload: any = {
+        nome_centro_custo: formCentroCustoNome.trim(),
+        descricao: formCentroCustoDescricao.trim() || null,
+        tipo_movimentacao: formCentroCustoTipoMovimentacao.toUpperCase(),
+        tipo_recorrencia: formCentroCustoTipoRecorrencia,
+        valor_provisao: Number(formCentroCustoValorProvisao) || 0,
+        ativo: formCentroCustoAtivo,
+        updated_at: new Date().toISOString()
+      };
+
+      if (centroCustoFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('centrocusto')
+          .insert([payload]);
+
+        if (error) throw error;
+      } else if (centroCustoFormMode === 'edit' && selectedCentroCusto) {
+        const { error } = await supabase
+          .from('centrocusto')
+          .update(payload)
+          .eq('id', selectedCentroCusto.id);
+
+        if (error) throw error;
+      }
+
+      await fetchSupabaseCentroCusto();
+      setCentroCustoFormMode('list');
+      setSelectedCentroCusto(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormCentroCustoError(err.message || 'Erro ao salvar o centro de custo.');
+    } finally {
+      setFormCentroCustoSubmitting(false);
+    }
+  };
+
+  const handleDeleteCentroCusto = async () => {
+    if (!isExcluindoCentroCusto) return;
+    setIsDeletingCentroCusto(true);
+
+    try {
+      // 1. Verificação local no cache em memória para resposta instantânea
+      const temDespesasLocal = supabaseDespesas.some(d => d.centro_custo_id === isExcluindoCentroCusto.id);
+      const temEntradasLocal = supabaseEntradas.some(e => e.centro_custo_id === isExcluindoCentroCusto.id);
+
+      if (temDespesasLocal || temEntradasLocal) {
+        throw new Error('Não é possível excluir este centro de custo pois existem registros de Entradas ou Despesas vinculados a ele.');
+      }
+
+      // 2. Verificação direta em tempo real no banco de dados (Supabase REST API) para segurança robusta
+      const headers = {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+      };
+
+      const [resDespesas, resEntradas] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/despesas?centro_custo_id=eq.${isExcluindoCentroCusto.id}&select=id`, { headers }),
+        fetch(`${SUPABASE_URL}/rest/v1/entradas?centro_custo_id=eq.${isExcluindoCentroCusto.id}&select=id`, { headers })
+      ]);
+
+      if (resDespesas.ok && resEntradas.ok) {
+        const despesasDb = await resDespesas.json();
+        const entradasDb = await resEntradas.json();
+        if ((despesasDb && despesasDb.length > 0) || (entradasDb && entradasDb.length > 0)) {
+          throw new Error('Não é possível excluir este centro de custo pois existem registros de Entradas ou Despesas vinculados a ele no banco de dados.');
+        }
+      }
+
+      const { error } = await supabase
+        .from('centrocusto')
+        .delete()
+        .eq('id', isExcluindoCentroCusto.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseCentroCusto();
+      setIsExcluindoCentroCusto(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir o centro de custo.');
+      setIsExcluindoCentroCusto(null);
+    } finally {
+      setIsDeletingCentroCusto(false);
+    }
+  };
+
 
   // Start the Entradas Migration Process
   const handleStartEntradasMigration = async () => {
@@ -5004,7 +8440,8 @@ const App: React.FC = () => {
   const filteredSupabase = supabaseData.filter(item =>
     (item.nome_pessoa || '').toLowerCase().includes(searchSupabase.toLowerCase()) ||
     (item.cpf || '').includes(searchSupabase) ||
-    (item.cnpj || '').includes(searchSupabase)
+    (item.cnpj || '').includes(searchSupabase) ||
+    (item.celular_whatsapp || '').includes(searchSupabase)
   );
 
   // Filter local rows (Veiculos)
