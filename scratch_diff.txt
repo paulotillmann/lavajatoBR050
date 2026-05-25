@@ -1,0 +1,722 @@
+﻿diff --git a/App.tsx b/App.tsx
+index a522b37..2ea1f91 100644
+--- a/App.tsx
++++ b/App.tsx
+@@ -895,6 +895,23 @@ const App: React.FC = () => {
+   const [searchBubbleDespesas, setSearchBubbleDespesas] = useState('');
+   const [searchSupabaseDespesas, setSearchSupabaseDespesas] = useState('');
+ 
++  // States adicionais para o CRUD e Formul├írio de Despesas
++  const [despesaFormMode, setDespesaFormMode] = useState<'list' | 'create' | 'edit'>('list');
++  const [selectedDespesa, setSelectedDespesa] = useState<Despesa | null>(null);
++  const [isExcluindoDespesa, setIsExcluindoDespesa] = useState<Despesa | null>(null);
++  const [isDeletingDespesa, setIsDeletingDespesa] = useState(false);
++
++  // States do formul├írio de despesa
++  const [formDataDespesa, setFormDataDespesa] = useState('');
++  const [formDescricaoDespesa, setFormDescricaoDespesa] = useState('');
++  const [formValorDespesa, setFormValorDespesa] = useState('');
++  const [formValorProvisaoDespesa, setFormValorProvisaoDespesa] = useState('');
++  const [formCentroCustoIdDespesa, setFormCentroCustoIdDespesa] = useState('');
++  const [formFormaPagamentoIdDespesa, setFormFormaPagamentoIdDespesa] = useState('');
++
++  const [formDespesaSubmitting, setFormDespesaSubmitting] = useState(false);
++  const [formDespesaError, setFormDespesaError] = useState<string | null>(null);
++
+   // Entradas Data states
+   const [bubbleEntradas, setBubbleEntradas] = useState<Entrada[]>([]);
+   const [supabaseEntradas, setSupabaseEntradas] = useState<Entrada[]>([]);
+@@ -2517,187 +2534,413 @@ const App: React.FC = () => {
+         </div>
+ 
+         <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
+-          <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
+-            <h3 className="text-sm font-bold text-white light-theme:text-slate-800 font-sans">Tabela de Despesas</h3>
+-
+-            <div className="flex items-center gap-3 flex-wrap">
+-              {/* Filtro por Centro de Custos */}
+-              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+-                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
+-                <select
+-                  value={selectedCentroCustoDespesas}
+-                  onChange={e => {
+-                    setSelectedCentroCustoDespesas(e.target.value);
+-                    setCurrentPageDespesas(1);
+-                  }}
+-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px] font-medium max-w-[150px] cursor-pointer"
++          {despesaFormMode !== 'list' ? (
++            <form onSubmit={handleSaveDespesa} className="flex flex-col gap-5 w-full max-w-4xl mr-auto ml-0 py-2 text-left">
++              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
++                <div>
++                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
++                    {despesaFormMode === 'create' ? 'Lan├ºar Nova Despesa/Custo' : 'Editar Despesa/Custo'}
++                  </h3>
++                  <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do lan├ºamento de despesa.</p>
++                </div>
++                <button
++                  type="button"
++                  onClick={() => setDespesaFormMode('list')}
++                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                 >
+-                  <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
+-                  {supabaseCentroCusto.map(cc => (
+-                    <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+-                      {cc.nome_centro_custo || cc.descricao}
+-                    </option>
+-                  ))}
+-                </select>
+-                {selectedCentroCustoDespesas && (
+-                  <button
+-                    onClick={() => {
+-                      setSelectedCentroCustoDespesas('');
+-                      setCurrentPageDespesas(1);
+-                    }}
+-                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+-                    title="Limpar centro de custo"
++                  <ChevronLeft className="h-4 w-4" />
++                  <span>Voltar para a Lista</span>
++                </button>
++              </div>
++
++              {formDespesaError && (
++                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2">
++                  <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
++                  <span>{formDespesaError}</span>
++                </div>
++              )}
++
++              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar max-h-[60vh]">
++                {/* Data */}
++                <div className="flex flex-col gap-1.5">
++                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Data do Lan├ºamento *</label>
++                  <input
++                    type="date"
++                    required
++                    value={formDataDespesa}
++                    onChange={e => setFormDataDespesa(e.target.value)}
++                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
++                  />
++                </div>
++
++                {/* Centro de Custo */}
++                <div className="flex flex-col gap-1.5">
++                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Centro de Custo *</label>
++                  <select
++                    required
++                    value={formCentroCustoIdDespesa}
++                    onChange={e => setFormCentroCustoIdDespesa(e.target.value)}
++                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                   >
+-                    Limpar
+-                  </button>
+-                )}
++                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
++                    {supabaseCentroCusto.map(cc => (
++                      <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
++                        {cc.nome_centro_custo || cc.descricao}
++                      </option>
++                    ))}
++                  </select>
++                </div>
++
++                {/* Forma de Pagamento */}
++                <div className="flex flex-col gap-1.5">
++                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Forma de Pagamento *</label>
++                  <select
++                    required
++                    value={formFormaPagamentoIdDespesa}
++                    onChange={e => setFormFormaPagamentoIdDespesa(e.target.value)}
++                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
++                  >
++                    <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Selecione...</option>
++                    {supabaseFormaPagamento.map(fp => (
++                      <option key={fp.id} value={fp.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
++                        {fp.descricao} ({fp.tipo_transacao})
++                      </option>
++                    ))}
++                  </select>
++                </div>
++
++                {/* Valor */}
++                <div className="flex flex-col gap-1.5">
++                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor (R$) *</label>
++                  <input
++                    type="text"
++                    required
++                    placeholder="0.00"
++                    value={formValorDespesa}
++                    onChange={e => setFormValorDespesa(e.target.value)}
++                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors font-bold"
++                  />
++                </div>
++
++                {/* Valor Provis├úo */}
++                <div className="flex flex-col gap-1.5">
++                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Valor Provis├úo (R$ - Opcional)</label>
++                  <input
++                    type="text"
++                    placeholder="0.00"
++                    value={formValorProvisaoDespesa}
++                    onChange={e => setFormValorProvisaoDespesa(e.target.value)}
++                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
++                  />
++                </div>
++
++                {/* Descri├º├úo / Referente a */}
++                <div className="flex flex-col gap-1.5 md:col-span-2">
++                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Descri├º├úo / Referente a *</label>
++                  <input
++                    type="text"
++                    required
++                    placeholder="Ex: Compra de insumos de limpeza"
++                    value={formDescricaoDespesa}
++                    onChange={e => setFormDescricaoDespesa(e.target.value)}
++                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
++                  />
++                </div>
+               </div>
+ 
+-              {/* Filtro por Per├¡odo */}
+-              <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
+-                <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Per├¡odo:</span>
+-                <input
+-                  type="date"
+-                  value={periodoInicioDespesas}
+-                  onChange={e => {
+-                    setPeriodoInicioDespesas(e.target.value);
+-                    setCurrentPageDespesas(1);
+-                  }}
+-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
+-                />
+-                <span className="text-[#64748b] px-0.5">at├®</span>
+-                <input
+-                  type="date"
+-                  value={periodoFimDespesas}
+-                  onChange={e => {
+-                    setPeriodoFimDespesas(e.target.value);
+-                    setCurrentPageDespesas(1);
+-                  }}
+-                  className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
+-                />
+-                {(periodoInicioDespesas || periodoFimDespesas) && (
++              <div className="flex items-center justify-start gap-3 mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4">
++                <button
++                  type="button"
++                  onClick={() => setDespesaFormMode('list')}
++                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
++                >
++                  Cancelar
++                </button>
++                <button
++                  type="submit"
++                  disabled={formDespesaSubmitting}
++                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
++                >
++                  {formDespesaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
++                  <span>Salvar Lan├ºamento</span>
++                </button>
++              </div>
++            </form>
++          ) : (
++            <>
++              <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
++                <div>
++                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Tabela de Despesas</h3>
++                  {!periodoInicioDespesas && !periodoFimDespesas && (
++                    <p className="text-[10px] text-rose-400 font-semibold mt-1">Exibindo apenas lan├ºamentos do m├¬s atual</p>
++                  )}
++                </div>
++
++                <div className="flex items-center gap-3 flex-wrap">
++                  {/* Bot├úo para Lan├ºamento de Nova Despesa */}
+                   <button
+-                    onClick={() => {
+-                      setPeriodoInicioDespesas('');
+-                      setPeriodoFimDespesas('');
+-                      setCurrentPageDespesas(1);
+-                    }}
+-                    className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
+-                    title="Limpar per├¡odo"
++                    type="button"
++                    onClick={handleOpenCreateDespesa}
++                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                   >
+-                    Limpar
++                    <Plus className="h-3.5 w-3.5" />
++                    <span>Nova Despesa</span>
+                   </button>
+-                )}
+-              </div>
+ 
+-              {/* Search bar */}
+-              <div className="relative w-64">
+-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+-                <input
+-                  type="text"
+-                  placeholder="Buscar despesas..."
+-                  value={searchSupabaseDespesas}
+-                  onChange={e => {
+-                    setSearchSupabaseDespesas(e.target.value);
+-                    setCurrentPageDespesas(1);
+-                  }}
+-                  className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+-                />
++                  {/* Filtro por Centro de Custos */}
++                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
++                    <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Centro de Custo:</span>
++                    <select
++                      value={selectedCentroCustoDespesas}
++                      onChange={e => {
++                        setSelectedCentroCustoDespesas(e.target.value);
++                        setCurrentPageDespesas(1);
++                      }}
++                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px] font-medium max-w-[150px] cursor-pointer"
++                    >
++                      <option value="" className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">Todos</option>
++                      {supabaseCentroCusto.map(cc => (
++                        <option key={cc.id} value={cc.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
++                          {cc.nome_centro_custo || cc.descricao}
++                        </option>
++                      ))}
++                    </select>
++                    {selectedCentroCustoDespesas && (
++                      <button
++                        onClick={() => {
++                          setSelectedCentroCustoDespesas('');
++                          setCurrentPageDespesas(1);
++                        }}
++                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
++                        title="Limpar centro de custo"
++                      >
++                        Limpar
++                      </button>
++                    )}
++                  </div>
++
++                  {/* Filtro por Per├¡odo */}
++                  <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
++                    <span className="font-semibold text-[10px] uppercase tracking-wider text-[#64748b]">Per├¡odo:</span>
++                    <input
++                      type="date"
++                      value={periodoInicioDespesas}
++                      onChange={e => {
++                        setPeriodoInicioDespesas(e.target.value);
++                        setCurrentPageDespesas(1);
++                      }}
++                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
++                    />
++                    <span className="text-[#64748b] px-0.5">at├®</span>
++                    <input
++                      type="date"
++                      value={periodoFimDespesas}
++                      onChange={e => {
++                        setPeriodoFimDespesas(e.target.value);
++                        setCurrentPageDespesas(1);
++                      }}
++                      className="bg-transparent border-none text-white light-theme:text-slate-800 focus:outline-none text-[11px]"
++                    />
++                    {(periodoInicioDespesas || periodoFimDespesas) && (
++                      <button
++                        onClick={() => {
++                          setPeriodoInicioDespesas('');
++                          setPeriodoFimDespesas('');
++                          setCurrentPageDespesas(1);
++                        }}
++                        className="text-xxs font-bold text-rose-400 hover:text-rose-300 ml-1 transition-colors"
++                        title="Limpar per├¡odo"
++                      >
++                        Limpar
++                      </button>
++                    )}
++                  </div>
++
++                  {/* Search bar */}
++                  <div className="relative w-64">
++                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
++                    <input
++                      type="text"
++                      placeholder="Buscar despesas..."
++                      value={searchSupabaseDespesas}
++                      onChange={e => {
++                        setSearchSupabaseDespesas(e.target.value);
++                        setCurrentPageDespesas(1);
++                      }}
++                      className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
++                    />
++                  </div>
++                </div>
+               </div>
+-            </div>
+-          </div>
+ 
+-          <div className="flex-1 overflow-y-auto custom-scrollbar">
+-            {sortedSupabaseDespesas.length === 0 ? (
+-              <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+-                <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
+-                <span className="text-xs">Nenhuma despesa registrada no Supabase</span>
++              <div className="flex-1 overflow-y-auto custom-scrollbar">
++                {sortedSupabaseDespesas.length === 0 ? (
++                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
++                    <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
++                    <span className="text-xs">Nenhuma despesa registrada no Supabase</span>
++                  </div>
++                ) : (
++                  <table className="w-full text-left border-collapse">
++                    <thead>
++                      <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
++                        <th className="pb-3 pr-6">Data</th>
++                        <th className="pb-3 pr-6">Centro de Custo</th>
++                        <th className="pb-3 pr-6">Referente a</th>
++                        <th className="pb-3 pr-6">Forma de Pagamento</th>
++                        <th className="pb-3 text-right pr-6">Valor</th>
++                        <th className="pb-3 text-right pr-6">Valor provis├úo</th>
++                        <th className="pb-3 text-center w-24">A├º├Áes</th>
++                      </tr>
++                    </thead>
++                    <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
++                      {currentItems.map(item => (
++                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
++                          <td className="py-3.5 pr-6 font-medium text-[#64748b]">{formatDate(item.data_despesa)}</td>
++                          <td className="py-3.5 pr-6 font-semibold text-white light-theme:text-slate-800">{item.nome_centro_custos || 'Operacional Geral'}</td>
++                          <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.descricao_despesa || 'N/A'}</td>
++                          <td className="py-3.5 pr-6 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
++                          <td className="py-3.5 text-right pr-6 font-bold text-rose-400">
++                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
++                          </td>
++                          <td className="py-3.5 text-right pr-6 font-medium text-yellow-500">
++                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
++                          </td>
++                          <td className="py-3.5 text-center">
++                            <div className="flex items-center justify-center gap-1.5">
++                              <button
++                                type="button"
++                                onClick={() => handleOpenEditDespesa(item)}
++                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
++                                title="Editar Lan├ºamento"
++                              >
++                                <Pencil className="h-3 w-3" />
++                              </button>
++                              <button
++                                type="button"
++                                onClick={() => setIsExcluindoDespesa(item)}
++                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
++                                title="Excluir Lan├ºamento"
++                              >
++                                <Trash2 className="h-3 w-3" />
++                              </button>
++                            </div>
++                          </td>
++                        </tr>
++                      ))}
++                    </tbody>
++                  </table>
++                )}
+               </div>
+-            ) : (
+-              <table className="w-full text-left border-collapse">
+-                <thead>
+-                  <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
+-                    <th className="pb-3">Data</th>
+-                    <th className="pb-3">Centro de Custo</th>
+-                    <th className="pb-3">Referente a</th>
+-                    <th className="pb-3">Forma de Pagamento</th>
+-                    <th className="pb-3 text-right">Valor</th>
+-                    <th className="pb-3 text-right">Valor provis├úo</th>
+-                  </tr>
+-                </thead>
+-                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
+-                  {currentItems.map(item => (
+-                    <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+-                      <td className="py-3.5 font-medium text-[#64748b]">{formatDate(item.data_despesa)}</td>
+-                      <td className="py-3.5 font-semibold text-white light-theme:text-slate-800">{item.nome_centro_custos || 'Operacional Geral'}</td>
+-                      <td className="py-3.5 font-medium text-slate-300 light-theme:text-slate-500">{item.descricao_despesa || 'N/A'}</td>
+-                      <td className="py-3.5 font-medium">{item.descricao_forma_pagamento || 'N/A'}</td>
+-                      <td className="py-3.5 text-right font-bold text-rose-400">
+-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor || 0)}
+-                      </td>
+-                      <td className="py-3.5 text-right font-medium text-yellow-500">
+-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_provisao || 0)}
+-                      </td>
+-                    </tr>
+-                  ))}
+-                </tbody>
+-              </table>
+-            )}
+-          </div>
+ 
+-          {/* Pagina├º├úo */}
+-          {totalPages > 1 && (
+-            <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
+-              <span className="text-[11px] text-[#64748b] font-medium">
+-                Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseDespesas.length)} de {sortedSupabaseDespesas.length} registros
+-              </span>
++              {/* Pagina├º├úo */}
++              {totalPages > 1 && (
++                <div className="flex items-center justify-between border-t border-[#1f2433] light-theme:border-slate-200 pt-4 mt-4 flex-wrap gap-4">
++                  <span className="text-[11px] text-[#64748b] font-medium">
++                    Exibindo de {indexOfFirstItem + 1} a {Math.min(indexOfLastItem, sortedSupabaseDespesas.length)} de {sortedSupabaseDespesas.length} registros
++                  </span>
+ 
+-              <div className="flex items-center gap-1.5">
+-                <button
+-                  onClick={() => setCurrentPageDespesas(prev => Math.max(1, prev - 1))}
+-                  disabled={currentPageDespesas === 1}
+-                  className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+-                >
+-                  <ChevronLeft className="h-4 w-4" />
+-                </button>
++                  <div className="flex items-center gap-1.5">
++                    <button
++                      onClick={() => setCurrentPageDespesas(prev => Math.max(1, prev - 1))}
++                      disabled={currentPageDespesas === 1}
++                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
++                    >
++                      <ChevronLeft className="h-4 w-4" />
++                    </button>
+ 
+-                {Array.from({ length: totalPages }, (_, idx) => {
+-                  const pageNum = idx + 1;
+-                  const isNearCurrent = Math.abs(pageNum - currentPageDespesas) <= 1;
+-                  const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
++                    {Array.from({ length: totalPages }, (_, idx) => {
++                      const pageNum = idx + 1;
++                      const isNearCurrent = Math.abs(pageNum - currentPageDespesas) <= 1;
++                      const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
+ 
+-                  if (!isNearCurrent && !isFirstOrLast) {
+-                    if (pageNum === 2 || pageNum === totalPages - 1) {
+-                      return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
+-                    }
+-                    return null;
+-                  }
++                      if (!isNearCurrent && !isFirstOrLast) {
++                        if (pageNum === 2 || pageNum === totalPages - 1) {
++                          return <span key={`dots-${pageNum}`} className="text-xxs text-[#64748b] px-1 font-bold">...</span>;
++                        }
++                        return null;
++                      }
++
++                      return (
++                        <button
++                          key={pageNum}
++                          onClick={() => setCurrentPageDespesas(pageNum)}
++                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xxs font-bold transition-all ${currentPageDespesas === pageNum
++                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
++                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
++                            }`}
++                        >
++                          {pageNum}
++                        </button>
++                      );
++                    })}
+ 
+-                  return (
+                     <button
+-                      key={pageNum}
+-                      onClick={() => setCurrentPageDespesas(pageNum)}
+-                      className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xxs font-bold transition-all ${currentPageDespesas === pageNum
+-                          ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+-                          : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+-                        }`}
++                      onClick={() => setCurrentPageDespesas(prev => Math.min(totalPages, prev + 1))}
++                      disabled={currentPageDespesas === totalPages}
++                      className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+                     >
+-                      {pageNum}
++                      <ChevronRight className="h-4 w-4" />
+                     </button>
+-                  );
+-                })}
++                  </div>
++                </div>
++              )}
++            </>
++          )}
++        </div>
+ 
+-                <button
+-                  onClick={() => setCurrentPageDespesas(prev => Math.min(totalPages, prev + 1))}
+-                  disabled={currentPageDespesas === totalPages}
+-                  className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+-                >
+-                  <ChevronRight className="h-4 w-4" />
+-                </button>
+-              </div>
++        {/* Modal de Confirma├º├úo de Exclus├úo da Despesa */}
++        <AnimatePresence>
++          {isExcluindoDespesa && (
++            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
++              <motion.div
++                initial={{ opacity: 0 }}
++                animate={{ opacity: 1 }}
++                exit={{ opacity: 0 }}
++                onClick={() => !isDeletingDespesa && setIsExcluindoDespesa(null)}
++                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
++              />
++
++              <motion.div
++                initial={{ opacity: 0, scale: 0.95 }}
++                animate={{ opacity: 1, scale: 1 }}
++                exit={{ opacity: 0, scale: 0.95 }}
++                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
++              >
++                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
++
++                <div className="flex items-start gap-3.5">
++                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
++                    <Trash2 className="h-5 w-5" />
++                  </div>
++                  <div>
++                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Lan├ºamento?</h3>
++                    <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
++                      Voc├¬ tem certeza que deseja excluir o lan├ºamento de despesa <strong>"{isExcluindoDespesa.descricao_despesa || 'Servi├ºo'}"</strong> no valor de <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isExcluindoDespesa.valor || 0)}</strong>? Esta a├º├úo n├úo pode ser desfeita.
++                    </p>
++                  </div>
++                </div>
++
++                <div className="flex items-center justify-end gap-3 mt-2">
++                  <button
++                    onClick={() => setIsExcluindoDespesa(null)}
++                    disabled={isDeletingDespesa}
++                    className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
++                  >
++                    Cancelar
++                  </button>
++                  <button
++                    onClick={handleDeleteDespesa}
++                    disabled={isDeletingDespesa}
++                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
++                  >
++                    {isDeletingDespesa ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
++                    <span>Confirmar Exclus├úo</span>
++                  </button>
++                </div>
++              </motion.div>
+             </div>
+           )}
+-        </div>
++        </AnimatePresence>
+       </div>
+     );
+   };
+@@ -4777,6 +5020,120 @@ const App: React.FC = () => {
+     }
+   };
+ 
++  // Fun├º├Áes CRUD para gerenciamento de Despesas/Custos
++  const handleOpenCreateDespesa = () => {
++    const today = new Date();
++    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
++    
++    setFormDataDespesa(todayStr);
++    setFormDescricaoDespesa('');
++    setFormValorDespesa('');
++    setFormValorProvisaoDespesa('');
++    setFormCentroCustoIdDespesa('');
++    setFormFormaPagamentoIdDespesa('');
++    setFormDespesaError(null);
++    setSelectedDespesa(null);
++    setDespesaFormMode('create');
++  };
++
++  const handleOpenEditDespesa = (despesa: Despesa) => {
++    setSelectedDespesa(despesa);
++    setFormDataDespesa(despesa.data_despesa ? despesa.data_despesa.split('T')[0] : '');
++    setFormDescricaoDespesa(despesa.descricao_despesa || '');
++    setFormValorDespesa(despesa.valor !== undefined ? String(despesa.valor) : '');
++    setFormValorProvisaoDespesa(despesa.valor_provisao !== undefined ? String(despesa.valor_provisao) : '');
++    setFormCentroCustoIdDespesa(despesa.centro_custo_id || '');
++    setFormFormaPagamentoIdDespesa(despesa.forma_pagamento_id || '');
++    setFormDespesaError(null);
++    setDespesaFormMode('edit');
++  };
++
++  const handleSaveDespesa = async (e: React.FormEvent) => {
++    e.preventDefault();
++    setFormDespesaSubmitting(true);
++    setFormDespesaError(null);
++
++    try {
++      const valorNum = parseFloat(formValorDespesa.replace(',', '.'));
++      if (isNaN(valorNum)) {
++        throw new Error('Por favor, informe um valor num├®rico v├ílido.');
++      }
++      
++      let provisaoNum = 0;
++      if (formValorProvisaoDespesa) {
++        provisaoNum = parseFloat(formValorProvisaoDespesa.replace(',', '.'));
++        if (isNaN(provisaoNum)) {
++          throw new Error('Por favor, informe um valor de provis├úo v├ílido.');
++        }
++      }
++
++      const cc = supabaseCentroCusto.find(c => c.id === formCentroCustoIdDespesa);
++      const fp = supabaseFormaPagamento.find(f => f.id === formFormaPagamentoIdDespesa);
++
++      const payload: any = {
++        data_despesa: formDataDespesa ? `${formDataDespesa}T12:00:00` : null,
++        descricao_despesa: formDescricaoDespesa || null,
++        valor: valorNum,
++        valor_provisao: provisaoNum,
++        centro_custo_id: formCentroCustoIdDespesa || null,
++        nome_centro_custos: cc ? (cc.nome_centro_custo || cc.descricao) : null,
++        forma_pagamento_id: formFormaPagamentoIdDespesa || null,
++        descricao_forma_pagamento: fp ? fp.descricao : null,
++        updated_at: new Date().toISOString()
++      };
++
++      if (despesaFormMode === 'create') {
++        payload.id = crypto.randomUUID();
++        payload.created_at = new Date().toISOString();
++        payload.created_by = session?.user?.id || null;
++
++        const { error } = await supabase
++          .from('despesas')
++          .insert([payload]);
++
++        if (error) throw error;
++      } else if (despesaFormMode === 'edit' && selectedDespesa) {
++        const { error } = await supabase
++          .from('despesas')
++          .update(payload)
++          .eq('id', selectedDespesa.id);
++
++        if (error) throw error;
++      }
++
++      await fetchSupabaseDespesas();
++      setDespesaFormMode('list');
++      setSelectedDespesa(null);
++    } catch (err: any) {
++      console.error(err);
++      setFormDespesaError(err.message || 'Erro ao salvar a despesa.');
++    } finally {
++      setFormDespesaSubmitting(false);
++    }
++  };
++
++  const handleDeleteDespesa = async () => {
++    if (!isExcluindoDespesa) return;
++    setIsDeletingDespesa(true);
++
++    try {
++      const { error } = await supabase
++        .from('despesas')
++        .delete()
++        .eq('id', isExcluindoDespesa.id);
++
++      if (error) throw error;
++
++      await fetchSupabaseDespesas();
++      setIsExcluindoDespesa(null);
++    } catch (err: any) {
++      console.error(err);
++      alert(err.message || 'Erro ao excluir a despesa.');
++    } finally {
++      setIsDeletingDespesa(false);
++    }
++  };
++
+   // Fun├º├Áes CRUD para gerenciamento de Entradas/Receitas
+   const handleOpenCreateEntrada = () => {
+     const today = new Date();
