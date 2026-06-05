@@ -55,7 +55,10 @@ import {
   LogOut,
   Key,
   AlertTriangle,
-  Pencil
+  Pencil,
+  Hash,
+  ListOrdered,
+  Printer
 } from 'lucide-react';
 
 // Env variables (read directly from import.meta.env or fall back to user credentials)
@@ -211,6 +214,58 @@ interface Entrada {
   raw?: any;
 }
 
+interface OrdemServico {
+  id: string;
+  centro_custo_id?: string;
+  cpf_cnpj?: string;
+  data_os?: string;
+  forma_pagamento_id?: string;
+  frota?: string;
+  motorista?: string;
+  numero_os?: string;
+  observacao?: string;
+  pessoa_nome?: string;
+  placa?: string;
+  placa_carreta_1?: string;
+  placa_carreta_2?: string;
+  placa_carreta_3?: string;
+  status?: 'aberta' | 'fechada';
+  valor_total?: number;
+  veiculo_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+  slug?: string;
+}
+
+interface OrdemServicoItem {
+  id: string;
+  ordem_servico_id: string;
+  descricao?: string;
+  qtde?: number;
+  valor?: number;
+  valor_total?: number;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+  slug?: string;
+}
+
+interface OSSequencia {
+  id: string;
+  ano: number;
+  atual: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+const getDefaultDashboardMonth = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
 const App: React.FC = () => {
   // Supabase Auth States
   const [session, setSession] = useState<any>(null);
@@ -235,7 +290,49 @@ const App: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   // Navigation View State
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'entradas' | 'despesas' | 'mensalistas' | 'pessoas' | 'veiculos' | 'formapagamento' | 'centrocusto' | 'ordemservico' | 'migracoes' | 'laudo'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'entradas' | 'despesas' | 'mensalistas' | 'pessoas' | 'veiculos' | 'formapagamento' | 'centrocusto' | 'ordemservico' | 'migracoes' | 'laudo' | 'os_sequence'>('dashboard');
+
+  // Dashboard Filters State
+  const [dashboardFilterMonth, setDashboardFilterMonth] = useState(getDefaultDashboardMonth());
+  const [dashboardFilterCentroCusto, setDashboardFilterCentroCusto] = useState('');
+  const [dashboardFilterFormaPagamento, setDashboardFilterFormaPagamento] = useState('');
+  const [isDashboardFilterModalOpen, setIsDashboardFilterModalOpen] = useState(false);
+  const [entradasBoxViewMode, setEntradasBoxViewMode] = useState<'detalhado' | 'simplificado'>('detalhado');
+
+  const hasActiveDashboardFilters = !!(dashboardFilterMonth || dashboardFilterCentroCusto || dashboardFilterFormaPagamento);
+
+  const getFilteredEntradas = () => {
+    return supabaseEntradas.filter(item => {
+      if (dashboardFilterMonth) {
+        const itemDateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
+        if (!itemDateStr.startsWith(dashboardFilterMonth)) return false;
+      }
+      if (dashboardFilterCentroCusto) {
+        if (item.centro_custo_id !== dashboardFilterCentroCusto) return false;
+      }
+      if (dashboardFilterFormaPagamento) {
+        if (item.forma_pagamento_id !== dashboardFilterFormaPagamento) return false;
+      }
+      return true;
+    });
+  };
+
+  const getFilteredDespesas = () => {
+    return supabaseDespesas.filter(item => {
+      if (dashboardFilterMonth) {
+        const itemDateStr = item.data_despesa ? item.data_despesa.split('T')[0] : '';
+        if (!itemDateStr.startsWith(dashboardFilterMonth)) return false;
+      }
+      if (dashboardFilterCentroCusto) {
+        if (item.centro_custo_id !== dashboardFilterCentroCusto) return false;
+      }
+      if (dashboardFilterFormaPagamento) {
+        if (item.forma_pagamento_id !== dashboardFilterFormaPagamento) return false;
+      }
+      return true;
+    });
+  };
+
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [isLancamentosOpen, setIsLancamentosOpen] = useState(false);
   const [isCadastrosOpen, setIsCadastrosOpen] = useState(false);
@@ -252,10 +349,15 @@ const App: React.FC = () => {
       setIsLancamentosOpen(false);
       setIsConfigOpen(false);
     }
-    if (['migracoes'].includes(currentTab)) {
+    if (['migracoes', 'os_sequence'].includes(currentTab)) {
       setIsConfigOpen(true);
       setIsLancamentosOpen(false);
       setIsCadastrosOpen(false);
+    }
+    if (['dashboard', 'ordemservico', 'laudo'].includes(currentTab)) {
+      setIsLancamentosOpen(false);
+      setIsCadastrosOpen(false);
+      setIsConfigOpen(false);
     }
   }, [currentTab]);
 
@@ -790,16 +892,7 @@ const App: React.FC = () => {
     );
   };
 
-  // Custom Dashboard Cards and Form states
-  const [newCardNumber, setNewCardNumber] = useState('');
-  const [newCardExpiry, setNewCardExpiry] = useState('');
-  const [newCardType, setNewCardType] = useState('PIX');
-  const [newCardName, setNewCardName] = useState('');
-  const [dashboardCards, setDashboardCards] = useState([
-    { id: '1', type: 'PIX', name: 'Caixa Geral (PIX)', balance: 48250.00, number: '•••• •••• •••• 4250', expiry: '12/32', color: 'from-violet-600 to-indigo-700 shadow-lg shadow-violet-900/30 border border-violet-500/20' },
-    { id: '2', type: 'Dinheiro', name: 'Caixa Principal', balance: 12840.00, number: '•••• •••• •••• 8402', expiry: '06/30', color: 'from-cyan-500 to-blue-600 shadow-lg shadow-cyan-900/30 border border-cyan-500/20' },
-    { id: '3', type: 'Cartão', name: 'Caixa Recebimentos', balance: 31420.00, number: '•••• •••• •••• 9104', expiry: '08/31', color: 'from-slate-800 to-slate-900 shadow-lg border border-slate-700/50' }
-  ]);
+
 
   // Dark/Light Theme State
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -1046,6 +1139,9 @@ const App: React.FC = () => {
   const [selectedEntrada, setSelectedEntrada] = useState<Entrada | null>(null);
   const [isExcluindoEntrada, setIsExcluindoEntrada] = useState<Entrada | null>(null);
   const [isDeletingEntrada, setIsDeletingEntrada] = useState(false);
+  const [isEstornandoEntrada, setIsEstornandoEntrada] = useState<Entrada | null>(null);
+  const [isReversingEntrada, setIsReversingEntrada] = useState(false);
+  const [estornoSuccessMsg, setEstornoSuccessMsg] = useState<string | null>(null);
 
   // States do formulário de entrada
   const [formDataEntrada, setFormDataEntrada] = useState('');
@@ -1093,6 +1189,62 @@ const App: React.FC = () => {
   const [wiping, setWiping] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Ordem de Serviço States
+  const [supabaseOrdemServicos, setSupabaseOrdemServicos] = useState<OrdemServico[]>([]);
+  const [loadingOS, setLoadingOS] = useState(false);
+  const [searchOS, setSearchOS] = useState('');
+  const [periodoOS, setPeriodoOS] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`; // Inicializa com o mês/ano atual no formato YYYY-MM
+  });
+  const [selectedPessoaOS, setSelectedPessoaOS] = useState('');
+  const [osFormMode, setOsFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedOS, setSelectedOS] = useState<OrdemServico | null>(null);
+  const [osToDelete, setOsToDelete] = useState<OrdemServico | null>(null);
+  const [isDeletingOS, setIsDeletingOS] = useState(false);
+  const [formOSSubmitting, setFormOSSubmitting] = useState(false);
+  const [formOSError, setFormOSError] = useState<string | null>(null);
+  const [highlightAddItem, setHighlightAddItem] = useState(false);
+
+  // States do formulário de OS
+  const [formOSNumero, setFormOSNumero] = useState('');
+  const [formOSAvulso, setFormOSAvulso] = useState(false);
+  const [formOSData, setFormOSData] = useState('');
+  const [formOSPessoaNome, setFormOSPessoaNome] = useState('');
+  const [formOSPessoaId, setFormOSPessoaId] = useState('');
+  const [formOSVeiculoId, setFormOSVeiculoId] = useState('');
+  const [formOSPlaca, setFormOSPlaca] = useState('');
+  const [formOSPlacaCarreta1, setFormOSPlacaCarreta1] = useState('');
+  const [formOSPlacaCarreta2, setFormOSPlacaCarreta2] = useState('');
+  const [formOSPlacaCarreta3, setFormOSPlacaCarreta3] = useState('');
+  const [formOSMotorista, setFormOSMotorista] = useState('');
+  const [formOSFrota, setFormOSFrota] = useState('');
+  const [formOSCentroCustoId, setFormOSCentroCustoId] = useState('');
+  const [formOSFormaPagamentoId, setFormOSFormaPagamentoId] = useState('');
+  const [formOSStatus, setFormOSStatus] = useState<'aberta' | 'fechada'>('aberta');
+  const [formOSObservacao, setFormOSObservacao] = useState('');
+  const [showOSClosedPopup, setShowOSClosedPopup] = useState(false);
+
+  // Itens da OS no formulário
+  const [formOSItems, setFormOSItems] = useState<Partial<OrdemServicoItem>[]>([
+    { id: 'new-1', descricao: '', qtde: 1, valor: 0, valor_total: 0 }
+  ]);
+
+  // Ordem de Serviço Sequência States
+  const [supabaseOSSequencias, setSupabaseOSSequencias] = useState<OSSequencia[]>([]);
+  const [loadingOSSequencias, setLoadingOSSequencias] = useState(false);
+  const [osSequenceFormMode, setOsSequenceFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedOSSequence, setSelectedOSSequence] = useState<OSSequencia | null>(null);
+  const [isExcluindoOSSequence, setIsExcluindoOSSequence] = useState<OSSequencia | null>(null);
+  const [isDeletingOSSequence, setIsDeletingOSSequence] = useState(false);
+  const [formSequenceAno, setFormSequenceAno] = useState('');
+  const [formSequenceAtual, setFormSequenceAtual] = useState('');
+  const [formSequenceError, setFormSequenceError] = useState<string | null>(null);
+  const [formSequenceSubmitting, setFormSequenceSubmitting] = useState(false);
+  const [searchOSSequence, setSearchOSSequence] = useState('');
+
   // ==========================================
   // ENOLI DESIGN SYSTEM - CUSTOM RENDER VIEWS
   // ==========================================
@@ -1120,8 +1272,8 @@ const App: React.FC = () => {
           <button
             onClick={() => setCurrentTab('dashboard')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${currentTab === 'dashboard'
-                ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
-                : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
+              ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
+              : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
               }`}
           >
             {currentTab === 'dashboard' && (
@@ -1147,8 +1299,8 @@ const App: React.FC = () => {
                 }
               }}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['entradas', 'despesas', 'mensalistas'].includes(currentTab)
-                  ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
-                  : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
+                ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
+                : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -1174,8 +1326,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('entradas')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'entradas'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <ArrowUpRight className="h-4.5 w-4.5" />
@@ -1186,8 +1338,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('despesas')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'despesas'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <ArrowDownRight className="h-4.5 w-4.5" />
@@ -1198,8 +1350,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('mensalistas')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'mensalistas'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <Calendar className="h-4.5 w-4.5" />
@@ -1222,8 +1374,8 @@ const App: React.FC = () => {
                 }
               }}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['pessoas', 'veiculos', 'formapagamento', 'centrocusto'].includes(currentTab)
-                  ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
-                  : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
+                ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
+                : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
                 }`}
             >
               <div className="flex items-center gap-3">
@@ -1249,8 +1401,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('pessoas')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'pessoas'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <Users className="h-4.5 w-4.5" />
@@ -1261,8 +1413,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('veiculos')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'veiculos'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <Car className="h-4.5 w-4.5" />
@@ -1273,8 +1425,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('formapagamento')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'formapagamento'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <Wallet className="h-4.5 w-4.5" />
@@ -1285,8 +1437,8 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentTab('centrocusto')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'centrocusto'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <Layers className="h-4.5 w-4.5" />
@@ -1301,8 +1453,8 @@ const App: React.FC = () => {
           <button
             onClick={() => setCurrentTab('ordemservico')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${currentTab === 'ordemservico'
-                ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
-                : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
+              ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
+              : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
               }`}
           >
             {currentTab === 'ordemservico' && (
@@ -1320,8 +1472,8 @@ const App: React.FC = () => {
           <button
             onClick={() => setCurrentTab('laudo')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all relative overflow-hidden group ${currentTab === 'laudo'
-                ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
-                : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
+              ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
+              : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
               }`}
           >
             {currentTab === 'laudo' && (
@@ -1346,13 +1498,13 @@ const App: React.FC = () => {
                   setIsCadastrosOpen(false);
                 }
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${currentTab === 'migracoes'
-                  ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
-                  : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['migracoes', 'os_sequence'].includes(currentTab)
+                ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
+                : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
                 }`}
             >
               <div className="flex items-center gap-3">
-                <Settings className={`h-4.5 w-4.5 ${currentTab === 'migracoes' ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
+                <Settings className={`h-4.5 w-4.5 ${['migracoes', 'os_sequence'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
                 <span>Configurações</span>
               </div>
               {isConfigOpen ? (
@@ -1363,22 +1515,33 @@ const App: React.FC = () => {
             </button>
 
             <AnimatePresence>
-              {(isConfigOpen || currentTab === 'migracoes') && (
+              {(isConfigOpen || currentTab === 'migracoes' || currentTab === 'os_sequence') && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="pl-9 overflow-hidden"
+                  className="pl-9 overflow-hidden flex flex-col gap-1 py-1"
                 >
                   <button
                     onClick={() => setCurrentTab('migracoes')}
                     className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'migracoes'
-                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
                       }`}
                   >
                     <Cloud className="h-4.5 w-4.5" />
                     <span>Migrações Bubble.io</span>
+                  </button>
+
+                  <button
+                    onClick={() => setCurrentTab('os_sequence')}
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'os_sequence'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      }`}
+                  >
+                    <ListOrdered className="h-4.5 w-4.5" />
+                    <span>Sequência de O.S.</span>
                   </button>
                 </motion.div>
               )}
@@ -1470,7 +1633,7 @@ const App: React.FC = () => {
         case 'veiculos': return 'Frota de veículos, motoristas e categorias de lavagem.';
         case 'formapagamento': return 'Métodos de pagamento aceitos e configurados.';
         case 'centrocusto': return 'Centros de custos fixos, variáveis e provisionamento.';
-        case 'ordemservico': return 'Quadro Kanban de ordens de serviço ativas na rampa.';
+        case 'ordemservico': return 'Gestão de ordens de serviços';
         case 'migracoes': return 'Importação de tabelas legadas do Bubble.io para produção.';
         case 'laudo': return 'Gerenciamento e emissão de laudos de higienização detalhados.';
         default: return 'Painel de Gestão Operacional';
@@ -1541,60 +1704,162 @@ const App: React.FC = () => {
     );
   };
 
-  const getCashflowData = () => {
-    const months = ['Dez', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai'];
-    const entradas = [28000, 35000, 31000, 42000, 39000, 48250];
-    const despesas = [18000, 22000, 19500, 24000, 21000, 26400];
+  const renderDashboard = () => {
+    const selectedYear = dashboardFilterMonth ? parseInt(dashboardFilterMonth.split('-')[0], 10) : new Date().getFullYear();
+    const selectedMonth = dashboardFilterMonth ? parseInt(dashboardFilterMonth.split('-')[1], 10) : (new Date().getMonth() + 1);
+    const numDays = new Date(selectedYear, selectedMonth, 0).getDate();
 
-    if (supabaseEntradas.length > 0) {
-      const totalEntradas = supabaseEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
-      const totalDespesas = supabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
-      if (totalEntradas > 0) {
-        entradas[5] = totalEntradas;
+    // 12-Month Cashflow comparative calculations
+    const monthlyCashflowData = Array.from({ length: 12 }, (_, idx) => ({
+      monthIdx: idx,
+      entradas: 0,
+      despesas: 0,
+    }));
+
+    supabaseEntradas.forEach(ent => {
+      if (!ent.data_entrada) return;
+      const datePart = ent.data_entrada.split('T')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        const entYear = parseInt(parts[0], 10);
+        const entMonth = parseInt(parts[1], 10);
+        if (entYear === selectedYear) {
+          if (entMonth >= 1 && entMonth <= 12) {
+            monthlyCashflowData[entMonth - 1].entradas += ent.valor || 0;
+          }
+        }
       }
-      if (totalDespesas > 0) {
-        despesas[5] = totalDespesas;
+    });
+
+    supabaseDespesas.forEach(des => {
+      if (!des.data_despesa) return;
+      const datePart = des.data_despesa.split('T')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        const desYear = parseInt(parts[0], 10);
+        const desMonth = parseInt(parts[1], 10);
+        if (desYear === selectedYear) {
+          if (desMonth >= 1 && desMonth <= 12) {
+            monthlyCashflowData[desMonth - 1].despesas += des.valor || 0;
+          }
+        }
       }
+    });
+
+    const hasAnyCashflowData = supabaseEntradas.length > 0 || supabaseDespesas.length > 0;
+    const useMockCashflow = !hasAnyCashflowData;
+
+    const cashflowMonths = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const displayCashflowData = useMockCashflow ? [
+      { month: 'Jan', entradas: 35000, despesas: 22000 },
+      { month: 'Fev', entradas: 31000, despesas: 19500 },
+      { month: 'Mar', entradas: 42000, despesas: 24000 },
+      { month: 'Abr', entradas: 39000, despesas: 21000 },
+      { month: 'Mai', entradas: 48250, despesas: 26400 },
+      { month: 'Jun', entradas: 52000, despesas: 28000 },
+      { month: 'Jul', entradas: 46000, despesas: 25000 },
+      { month: 'Ago', entradas: 49000, despesas: 27000 },
+      { month: 'Set', entradas: 55000, despesas: 30000 },
+      { month: 'Out', entradas: 58000, despesas: 32000 },
+      { month: 'Nov', entradas: 61000, despesas: 33000 },
+      { month: 'Dez', entradas: 65000, despesas: 35000 },
+    ] : monthlyCashflowData.map(d => ({
+      month: cashflowMonths[d.monthIdx],
+      entradas: d.entradas,
+      despesas: d.despesas,
+    }));
+
+    const rawMaxCashflowVal = Math.max(
+      ...displayCashflowData.map(d => Math.max(d.entradas, d.despesas)),
+      10000
+    );
+
+    // Calculate rounded maximum value for cashflow chart ticks
+    let maxCashflowVal = 10000;
+    if (rawMaxCashflowVal <= 10000) {
+      maxCashflowVal = 10000;
+    } else if (rawMaxCashflowVal <= 25000) {
+      maxCashflowVal = 25000;
+    } else if (rawMaxCashflowVal <= 50000) {
+      maxCashflowVal = 50000;
+    } else if (rawMaxCashflowVal <= 100000) {
+      maxCashflowVal = 100000;
+    } else {
+      maxCashflowVal = Math.ceil(rawMaxCashflowVal / 25000) * 25000;
     }
 
-    return { months, entradas, despesas };
-  };
 
-  const renderDashboard = () => {
-    const { months, entradas, despesas } = getCashflowData();
-    const maxVal = Math.max(...entradas, ...despesas, 10000) * 1.15;
+    const filteredEntradas = getFilteredEntradas();
+    const filteredDespesas = getFilteredDespesas();
 
-    const getSvgCoords = (data: number[]) => {
-      return data.map((val, idx) => {
-        const x = (idx / (data.length - 1)) * 380 + 30;
-        const y = 160 - (val / maxVal) * 120;
-        return { x, y };
-      });
+    // Computations for Despesas por Centro de Custos (used by the lateral rings chart)
+    const despesasByCCMap: { [key: string]: number } = {};
+    filteredDespesas.forEach(des => {
+      const ccName = (des.nome_centro_custos || 'OUTROS').trim().toUpperCase();
+      despesasByCCMap[ccName] = (despesasByCCMap[ccName] || 0) + (des.valor || 0);
+    });
+
+    const totalDespesasCCSum = Object.values(despesasByCCMap).reduce((acc, val) => acc + val, 0);
+    const useMockDespesasCC = totalDespesasCCSum === 0;
+
+    let ccsDataList: { ccName: string; total: number }[] = [];
+    if (useMockDespesasCC) {
+      ccsDataList = [
+        { ccName: 'SALÁRIOS FUNCIONÁRIOS', total: 12500 },
+        { ccName: 'PRODUTOS LAVAJATO', total: 6800 },
+        { ccName: 'ALUGUEL', total: 4500 },
+        { ccName: 'DIARIAS/COMISSÃO', total: 3200 },
+        { ccName: 'IMPOSTOS NF-E', total: 2400 },
+        { ccName: 'ÁGUA', total: 1800 },
+        { ccName: 'ENERGIA', total: 1500 },
+        { ccName: 'TELEFONE/INTERNET', total: 450 },
+        { ccName: 'EPI', total: 350 },
+        { ccName: 'MATERIAL DE ESCRITÓRIO', total: 250 },
+      ];
+    } else {
+      ccsDataList = Object.entries(despesasByCCMap).map(([ccName, total]) => ({
+        ccName,
+        total,
+      })).filter(item => item.total > 0);
+    }
+
+    ccsDataList.sort((a, b) => b.total - a.total);
+
+    const totalCCValue = ccsDataList.reduce((acc, curr) => acc + curr.total, 0) || 1;
+    const ccsFinalData = ccsDataList.map(item => ({
+      ccName: item.ccName,
+      total: item.total,
+      percentage: (item.total / totalCCValue) * 100,
+    }));
+
+    const rawMaxCCVal = Math.max(...ccsFinalData.map(d => d.total), 1000);
+    let maxCCVal = 1000;
+    if (rawMaxCCVal <= 1000) {
+      maxCCVal = 1000;
+    } else if (rawMaxCCVal <= 2500) {
+      maxCCVal = 2500;
+    } else if (rawMaxCCVal <= 5000) {
+      maxCCVal = 5000;
+    } else if (rawMaxCCVal <= 10000) {
+      maxCCVal = 10000;
+    } else if (rawMaxCCVal <= 25000) {
+      maxCCVal = 25000;
+    } else if (rawMaxCCVal <= 50000) {
+      maxCCVal = 50000;
+    } else {
+      maxCCVal = Math.ceil(rawMaxCCVal / 10000) * 10000;
+    }
+
+    const getRedShadeByValue = (val: number, maxVal: number) => {
+      const minLightness = 28; // Vermelho escuro
+      const maxLightness = 75; // Vermelho claro
+      const ratio = maxVal > 0 ? val / maxVal : 0;
+      const lightness = maxLightness - ratio * (maxLightness - minLightness);
+      return `hsl(354, 85%, ${lightness}%)`;
     };
-
-    const coordsEntradas = getSvgCoords(entradas);
-    const coordsDespesas = getSvgCoords(despesas);
-
-    const getBezierPath = (coords: { x: number, y: number }[]) => {
-      let path = `M ${coords[0].x} ${coords[0].y}`;
-      for (let i = 0; i < coords.length - 1; i++) {
-        const cp1x = coords[i].x + 40;
-        const cp1y = coords[i].y;
-        const cp2x = coords[i + 1].x - 40;
-        const cp2y = coords[i + 1].y;
-        path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${coords[i + 1].x} ${coords[i + 1].y}`;
-      }
-      return path;
-    };
-
-    const pathEntradas = getBezierPath(coordsEntradas);
-    const pathDespesas = getBezierPath(coordsDespesas);
-
-    const fillEntradas = `${pathEntradas} L ${coordsEntradas[coordsEntradas.length - 1].x} 170 L ${coordsEntradas[0].x} 170 Z`;
-    const fillDespesas = `${pathDespesas} L ${coordsDespesas[coordsDespesas.length - 1].x} 170 L ${coordsDespesas[0].x} 170 Z`;
 
     const combinedTransactions = [
-      ...supabaseEntradas.map(item => ({
+      ...filteredEntradas.map(item => ({
         id: `ent-${item.id}`,
         type: 'entrada' as const,
         description: item.descricao_entrada || 'Serviço Lavagem',
@@ -1603,7 +1868,7 @@ const App: React.FC = () => {
         value: item.valor || 0,
         badge: 'Recebido'
       })),
-      ...supabaseDespesas.map(item => ({
+      ...filteredDespesas.map(item => ({
         id: `des-${item.id}`,
         type: 'despesa' as const,
         description: item.nome_centro_custos || 'Operação',
@@ -1622,95 +1887,184 @@ const App: React.FC = () => {
       { id: '5', type: 'entrada' as const, description: 'Mensalidade Assinatura Plano VIP', category: 'Cartão', date: new Date(Date.now() - 48 * 3600000), value: 280.00, badge: 'Recebido' },
     ];
 
-    const totalDespesasVal = supabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    const totalDespesasVal = filteredDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
     const costBreakdown = [
-      { name: 'Produtos / Insumos', val: 35, color: '#10b981', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.35 : 1240 },
-      { name: 'Salários / Comissões', val: 45, color: '#8b5cf6', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.45 : 1600 },
-      { name: 'Aluguel / Operacional', val: 20, color: '#06b6d4', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.20 : 710 },
+      { name: 'Produtos / Insumos', val: 35, color: '#10b981', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.35 : (hasActiveDashboardFilters ? 0 : 1240) },
+      { name: 'Salários / Comissões', val: 45, color: '#8b5cf6', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.45 : (hasActiveDashboardFilters ? 0 : 1600) },
+      { name: 'Aluguel / Operacional', val: 20, color: '#06b6d4', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.20 : (hasActiveDashboardFilters ? 0 : 710) },
     ];
 
-    const handleAddCard = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!newCardName || !newCardNumber) {
-        alert("Preencha todos os campos do Caixa!");
-        return;
-      }
+    // Computations for Daily Entradas per BOX
 
-      const newCard = {
-        id: (dashboardCards.length + 1).toString(),
-        type: newCardType,
-        name: newCardName,
-        balance: 0.00,
-        number: `•••• •••• •••• ${newCardNumber.slice(-4) || '0000'}`,
-        expiry: newCardExpiry || '12/30',
-        color: newCardType === 'PIX' ? 'from-purple-600 to-indigo-700 shadow-lg border border-purple-500/20' : newCardType === 'Dinheiro' ? 'from-cyan-500 to-blue-600 shadow-lg border border-cyan-500/20' : 'from-slate-800 to-slate-900 border border-slate-700/50'
+    const dailyBoxData = Array.from({ length: numDays }, (_, idx) => {
+      const day = idx + 1;
+      return {
+        day,
+        'BOX 01': 0,
+        'BOX 02': 0,
+        'BOX 03': 0,
+        'BOX 04': 0,
       };
+    });
 
-      setDashboardCards([...dashboardCards, newCard]);
-      setNewCardName('');
-      setNewCardNumber('');
-      setNewCardExpiry('');
-      alert(`Caixa "${newCardName}" adicionado com sucesso!`);
-    };
+    // Populate dailyBoxData from filteredEntradas
+    filteredEntradas.forEach(ent => {
+      if (!ent.data_entrada) return;
+      const datePart = ent.data_entrada.split('T')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        const entYear = parseInt(parts[0], 10);
+        const entMonth = parseInt(parts[1], 10);
+        const entDay = parseInt(parts[2], 10);
+        if (entYear === selectedYear && entMonth === selectedMonth) {
+          const ccName = (ent.nome_centro_custo || '').trim().toUpperCase();
+          if (['BOX 01', 'BOX 02', 'BOX 03', 'BOX 04'].includes(ccName)) {
+            if (entDay >= 1 && entDay <= numDays) {
+              dailyBoxData[entDay - 1][ccName as 'BOX 01' | 'BOX 02' | 'BOX 03' | 'BOX 04'] += ent.valor || 0;
+            }
+          }
+        }
+      }
+    });
+
+    const hasAnyBoxData = supabaseEntradas.some(ent =>
+      ['BOX 01', 'BOX 02', 'BOX 03', 'BOX 04'].includes((ent.nome_centro_custo || '').trim().toUpperCase())
+    );
+    const useMockBoxData = !hasAnyBoxData;
+
+    const displayBoxData = useMockBoxData ? Array.from({ length: numDays }, (_, idx) => {
+      const day = idx + 1;
+      const seed = day * 13;
+      const hasData = (seed % 10) > 2;
+      return {
+        day,
+        'BOX 01': hasData ? Math.floor((Math.sin(day) + 1.2) * 300 + (seed % 80)) : 0,
+        'BOX 02': hasData ? Math.floor((Math.cos(day) + 1.1) * 350 + (seed % 70)) : 0,
+        'BOX 03': hasData && (day % 3 !== 0) ? Math.floor((Math.sin(day * 2) + 1.3) * 250 + (seed % 100)) : 0,
+        'BOX 04': hasData && (day % 4 !== 0) ? Math.floor((Math.cos(day * 3) + 1.0) * 200 + (seed % 90)) : 0,
+      };
+    }) : dailyBoxData;
+
+    const rawMaxBoxVal = Math.max(
+      ...displayBoxData.map(d =>
+        entradasBoxViewMode === 'simplificado'
+          ? (d['BOX 01'] + d['BOX 02'] + d['BOX 03'] + d['BOX 04'])
+          : Math.max(d['BOX 01'], d['BOX 02'], d['BOX 03'], d['BOX 04'])
+      ),
+      500
+    );
+
+    // Calculate a nice rounded maximum value for ticks
+    let maxBoxVal = 1000;
+    if (rawMaxBoxVal <= 500) {
+      maxBoxVal = 500;
+    } else if (rawMaxBoxVal <= 1000) {
+      maxBoxVal = 1000;
+    } else if (rawMaxBoxVal <= 2000) {
+      maxBoxVal = 2000;
+    } else if (rawMaxBoxVal <= 4000) {
+      maxBoxVal = 4000;
+    } else if (rawMaxBoxVal <= 8000) {
+      maxBoxVal = 8000;
+    } else {
+      maxBoxVal = Math.ceil(rawMaxBoxVal / 2000) * 2000;
+    }
 
     return (
-      <div className="h-full overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-6 w-full">
+      <div className="h-full overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-6 w-full relative">
+        {/* Active Filters Pill */}
+        {hasActiveDashboardFilters && (
+          <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 w-fit animate-fadeIn">
+            <span>Filtros ativos no Painel:</span>
+            {dashboardFilterMonth && (
+              <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900 font-mono">
+                {(() => {
+                  const parts = dashboardFilterMonth.split('-');
+                  if (parts.length === 2) {
+                    const monthNames = [
+                      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                    ];
+                    const monthIdx = parseInt(parts[1], 10) - 1;
+                    const monthName = monthNames[monthIdx] || parts[1];
+                    return `${monthName}/${parts[0]}`;
+                  }
+                  return dashboardFilterMonth;
+                })()}
+              </span>
+            )}
+            {dashboardFilterCentroCusto && (
+              <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900">
+                Centro de Custo: {supabaseCentroCusto.find(c => c.id === dashboardFilterCentroCusto)?.nome_centro_custo || 'N/A'}
+              </span>
+            )}
+            {dashboardFilterFormaPagamento && (
+              <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900">
+                Forma de Pagamento: {supabaseFormaPagamento.find(f => f.id === dashboardFilterFormaPagamento)?.descricao || 'N/A'}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setDashboardFilterMonth(getDefaultDashboardMonth());
+                setDashboardFilterCentroCusto('');
+                setDashboardFilterFormaPagamento('');
+              }}
+              className="ml-2 text-slate-600 hover:text-slate-900 hover:underline cursor-pointer transition-colors"
+            >
+              Limpar Filtros
+            </button>
+          </div>
+        )}
+
         {/* Top Operational Cards Group */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group">
-            <div className="absolute right-0 bottom-0 h-10 w-10 bg-emerald-500/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <TrendingUp className="h-5 w-5" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO GERAL</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filteredEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) || (hasActiveDashboardFilters ? 0 : 92510))}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span>{filteredEntradas.length} entradas no sistema</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block leading-none">Faturamento Geral</span>
-              <h3 className="text-base font-extrabold text-white light-theme:text-slate-800 mt-2 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) || 92510)}
-              </h3>
-              <p className="text-[9px] text-[#64748b] mt-2 font-medium leading-none"><span className="text-emerald-400 font-bold">✔️ {supabaseEntradas.length}</span> entradas no total</p>
-            </div>
+            <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group">
-            <div className="absolute right-0 bottom-0 h-10 w-10 bg-rose-500/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-            <div className="h-10 w-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
-              <TrendingDown className="h-5 w-5" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">CUSTOS TOTAIS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filteredDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) || (hasActiveDashboardFilters ? 0 : 35500))}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+              <TrendingDown className="h-3.5 w-3.5" />
+              <span>{filteredDespesas.length} despesas no total</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block leading-none">Custos Totais</span>
-              <h3 className="text-base font-extrabold text-white light-theme:text-slate-800 mt-2 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) || 35500)}
-              </h3>
-              <p className="text-[9px] text-[#64748b] mt-2 font-medium leading-none"><span className="text-rose-400 font-bold">❌ {supabaseDespesas.length}</span> despesas no total</p>
-            </div>
+            <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group">
-            <div className="absolute right-0 bottom-0 h-10 w-10 bg-violet-500/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-            <div className="h-10 w-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <Users className="h-5 w-5" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS VIP</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseMensalistas.filter(m => m.ativo).length || 24} Ativos
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>De {supabaseMensalistas.length || 28} cadastrados</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block leading-none">Mensalistas Vip</span>
-              <h3 className="text-base font-extrabold text-white light-theme:text-slate-800 mt-2 leading-none">
-                {supabaseMensalistas.filter(m => m.ativo).length || 24} Ativos
-              </h3>
-              <p className="text-[9px] text-[#64748b] mt-2 font-medium leading-none">De {supabaseMensalistas.length || 28} cadastrados no banco</p>
-            </div>
+            <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex items-center gap-4 relative overflow-hidden group">
-            <div className="absolute right-0 bottom-0 h-10 w-10 bg-cyan-500/5 rounded-tl-3xl pointer-events-none group-hover:scale-150 transition-transform" />
-            <div className="h-10 w-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Car className="h-5 w-5" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS CADASTRADOS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseVehicles.length || 42} Veículos
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
+              <Car className="h-3.5 w-3.5" />
+              <span>{supabaseVehicles.filter(v => v.ativo).length || 38} operacionais</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold uppercase tracking-wider block leading-none">Veículos Cadastrados</span>
-              <h3 className="text-base font-extrabold text-white light-theme:text-slate-800 mt-2 leading-none">
-                {supabaseVehicles.length || 42} Veículos
-              </h3>
-              <p className="text-[9px] text-[#64748b] mt-2 font-medium leading-none"><span className="text-cyan-400 font-bold">🚙 {supabaseVehicles.filter(v => v.ativo).length || 38}</span> operacionais</p>
-            </div>
+            <Car className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -1720,68 +2074,398 @@ const App: React.FC = () => {
           <div className="lg:col-span-2 flex flex-col gap-6">
 
 
-            {/* Cash Flow Line Chart */}
+            {/* Entradas por Box Chart */}
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-4 text-left">
                 <div>
-                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Fluxo Operacional (Últimos 6 meses)</h3>
-                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Demonstrativo comparativo de Receitas vs Despesas em tempo real.</p>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Entradas por Box</h3>
+                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Entradas diárias</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 text-xs text-[#94a3b8]">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                    <span>Entradas</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[#94a3b8]">
-                    <span className="h-2 w-2 rounded-full bg-rose-500" />
-                    <span>Despesas</span>
+                  {/* Detailed/Simplified buttons group */}
+                  <div className="flex bg-[#090b11] light-theme:bg-slate-100 p-0.5 rounded-full border border-[#1f2433] light-theme:border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setEntradasBoxViewMode('detalhado')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all cursor-pointer ${entradasBoxViewMode === 'detalhado'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-[#64748b] hover:text-white light-theme:hover:text-slate-800'
+                        }`}
+                    >
+                      detalhado
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEntradasBoxViewMode('simplificado')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all cursor-pointer ${entradasBoxViewMode === 'simplificado'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-[#64748b] hover:text-white light-theme:hover:text-slate-800'
+                        }`}
+                    >
+                      simplificado
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* Pure SVG Wave Chart */}
-              <div className="relative h-44 w-full bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl overflow-hidden border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-2">
-                <svg className="w-full h-full" viewBox="0 0 500 200" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="glowEntradas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                    </linearGradient>
-                    <linearGradient id="glowDespesas" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
+              {/* Legends */}
+              <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#2563eb] rounded-sm" style={{ backgroundColor: '#2563eb' }} />
+                  <span>BOX 01</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#93c5fd] rounded-sm" style={{ backgroundColor: '#93c5fd' }} />
+                  <span>BOX 02</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#1e3a8a] rounded-sm" style={{ backgroundColor: '#1e3a8a' }} />
+                  <span>BOX 03</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#94a3b8] rounded-sm" style={{ backgroundColor: '#94a3b8' }} />
+                  <span>BOX 04</span>
+                </div>
+              </div>
 
-                  <line x1="20" y1="30" x2="480" y2="30" stroke="#1f2433" strokeOpacity="0.2" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="20" y1="80" x2="480" y2="80" stroke="#1f2433" strokeOpacity="0.2" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="20" y1="130" x2="480" y2="130" stroke="#1f2433" strokeOpacity="0.2" strokeWidth="1" strokeDasharray="3 3" />
-                  <line x1="20" y1="170" x2="480" y2="170" stroke="#1f2433" strokeOpacity="0.4" strokeWidth="1" />
+              {/* Pure SVG Grouped or Stacked Bar Chart */}
+              <div className="w-full overflow-x-auto custom-scrollbar">
+                <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
+                  <svg className="w-full h-full" viewBox="0 0 820 250" preserveAspectRatio="none">
+                    {/* Horizontal Grid Lines */}
+                    <line x1="38" y1="220" x2="812" y2="220" stroke="#1f2433" strokeOpacity="0.4" className="light-theme:stroke-slate-200" strokeWidth="1" />
+                    <line x1="38" y1="175" x2="812" y2="175" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="38" y1="130" x2="812" y2="130" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="38" y1="85" x2="812" y2="85" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="38" y1="40" x2="812" y2="40" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
 
-                  <path d={fillEntradas} fill="url(#glowEntradas)" />
-                  <path d={fillDespesas} fill="url(#glowDespesas)" />
+                    {/* Vertical Grid Lines (one per day slot) */}
+                    {displayBoxData.map((d, idx) => {
+                      const slotWidth = 770 / numDays;
+                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
+                      return (
+                        <line
+                          key={`v-grid-${d.day}`}
+                          x1={slotCenter}
+                          y1="40"
+                          x2={slotCenter}
+                          y2="220"
+                          stroke="#1f2433"
+                          strokeOpacity="0.05"
+                          className="light-theme:stroke-slate-200/40"
+                          strokeWidth="1"
+                        />
+                      );
+                    })}
 
-                  <path d={pathEntradas} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" />
-                  <path d={pathDespesas} fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" />
+                    {/* Y Axis Labels */}
+                    <text x="30" y="223" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">0</text>
+                    <text x="30" y="178" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal * 0.25)}
+                    </text>
+                    <text x="30" y="133" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal * 0.50)}
+                    </text>
+                    <text x="30" y="88" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal * 0.75)}
+                    </text>
+                    <text x="30" y="43" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal)}
+                    </text>
 
-                  {coordsEntradas.map((pt, i) => (
-                    <g key={`ent-pt-${i}`}>
-                      <circle cx={pt.x} cy={pt.y} r="5" fill="#10b981" className="hover:scale-150 transition-transform cursor-pointer" />
-                      <circle cx={pt.x} cy={pt.y} r="8" stroke="#10b981" strokeOpacity="0.3" fill="none" />
-                    </g>
-                  ))}
-                  {coordsDespesas.map((pt, i) => (
-                    <g key={`des-pt-${i}`}>
-                      <circle cx={pt.x} cy={pt.y} r="5" fill="#f43f5e" className="hover:scale-150 transition-transform cursor-pointer" />
-                      <circle cx={pt.x} cy={pt.y} r="8" stroke="#f43f5e" strokeOpacity="0.3" fill="none" />
-                    </g>
-                  ))}
-                </svg>
+                    {/* Draw Bars */}
+                    {displayBoxData.map((d, idx) => {
+                      const slotWidth = 770 / numDays;
+                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
 
-                <div className="absolute bottom-2 left-6 right-6 flex justify-between px-1 text-[9px] text-[#64748b] font-bold">
-                  {months.map((m, idx) => (
-                    <span key={idx}>{m}</span>
-                  ))}
+                      if (entradasBoxViewMode === 'detalhado') {
+                        // Side-by-side grouped bars
+                        const activeWidth = slotWidth * 0.82;
+                        const barWidth = activeWidth / 4;
+
+                        const boxes = [
+                          { key: 'BOX 01' as const, color: '#2563eb' },
+                          { key: 'BOX 02' as const, color: '#93c5fd' },
+                          { key: 'BOX 03' as const, color: '#1e3a8a' },
+                          { key: 'BOX 04' as const, color: '#94a3b8' }
+                        ];
+
+                        return (
+                          <g key={`day-group-${d.day}`}>
+                            {boxes.map((box, bIdx) => {
+                              const val = d[box.key];
+                              const height = (val / maxBoxVal) * 180;
+                              const y = 220 - height;
+                              const x = slotCenter - activeWidth / 2 + bIdx * barWidth;
+
+                              return val > 0 ? (
+                                <rect
+                                  key={`bar-${d.day}-${box.key}`}
+                                  x={x}
+                                  y={y}
+                                  width={Math.max(barWidth - 0.5, 1.5)}
+                                  height={Math.max(height, 0.5)}
+                                  fill={box.color}
+                                  rx="1"
+                                  className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
+                                >
+                                  <title>Dia {d.day} | {box.key}: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)}</title>
+                                </rect>
+                              ) : null;
+                            })}
+                          </g>
+                        );
+                      } else {
+                        // Stacked bars
+                        const barWidth = Math.max(slotWidth * 0.65, 3);
+                        const x = slotCenter - barWidth / 2;
+
+                        const val1 = d['BOX 01'];
+                        const val2 = d['BOX 02'];
+                        const val3 = d['BOX 03'];
+                        const val4 = d['BOX 04'];
+
+                        const h1 = (val1 / maxBoxVal) * 180;
+                        const h2 = (val2 / maxBoxVal) * 180;
+                        const h3 = (val3 / maxBoxVal) * 180;
+                        const h4 = (val4 / maxBoxVal) * 180;
+
+                        return (
+                          <g key={`day-stack-${d.day}`}>
+                            {val1 > 0 && (
+                              <rect
+                                x={x}
+                                y={220 - h1}
+                                width={barWidth}
+                                height={h1}
+                                fill="#2563eb"
+                                rx="0.5"
+                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
+                              >
+                                <title>Dia {d.day} | BOX 01: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val1)}</title>
+                              </rect>
+                            )}
+                            {val2 > 0 && (
+                              <rect
+                                x={x}
+                                y={220 - h1 - h2}
+                                width={barWidth}
+                                height={h2}
+                                fill="#93c5fd"
+                                rx="0.5"
+                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
+                              >
+                                <title>Dia {d.day} | BOX 02: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val2)}</title>
+                              </rect>
+                            )}
+                            {val3 > 0 && (
+                              <rect
+                                x={x}
+                                y={220 - h1 - h2 - h3}
+                                width={barWidth}
+                                height={h3}
+                                fill="#1e3a8a"
+                                rx="0.5"
+                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
+                              >
+                                <title>Dia {d.day} | BOX 03: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val3)}</title>
+                              </rect>
+                            )}
+                            {val4 > 0 && (
+                              <rect
+                                x={x}
+                                y={220 - h1 - h2 - h3 - h4}
+                                width={barWidth}
+                                height={h4}
+                                fill="#94a3b8"
+                                rx="0.5"
+                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
+                              >
+                                <title>Dia {d.day} | BOX 04: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val4)}</title>
+                              </rect>
+                            )}
+                          </g>
+                        );
+                      }
+                    })}
+
+                    {/* X Axis labels */}
+                    {displayBoxData.map((d, idx) => {
+                      const slotWidth = 770 / numDays;
+                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
+
+                      return (
+                        <text
+                          key={`x-label-${d.day}`}
+                          x={slotCenter}
+                          y="233"
+                          className="text-[8px] fill-[#64748b] font-bold"
+                          textAnchor="middle"
+                        >
+                          {d.day}
+                        </text>
+                      );
+                    })}
+
+                    {/* X Axis Title */}
+                    <text
+                      x="425"
+                      y="245"
+                      className="text-[8px] fill-[#64748b] font-extrabold uppercase tracking-widest"
+                      textAnchor="middle"
+                    >
+                      DIAS
+                    </text>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+
+            {/* Cash Flow Bar Chart */}
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Fluxo Operacional</h3>
+                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Demonstrativo comparativo anual de Receitas vs Despesas em tempo real.</p>
+                </div>
+              </div>
+
+              {/* Legends */}
+              <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#10b981] rounded-sm" style={{ backgroundColor: '#10b981' }} />
+                  <span>Entradas</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#f43f5e] rounded-sm" style={{ backgroundColor: '#f43f5e' }} />
+                  <span>Despesas</span>
+                </div>
+              </div>
+
+              {/* Pure SVG Grouped Bar Chart */}
+              <div className="w-full overflow-x-auto custom-scrollbar">
+                <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
+                  <svg className="w-full h-full" viewBox="0 0 820 250" preserveAspectRatio="none">
+                    {/* Horizontal Grid Lines */}
+                    <line x1="38" y1="220" x2="812" y2="220" stroke="#1f2433" strokeOpacity="0.4" className="light-theme:stroke-slate-200" strokeWidth="1" />
+                    <line x1="38" y1="175" x2="812" y2="175" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="38" y1="130" x2="812" y2="130" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="38" y1="85" x2="812" y2="85" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+                    <line x1="38" y1="40" x2="812" y2="40" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
+
+                    {/* Vertical Grid Lines (one per month slot) */}
+                    {displayCashflowData.map((d, idx) => {
+                      const slotWidth = 770 / 12;
+                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
+                      return (
+                        <line
+                          key={`v-grid-cf-${idx}`}
+                          x1={slotCenter}
+                          y1="40"
+                          x2={slotCenter}
+                          y2="220"
+                          stroke="#1f2433"
+                          strokeOpacity="0.05"
+                          className="light-theme:stroke-slate-200/40"
+                          strokeWidth="1"
+                        />
+                      );
+                    })}
+
+                    {/* Y Axis Labels */}
+                    <text x="30" y="223" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">0</text>
+                    <text x="30" y="178" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal * 0.25)}
+                    </text>
+                    <text x="30" y="133" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal * 0.50)}
+                    </text>
+                    <text x="30" y="88" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal * 0.75)}
+                    </text>
+                    <text x="30" y="43" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
+                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal)}
+                    </text>
+
+                    {/* Draw Bars */}
+                    {displayCashflowData.map((d, idx) => {
+                      const slotWidth = 770 / 12;
+                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
+
+                      const activeWidth = slotWidth * 0.75;
+                      const barWidth = activeWidth / 2;
+
+                      const hEnt = (d.entradas / maxCashflowVal) * 180;
+                      const yEnt = 220 - hEnt;
+
+                      const hDes = (d.despesas / maxCashflowVal) * 180;
+                      const yDes = 220 - hDes;
+
+                      const xEnt = slotCenter - activeWidth / 2;
+                      const xDes = slotCenter - activeWidth / 2 + barWidth;
+
+                      return (
+                        <g key={`cf-month-group-${idx}`}>
+                          {/* Entradas Bar */}
+                          {d.entradas > 0 && (
+                            <rect
+                              x={xEnt}
+                              y={yEnt}
+                              width={Math.max(barWidth - 1, 2)}
+                              height={Math.max(hEnt, 0.5)}
+                              fill="#10b981"
+                              rx="1.5"
+                              className="hover:opacity-85 transition-opacity duration-150 cursor-pointer"
+                            >
+                              <title>{d.month} | Entradas: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.entradas)}</title>
+                            </rect>
+                          )}
+                          {/* Despesas Bar */}
+                          {d.despesas > 0 && (
+                            <rect
+                              x={xDes}
+                              y={yDes}
+                              width={Math.max(barWidth - 1, 2)}
+                              height={Math.max(hDes, 0.5)}
+                              fill="#f43f5e"
+                              rx="1.5"
+                              className="hover:opacity-85 transition-opacity duration-150 cursor-pointer"
+                            >
+                              <title>{d.month} | Despesas: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.despesas)}</title>
+                            </rect>
+                          )}
+                        </g>
+                      );
+                    })}
+
+                    {/* X Axis labels */}
+                    {displayCashflowData.map((d, idx) => {
+                      const slotWidth = 770 / 12;
+                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
+                      return (
+                        <text
+                          key={`x-label-cf-${idx}`}
+                          x={slotCenter}
+                          y="233"
+                          className="text-[9px] fill-[#64748b] font-bold"
+                          textAnchor="middle"
+                        >
+                          {d.month}
+                        </text>
+                      );
+                    })}
+
+                    {/* X Axis Title */}
+                    <text
+                      x="425"
+                      y="245"
+                      className="text-[8px] fill-[#64748b] font-extrabold uppercase tracking-widest"
+                      textAnchor="middle"
+                    >
+                      MESES
+                    </text>
+                  </svg>
                 </div>
               </div>
             </div>
@@ -1823,8 +2507,8 @@ const App: React.FC = () => {
                         </td>
                         <td className="py-3 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.type === 'entrada'
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                             }`}>
                             {item.badge}
                           </span>
@@ -1844,162 +2528,283 @@ const App: React.FC = () => {
             {/* Apple Activity concentric rings breakdown */}
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-5">
               <div>
-                <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Distribuição de Gastos</h3>
-                <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">Divisão proporcional das despesas no caixa.</p>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Despesas por Centro de Custos</h3>
+                <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">Divisão proporcional das despesas no caixa agrupada por centro de custo.</p>
               </div>
 
               <div className="flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
-                <svg className="w-36 h-36" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1f2433" strokeOpacity="0.1" strokeWidth="6" />
-                  <circle cx="50" cy="50" r="30" fill="none" stroke="#1f2433" strokeOpacity="0.1" strokeWidth="6" />
-                  <circle cx="50" cy="50" r="22" fill="none" stroke="#1f2433" strokeOpacity="0.1" strokeWidth="6" />
-
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="6" strokeDasharray="83.56 238.76" strokeLinecap="round" transform="rotate(-90 50 50)" />
-                  <circle cx="50" cy="50" r="30" fill="none" stroke="#8b5cf6" strokeWidth="6" strokeDasharray="84.82 188.5" strokeLinecap="round" transform="rotate(-90 50 50)" />
-                  <circle cx="50" cy="50" r="22" fill="none" stroke="#06b6d4" strokeWidth="6" strokeDasharray="27.64 138.23" strokeLinecap="round" transform="rotate(-90 50 50)" />
+                <svg className="w-52 h-52 animate-fadeIn" viewBox="0 0 120 120">
+                  {ccsFinalData.slice(0, 8).map((item, idx) => {
+                    const r = 52 - idx * 5.5;
+                    const circ = 2 * Math.PI * r;
+                    const strokeLength = (item.percentage / 100) * circ;
+                    const spaceLength = circ - strokeLength;
+                    const color = getRedShadeByValue(item.total, maxCCVal);
+                    return (
+                      <g key={`cc-ring-group-${idx}`}>
+                        {/* Background Track Circle */}
+                        <circle
+                          cx="60"
+                          cy="60"
+                          r={r}
+                          fill="none"
+                          stroke="#334155"
+                          strokeOpacity="0.45"
+                          className="light-theme:stroke-slate-300 light-theme:stroke-opacity-100"
+                          strokeWidth="4"
+                        />
+                        {/* Active Value Arc */}
+                        {item.total > 0 && (
+                          <circle
+                            cx="60"
+                            cy="60"
+                            r={r}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="4"
+                            strokeDasharray={`${strokeLength} ${spaceLength}`}
+                            strokeLinecap="round"
+                            transform="rotate(-90 60 60)"
+                            className="transition-all duration-500 ease-out"
+                          >
+                            <title>{item.ccName} | {item.percentage.toFixed(1)}% ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)})</title>
+                          </circle>
+                        )}
+                      </g>
+                    );
+                  })}
                 </svg>
 
-                <div className="w-full mt-4 flex flex-col gap-2 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-xxs font-medium text-[#94a3b8] light-theme:text-slate-600">
-                  {costBreakdown.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                        <span>{item.name}</span>
+                <div className="w-full mt-4 flex flex-col gap-2.5 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-xs font-medium text-[#94a3b8] light-theme:text-slate-600">
+                  {ccsFinalData.map((item, idx) => {
+                    const color = getRedShadeByValue(item.total, maxCCVal);
+                    return (
+                      <div key={idx} className="flex items-center justify-between hover:bg-white/5 light-theme:hover:bg-slate-100/50 p-1.5 rounded transition-colors">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                          <span className="truncate uppercase font-bold text-white light-theme:text-slate-700">{item.ccName}</span>
+                        </div>
+                        <div className="font-bold text-[#f43f5e] dark:text-[#fca5a5] flex-shrink-0 flex items-center gap-1.5">
+                          <span>{item.percentage.toFixed(1)}%</span>
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">|</span>
+                          <span className="text-white light-theme:text-slate-800 font-mono">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="font-bold text-white light-theme:text-slate-800">
-                        {item.val}% ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(item.amount)})
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* Create New Card */}
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-4">
-              <div>
-                <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Criar Novo Caixa / Cartão</h3>
-                <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Cadastre um novo caixa de recebimento ou conta corrente.</p>
-              </div>
 
-              <form onSubmit={handleAddCard} className="flex flex-col gap-3.5">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Nome da Carteira / Caixa</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ex: Caixa Geral Principal"
-                    value={newCardName}
-                    onChange={e => setNewCardName(e.target.value)}
-                    className="bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-4 py-2 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Número do Caixa / Identificador</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={19}
-                    placeholder="4000 1234 5678 9010"
-                    value={newCardNumber}
-                    onChange={e => setNewCardNumber(e.target.value)}
-                    className="bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-4 py-2 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Validade (MM/AA)</label>
-                    <input
-                      type="text"
-                      maxLength={5}
-                      placeholder="12/32"
-                      value={newCardExpiry}
-                      onChange={e => setNewCardExpiry(e.target.value)}
-                      className="bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-4 py-2 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                    />
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Tipo de Caixa</label>
-                    <select
-                      value={newCardType}
-                      onChange={e => setNewCardType(e.target.value)}
-                      className="bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-4 py-2 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
-                    >
-                      <option value="PIX">PIX</option>
-                      <option value="Dinheiro">Dinheiro</option>
-                      <option value="Cartão">Cartão</option>
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="mt-2 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-xl py-2.5 font-bold text-xs uppercase tracking-wider shadow-lg shadow-violet-900/30 transition-transform active:scale-95 flex items-center justify-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Adicionar Novo Caixa</span>
-                </button>
-              </form>
-            </div>
 
           </div>
         </div>
+
+        {/* Botão Flutuante de Filtro */}
+        <button
+          type="button"
+          onClick={() => setIsDashboardFilterModalOpen(true)}
+          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white flex items-center justify-center shadow-lg shadow-violet-900/30 hover:shadow-violet-900/50 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer group"
+          title="Filtrar Painel"
+        >
+          <Filter className="h-6 w-6 transition-transform group-hover:rotate-12" />
+          {hasActiveDashboardFilters && (
+            <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-rose-500 text-[8px] font-extrabold flex items-center justify-center text-white ring-2 ring-[#0e111a] light-theme:ring-white">
+              !
+            </span>
+          )}
+        </button>
+
+        {/* Modal de Filtros do Dashboard */}
+        <AnimatePresence>
+          {isDashboardFilterModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsDashboardFilterModalOpen(false)}
+                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl max-w-md w-full p-6 text-left shadow-2xl relative z-10"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-t-3xl" />
+
+                <div className="flex items-center justify-between pb-3.5 border-b border-[#1f2433] light-theme:border-slate-100 mb-5">
+                  <div className="flex items-center gap-2.5 text-violet-400">
+                    <Filter className="h-5 w-5" />
+                    <h3 className="font-extrabold text-sm uppercase tracking-wider text-white light-theme:text-slate-800">
+                      Filtrar Dashboard
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsDashboardFilterModalOpen(false)}
+                    className="text-slate-400 hover:text-white light-theme:text-slate-500 light-theme:hover:text-slate-800 transition-colors cursor-pointer"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4.5">
+                  {/* Campo Mês / Ano */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Mês / Ano</label>
+                    <input
+                      type="month"
+                      value={dashboardFilterMonth}
+                      onChange={(e) => setDashboardFilterMonth(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Campo Centro de Custo */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Centro de Custo</label>
+                    <div className="relative">
+                      <select
+                        value={dashboardFilterCentroCusto}
+                        onChange={(e) => setDashboardFilterCentroCusto(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer appearance-none text-left"
+                      >
+                        <option value="" className="text-[#64748b]">Todos os Centros de Custo</option>
+                        {supabaseCentroCusto.map(cc => (
+                          <option key={cc.id} value={cc.id} className="text-white light-theme:text-slate-800 bg-[#0e111a] light-theme:bg-white">
+                            {cc.nome_centro_custo || cc.descricao}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-[#64748b]">
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Campo Forma de Pagamento */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Forma de Pagamento</label>
+                    <div className="relative">
+                      <select
+                        value={dashboardFilterFormaPagamento}
+                        onChange={(e) => setDashboardFilterFormaPagamento(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 pl-4 pr-10 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer appearance-none text-left"
+                      >
+                        <option value="" className="text-[#64748b]">Todas as Formas de Pagamento</option>
+                        {supabaseFormaPagamento.map(fp => (
+                          <option key={fp.id} value={fp.id} className="text-white light-theme:text-slate-800 bg-[#0e111a] light-theme:bg-white">
+                            {fp.descricao}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-[#64748b]">
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 mt-7 pt-4.5 border-t border-[#1f2433] light-theme:border-slate-100">
+                  {hasActiveDashboardFilters && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDashboardFilterMonth(getDefaultDashboardMonth());
+                        setDashboardFilterCentroCusto('');
+                        setDashboardFilterFormaPagamento('');
+                      }}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-rose-500 hover:text-rose-400 transition-colors cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsDashboardFilterModalOpen(false)}
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-violet-900/20 active:scale-95 transition-all cursor-pointer"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderEntradas = () => {
+    // Helper para parsear datas localmente (evitando desvio de fuso horário)
+    const parseLocalJSDate = (dateStr: string) => {
+      if (!dateStr) return null;
+      const cleanDate = dateStr.split('T')[0].split(' ')[0];
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Base 0
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+      return null;
+    };
+
     // 1. Cálculos dos Indicadores (com base no supabaseEntradas geral)
     const todayObj = new Date();
+    const todayYear = todayObj.getFullYear();
+    const todayMonth = todayObj.getMonth();
+    const todayDate = todayObj.getDate();
 
-    // Entradas do Dia (Formato YYYY-MM-DD)
-    const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+    // Entradas do Dia (Comparação local segura de data)
     const entradasDoDia = supabaseEntradas
       .filter(item => {
-        const dateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
-        return dateStr === todayStr;
+        const itemDate = item.data_entrada ? parseLocalJSDate(item.data_entrada) : null;
+        if (!itemDate) return false;
+        return itemDate.getFullYear() === todayYear &&
+          itemDate.getMonth() === todayMonth &&
+          itemDate.getDate() === todayDate;
       })
       .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
-    // Entradas da Semana (Domingo a Sábado calendar week)
-    const getWeekStringRange = () => {
+    // Entradas da Semana (Domingo a Sábado local calendar week)
+    const getWeekRange = () => {
       const now = new Date();
-      const dayOfWeek = now.getDay(); // 0 = Sunday
-
-      const start = new Date(now);
-      start.setDate(now.getDate() - dayOfWeek);
-
+      const dayOfWeek = now.getDay(); // 0 = Domingo
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
-
-      const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-      const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
-
-      return { startStr, endStr };
+      return { start, end };
     };
-    const { startStr, endStr } = getWeekStringRange();
+    const { start: weekStart, end: weekEnd } = getWeekRange();
     const entradasDaSemana = supabaseEntradas
       .filter(item => {
-        const dateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
-        return dateStr && dateStr >= startStr && dateStr <= endStr;
+        const itemDate = item.data_entrada ? parseLocalJSDate(item.data_entrada) : null;
+        if (!itemDate) return false;
+        return itemDate >= weekStart && itemDate <= weekEnd;
       })
       .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
-    // Entradas do Mês (Formato YYYY-MM)
-    const currentMonthStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}`;
+    // Entradas do Mês (Mês atual local)
     const entradasDoMes = supabaseEntradas
       .filter(item => {
-        const dateStr = item.data_entrada ? item.data_entrada.split('T')[0] : '';
-        return dateStr && dateStr.substring(0, 7) === currentMonthStr;
+        const itemDate = item.data_entrada ? parseLocalJSDate(item.data_entrada) : null;
+        if (!itemDate) return false;
+        return itemDate.getFullYear() === todayYear &&
+          itemDate.getMonth() === todayMonth;
       })
       .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
-    // Média por Lançamento
-    const mediaPorLancamento = supabaseEntradas.length > 0
-      ? (supabaseEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / supabaseEntradas.length)
+    // Média por Lançamento (Desconsidera lançamentos zerados/sem valor)
+    const validEntradas = supabaseEntradas.filter(item => item.valor && item.valor > 0);
+    const mediaPorLancamento = validEntradas.length > 0
+      ? (validEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / validEntradas.length)
       : 0;
 
     // 2. Ordenação e Paginação dos Itens Filtrados
@@ -2019,54 +2824,57 @@ const App: React.FC = () => {
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Aggregated Finance Stats header */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
           {/* Entradas do Dia */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <TrendingUp className="h-4 w-4" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DO DIA</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoDia)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span>Receitas de hoje</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ENTRADAS DO DIA</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoDia)}
-              </h4>
-            </div>
+            <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
+
           {/* Entradas da Semana */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Calendar className="h-4 w-4" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DA SEMANA</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDaSemana)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Faturamento da semana</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ENTRADAS DA SEMANA</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDaSemana)}
-              </h4>
-            </div>
+            <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
+
           {/* Entradas do Mês */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <Wallet className="h-4 w-4" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DO MÊS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoMes)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+              <Wallet className="h-3.5 w-3.5" />
+              <span>Acumulado mensal</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ENTRADAS DO MÊS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoMes)}
-              </h4>
-            </div>
+            <Wallet className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
+
           {/* Média por Lançamento */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400 flex-shrink-0">
-              <Activity className="h-4 w-4" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MÉDIA POR LANÇAMENTO</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaPorLancamento)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
+              <Activity className="h-3.5 w-3.5" />
+              <span>Valor médio recebido</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">MÉDIA POR LANÇAMENTO</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaPorLancamento)}
-              </h4>
-            </div>
+            <Activity className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -2202,11 +3010,14 @@ const App: React.FC = () => {
                     className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
                   >
                     <option value="" className="bg-[#0e111a] light-theme:bg-white text-[#64748b]">Nenhum</option>
-                    {supabaseVehicles.map(v => (
-                      <option key={v.id} value={v.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
-                        {v.marca_modelo} - {v.placa}
-                      </option>
-                    ))}
+                    {supabaseVehicles
+                      .filter(v => !formPessoaId || v.pessoa_id === formPessoaId)
+                      .map(v => (
+                        <option key={v.id} value={v.id} className="bg-[#0e111a] light-theme:bg-white text-white light-theme:text-slate-800">
+                          {v.marca_modelo} - {v.placa}
+                        </option>
+                      ))
+                    }
                   </select>
                 </div>
 
@@ -2399,22 +3210,35 @@ const App: React.FC = () => {
                           <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.nome_pessoa || ''}</td>
                           <td className="py-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditEntrada(item)}
-                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Editar Lançamento"
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setIsExcluindoEntrada(item)}
-                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Excluir Lançamento"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
+                              {item.ordem_servico_id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsEstornandoEntrada(item)}
+                                  className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-amber-600/15 light-theme:hover:bg-amber-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-amber-500/30 light-theme:hover:border-amber-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-amber-400 light-theme:hover:text-amber-600 transition-colors cursor-pointer"
+                                  title="Estornar Lançamento da OS"
+                                >
+                                  <RefreshCw className="h-3 w-3" />
+                                </button>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenEditEntrada(item)}
+                                    className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                    title="Editar Lançamento"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setIsExcluindoEntrada(item)}
+                                    className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                    title="Excluir Lançamento"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2457,8 +3281,8 @@ const App: React.FC = () => {
                           key={pageNum}
                           onClick={() => setCurrentPageEntradas(pageNum)}
                           className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
-                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                            : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
                         >
                           {pageNum}
@@ -2533,42 +3357,137 @@ const App: React.FC = () => {
             </div>
           )}
         </AnimatePresence>
+
+        {/* Modal de Confirmação de Estorno da Entrada da OS */}
+        <AnimatePresence>
+          {isEstornandoEntrada && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isReversingEntrada && !estornoSuccessMsg && setIsEstornandoEntrada(null)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-amber-500" />
+
+                <div className="flex items-start gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 flex-shrink-0">
+                    <RefreshCw className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Estornar Receita da OS?</h3>
+                    <div className="text-xxs text-[#64748b] mt-2 leading-relaxed space-y-2">
+                      <p>
+                        Você tem certeza que deseja estornar o lançamento <strong>"{isEstornandoEntrada.descricao_entrada || 'Receita OS'}"</strong> no valor de <strong>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isEstornandoEntrada.valor || 0)}</strong>?
+                      </p>
+
+                      {estornoSuccessMsg ? (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold text-xs flex items-start gap-2"
+                        >
+                          <CheckCircle className="h-4.5 w-4.5 flex-shrink-0 text-emerald-400 mt-0.5" />
+                          <span>{estornoSuccessMsg}</span>
+                        </motion.div>
+                      ) : (
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-medium text-left">
+                          <strong className="block mb-1.5 text-xs text-amber-300 font-bold">O que este processo irá fazer:</strong>
+                          <ul className="list-disc list-inside space-y-1 text-xxs leading-relaxed">
+                            <li>Excluirá permanentemente esta receita do fluxo financeiro.</li>
+                            <li>Reabrirá a Ordem de Serviço vinculada (o status da OS voltará para <strong className="text-amber-200">"Aberta"</strong>).</li>
+                            <li>Permitirá que a OS correspondente seja editada ou fechada novamente depois.</li>
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {!estornoSuccessMsg && (
+                  <div className="flex items-center justify-end gap-3 mt-2">
+                    <button
+                      onClick={() => setIsEstornandoEntrada(null)}
+                      disabled={isReversingEntrada}
+                      className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleEstornarEntrada}
+                      disabled={isReversingEntrada}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-lg shadow-amber-600/10 transition-colors"
+                    >
+                      {isReversingEntrada ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                      <span>Confirmar Estorno</span>
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
 
   const renderDespesas = () => {
+    // Helper para parsear datas localmente (evitando desvio de fuso horário)
+    const parseLocalJSDate = (dateStr: string) => {
+      if (!dateStr) return null;
+      const cleanDate = dateStr.split('T')[0].split(' ')[0];
+      const parts = cleanDate.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1; // Base 0
+        const day = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+      return null;
+    };
+
     // Current date helpers for indicator cards
-    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local format
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
+    const todayObj = new Date();
+    const todayYear = todayObj.getFullYear();
+    const todayMonth = todayObj.getMonth();
+    const todayDate = todayObj.getDate();
 
     // Despesas do dia (soma das despesas do dia)
     const despesasDia = supabaseDespesas.reduce((acc, curr) => {
-      if (!curr.data_despesa) return acc;
-      const dateStr = curr.data_despesa.split('T')[0];
-      if (dateStr === todayStr) {
+      const itemDate = curr.data_despesa ? parseLocalJSDate(curr.data_despesa) : null;
+      if (!itemDate) return acc;
+      if (itemDate.getFullYear() === todayYear &&
+        itemDate.getMonth() === todayMonth &&
+        itemDate.getDate() === todayDate) {
         return acc + (curr.valor || 0);
       }
       return acc;
     }, 0);
 
-    // Get start of this week (Sunday, 00:00:00 local time)
-    const startOfWeek = new Date();
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    // Get end of this week (Saturday, 23:59:59 local time)
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    endOfWeek.setHours(23, 59, 59, 999);
+    // Get week range (Domingo a Sábado local calendar week)
+    const getWeekRange = () => {
+      const now = new Date();
+      const dayOfWeek = now.getDay(); // 0 = Domingo
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return { start, end };
+    };
+    const { start: weekStart, end: weekEnd } = getWeekRange();
 
     // Despesas da semana (soma das despesas da semana)
     const despesasSemana = supabaseDespesas.reduce((acc, curr) => {
-      if (!curr.data_despesa) return acc;
-      const itemDate = new Date(curr.data_despesa.split('T')[0] + 'T12:00:00');
-      if (itemDate >= startOfWeek && itemDate <= endOfWeek) {
+      const itemDate = curr.data_despesa ? parseLocalJSDate(curr.data_despesa) : null;
+      if (!itemDate) return acc;
+      if (itemDate >= weekStart && itemDate <= weekEnd) {
         return acc + (curr.valor || 0);
       }
       return acc;
@@ -2576,17 +3495,18 @@ const App: React.FC = () => {
 
     // Despesas do mês (soma das despesas do mês)
     const despesasMes = supabaseDespesas.reduce((acc, curr) => {
-      if (!curr.data_despesa) return acc;
-      const itemDate = new Date(curr.data_despesa.split('T')[0] + 'T12:00:00');
-      if (itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth) {
+      const itemDate = curr.data_despesa ? parseLocalJSDate(curr.data_despesa) : null;
+      if (!itemDate) return acc;
+      if (itemDate.getFullYear() === todayYear && itemDate.getMonth() === todayMonth) {
         return acc + (curr.valor || 0);
       }
       return acc;
     }, 0);
 
-    // Média por lançamento (média de valor de despesas)
-    const mediaLancamento = supabaseDespesas.length > 0
-      ? (supabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / supabaseDespesas.length)
+    // Média por lançamento (média real desconsiderando valores zerados)
+    const validDespesas = supabaseDespesas.filter(item => item.valor && item.valor > 0);
+    const mediaLancamento = validDespesas.length > 0
+      ? (validDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / validDespesas.length)
       : 0;
 
     // Pagination calculations
@@ -2609,50 +3529,53 @@ const App: React.FC = () => {
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Finance Stats header */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
-              <TrendingDown className="h-4 w-4" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DO DIA</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasDia)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
+              <TrendingDown className="h-3.5 w-3.5" />
+              <span>Saídas registradas hoje</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">DESPESAS DO DIA</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasDia)}
-              </h4>
-            </div>
+            <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
-              <Layers className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DA SEMANA</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasSemana)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
+              <Layers className="h-3.5 w-3.5" />
+              <span>Custos da semana</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">DESPESAS DA SEMANA</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasSemana)}
-              </h4>
-            </div>
+            <Layers className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 flex-shrink-0">
-              <Calendar className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DO MÊS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasMes)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Acumulado mensal</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">DESPESAS DO MÊS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasMes)}
-              </h4>
-            </div>
+            <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <Target className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MÉDIA POR LANÇAMENTO</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaLancamento)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+              <Target className="h-3.5 w-3.5" />
+              <span>Custo médio por item</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none uppercase">MÉDIA POR LANÇAMENTO</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaLancamento)}
-              </h4>
-            </div>
+            <Target className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -3008,8 +3931,8 @@ const App: React.FC = () => {
                           key={pageNum}
                           onClick={() => setCurrentPageDespesas(pageNum)}
                           className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${currentPageDespesas === pageNum
-                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                            : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
                         >
                           {pageNum}
@@ -3253,8 +4176,8 @@ const App: React.FC = () => {
                         </td>
                         <td className="py-3.5 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${p.data_pagamento
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                            : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
                             }`}>
                             {p.data_pagamento ? 'Paga' : 'Pendente'}
                           </span>
@@ -3643,39 +4566,41 @@ const App: React.FC = () => {
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <Users className="h-4 w-4" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS ATIVOS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseMensalistas.filter(m => m.ativo).length} de {supabaseMensalistas.length} Cadastros
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+              <Users className="h-3.5 w-3.5" />
+              <span>Clientes recorrentes</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">MENSALISTAS ATIVOS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseMensalistas.filter(m => m.ativo).length} de {supabaseMensalistas.length} Cadastros
-              </h4>
-            </div>
+            <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <DollarSign className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO PREVISTO MENSAL</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVipRevenue)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+              <DollarSign className="h-3.5 w-3.5" />
+              <span>Receita VIP recorrente</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">FATURAMENTO PREVISTO MENSAL</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVipRevenue)}
-              </h4>
-            </div>
+            <DollarSign className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Calendar className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TICKET MÉDIO MENSALISTA</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseMensalistas.length > 0 ? (totalVipRevenue / supabaseMensalistas.length) : 0)}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Média mensal por plano</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">TICKET MÉDIO MENSALISTA</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseMensalistas.length > 0 ? (totalVipRevenue / supabaseMensalistas.length) : 0)}
-              </h4>
-            </div>
+            <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -3717,14 +4642,12 @@ const App: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setFormAtivoMensalista(prev => !prev)}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        formAtivoMensalista ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#161924] light-theme:bg-slate-200'
-                      }`}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formAtivoMensalista ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#161924] light-theme:bg-slate-200'
+                        }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          formAtivoMensalista ? 'translate-x-5' : 'translate-x-0'
-                        }`}
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${formAtivoMensalista ? 'translate-x-5' : 'translate-x-0'
+                          }`}
                       />
                     </button>
                   </div>
@@ -4028,8 +4951,8 @@ const App: React.FC = () => {
                           </td>
                           <td className="py-3.5 text-center pr-6">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                               }`}>
                               {item.ativo ? 'Ativo' : 'Inativo'}
                             </span>
@@ -4146,38 +5069,40 @@ const App: React.FC = () => {
       <div className="h-full flex flex-col gap-4 w-full min-h-0">
         {/* Header Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <Users className="h-4 w-4" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">PESSOAS FÍSICAS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseData.filter(p => p.tipo_pessoa === 'Física').length} Cadastros
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+              <Users className="h-3.5 w-3.5" />
+              <span>Clientes pessoa física</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">PESSOAS FÍSICAS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseData.filter(p => p.tipo_pessoa === 'Física').length} Cadastros
-              </h4>
-            </div>
+            <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Database className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">PESSOAS JURÍDICAS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseData.filter(p => p.tipo_pessoa === 'Jurídica').length} Cadastros
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+              <Database className="h-3.5 w-3.5" />
+              <span>Empresas corporativas</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">PESSOAS JURÍDICAS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseData.filter(p => p.tipo_pessoa === 'Jurídica').length} Cadastros
-              </h4>
-            </div>
+            <Database className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <CheckCircle className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ATIVAS NO SUPABASE</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseData.filter(p => p.ativo !== false).length} de {supabaseData.length} Contatos
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>Cadastros ativos</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">ATIVAS NO SUPABASE</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseData.filter(p => p.ativo !== false).length} de {supabaseData.length} Contatos
-              </h4>
-            </div>
+            <CheckCircle className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -4214,28 +5139,26 @@ const App: React.FC = () => {
                   <div className="flex flex-col text-left">
                     <span className="text-xs font-bold text-white light-theme:text-[#334155] tracking-wide">
                       {formPessoaTipo === 'Mensalista' ? (formPessoaAtivo ? 'Mensalista Ativo' : 'Mensalista Inativo') :
-                       formPessoaTipo === 'Cliente' ? (formPessoaAtivo ? 'Cliente Ativo' : 'Cliente Inativo') :
-                       formPessoaTipo === 'Empresa' ? (formPessoaAtivo ? 'Empresa Ativa' : 'Empresa Inativa') :
-                       (formPessoaAtivo ? 'Cadastro Ativo' : 'Cadastro Inativo')}
+                        formPessoaTipo === 'Cliente' ? (formPessoaAtivo ? 'Cliente Ativo' : 'Cliente Inativo') :
+                          formPessoaTipo === 'Empresa' ? (formPessoaAtivo ? 'Empresa Ativa' : 'Empresa Inativa') :
+                            (formPessoaAtivo ? 'Cadastro Ativo' : 'Cadastro Inativo')}
                     </span>
                     <span className="text-[10px] text-[#64748b] font-medium mt-1 leading-relaxed">
                       {formPessoaTipo === 'Mensalista' ? 'Habilitar cobrança e acesso do cliente' :
-                       formPessoaTipo === 'Cliente' ? 'Habilitar cadastro e movimentação no sistema' :
-                       formPessoaTipo === 'Empresa' ? 'Habilitar faturamento e convênios corporativos' :
-                       'Habilitar registros e movimentação no sistema'}
+                        formPessoaTipo === 'Cliente' ? 'Habilitar cadastro e movimentação no sistema' :
+                          formPessoaTipo === 'Empresa' ? 'Habilitar faturamento e convênios corporativos' :
+                            'Habilitar registros e movimentação no sistema'}
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setFormPessoaAtivo(!formPessoaAtivo)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      formPessoaAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formPessoaAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                      }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        formPessoaAtivo ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formPessoaAtivo ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -4434,8 +5357,8 @@ const App: React.FC = () => {
                           </td>
                           <td className="py-3.5 text-center">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo !== false
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                               }`}>
                               {item.ativo !== false ? 'Ativo' : 'Inativo'}
                             </span>
@@ -4500,8 +5423,8 @@ const App: React.FC = () => {
                           key={pageNum}
                           onClick={() => setCurrentPagePessoas(pageNum)}
                           className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
-                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                            : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
                         >
                           {pageNum}
@@ -4597,36 +5520,38 @@ const App: React.FC = () => {
       <div className="h-full flex flex-col gap-4 w-full min-h-0">
         {/* Header Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Car className="h-4 w-4" />
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FROTA TOTAL</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">{supabaseVehicles.length} Veículos</h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+              <Car className="h-3.5 w-3.5" />
+              <span>Frota total cadastrada</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">FROTA TOTAL</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">{supabaseVehicles.length} Veículos</h4>
-            </div>
+            <Car className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400 flex-shrink-0">
-              <User className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MOTORISTAS VINCULADOS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseVehicles.filter(v => v.motorista && v.motorista.length > 0).length} Veículos
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+              <User className="h-3.5 w-3.5" />
+              <span>Condutores associados</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">MOTORISTAS VINCULADOS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseVehicles.filter(v => v.motorista && v.motorista.length > 0).length} Veículos
-              </h4>
-            </div>
+            <User className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <CheckCircle className="h-4 w-4" />
+
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS ATIVOS</span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {supabaseVehicles.filter(v => v.ativo).length} de {supabaseVehicles.length} Ativos
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>Em operação ativa</span>
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">VEÍCULOS ATIVOS</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {supabaseVehicles.filter(v => v.ativo).length} de {supabaseVehicles.length} Ativos
-              </h4>
-            </div>
+            <CheckCircle className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -4671,14 +5596,12 @@ const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormVeiculoAtivo(!formVeiculoAtivo)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      formVeiculoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formVeiculoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                      }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        formVeiculoAtivo ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formVeiculoAtivo ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -4854,8 +5777,8 @@ const App: React.FC = () => {
                           </td>
                           <td className="py-3.5 text-center">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                               }`}>
                               {item.ativo ? 'Ativo' : 'Inativo'}
                             </span>
@@ -4920,8 +5843,8 @@ const App: React.FC = () => {
                           key={pageNum}
                           onClick={() => setCurrentPageVeiculos(pageNum)}
                           className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
-                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                            : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
                         >
                           {pageNum}
@@ -5056,14 +5979,12 @@ const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormFormaPagamentoAtivo(!formFormaPagamentoAtivo)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      formFormaPagamentoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formFormaPagamentoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                      }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        formFormaPagamentoAtivo ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formFormaPagamentoAtivo ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -5242,8 +6163,8 @@ const App: React.FC = () => {
                           key={pageNum}
                           onClick={() => setCurrentPageFormaPagamento(pageNum)}
                           className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
-                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                            : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
                         >
                           {pageNum}
@@ -5378,14 +6299,12 @@ const App: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setFormCentroCustoAtivo(!formCentroCustoAtivo)}
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      formCentroCustoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
-                    }`}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formCentroCustoAtivo ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.55)]' : 'bg-slate-700 light-theme:bg-slate-200'
+                      }`}
                   >
                     <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        formCentroCustoAtivo ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formCentroCustoAtivo ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -5650,8 +6569,8 @@ const App: React.FC = () => {
                           key={pageNum}
                           onClick={() => setCurrentPageCentroCusto(pageNum)}
                           className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
-                              ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
-                              : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
+                            ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
+                            : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
                         >
                           {pageNum}
@@ -5731,103 +6650,923 @@ const App: React.FC = () => {
   };
 
   const renderOrdemServico = () => {
-    const mockOrders = [
-      { id: 'os-1', plate: 'BRA2E20', model: 'Honda Civic', customer: 'Marcos Silva', service: 'Lavagem Completa + Cera', price: 120.00, status: 'executing' },
-      { id: 'os-2', plate: 'OSB5H90', model: 'Toyota Corolla', customer: 'Arthur Lima', service: 'Polimento Técnico + Proteção', price: 450.00, status: 'waiting' },
-      { id: 'os-3', plate: 'ENL8X05', model: 'Jeep Compass', customer: 'Amanda Costa', service: 'Higienização Interna Completa', price: 280.00, status: 'done' },
-      { id: 'os-4', plate: 'PPA3K01', model: 'Chevrolet Onix', customer: 'Lucas Santos', service: 'Lavagem Simples + Aspiração', price: 70.00, status: 'waiting' },
-      { id: 'os-5', plate: 'DFK2P00', model: 'Volkswagen Golf', customer: 'Gabriela Alves', service: 'Polimento dos Faróis', price: 150.00, status: 'executing' },
-    ];
+    // 1. Apply active filters to get filteredOS
+    const filteredOS = supabaseOrdemServicos.filter(os => {
+      if (searchOS) {
+        const term = searchOS.toLowerCase();
+        const matchesName = os.pessoa_nome?.toLowerCase().includes(term);
+        const matchesPlaca = os.placa?.toLowerCase().includes(term);
+        const matchesCarreta1 = os.placa_carreta_1?.toLowerCase().includes(term);
+        const matchesCarreta2 = os.placa_carreta_2?.toLowerCase().includes(term);
+        const matchesCarreta3 = os.placa_carreta_3?.toLowerCase().includes(term);
+        const matchesNumeroOS = os.numero_os?.toLowerCase().includes(term);
+        if (!matchesName && !matchesPlaca && !matchesCarreta1 && !matchesCarreta2 && !matchesCarreta3 && !matchesNumeroOS) {
+          return false;
+        }
+      }
+      if (periodoOS) {
+        const osDateStr = os.data_os ? os.data_os.split('T')[0] : '';
+        if (!osDateStr) return false;
+        const osYearMonth = osDateStr.substring(0, 7); // format "YYYY-MM"
+        if (osYearMonth !== periodoOS) return false;
+      }
+      if (selectedPessoaOS && selectedPessoaOS !== 'All') {
+        if (os.pessoa_nome !== selectedPessoaOS) return false;
+      }
+      return true;
+    });
 
-    const columns = [
-      { id: 'waiting', name: 'Aguardando na Fila', color: 'border-t-yellow-500 bg-yellow-500/5' },
-      { id: 'executing', name: 'Na Rampa / Lavando', color: 'border-t-cyan-500 bg-cyan-500/5' },
-      { id: 'done', name: 'Pronto / Finalizado', color: 'border-t-emerald-500 bg-emerald-500/5' },
-    ];
+    // Calculate metrics
+    const totalPeriodo = filteredOS.reduce((acc, curr) => acc + (curr.valor_total || 0), 0);
+    const totalOSCount = filteredOS.length;
+    const ticketMedio = totalOSCount > 0 ? totalPeriodo / totalOSCount : 0;
 
-    return (
-      <div className="h-full flex flex-col gap-4 w-full">
-        {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-yellow-500/10 flex items-center justify-center text-yellow-400 flex-shrink-0">
-              <Clock className="h-4 w-4" />
+    // Distinct list of people who have OS for the dropdown
+    const distinctPessoas = Array.from(new Set(supabaseOrdemServicos.map(os => os.pessoa_nome).filter(Boolean))).sort();
+
+    // 2. Render List view
+    if (osFormMode === 'list') {
+      return (
+        <div className="h-full flex flex-col gap-5 w-full overflow-hidden">
+          {/* A. KPI Stats Header */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full flex-shrink-0">
+            {/* Total Periodo */}
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TOTAL DO PERÍODO</span>
+              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPeriodo)}
+              </h3>
+              <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+                <TrendingUp className="h-3.5 w-3.5 text-cyan-400 light-theme:text-cyan-600" />
+                <span>Receitas do período</span>
+              </div>
+              <DollarSign className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">AGUARDANDO ATENDIMENTO</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {mockOrders.filter(o => o.status === 'waiting').length} Veículos na Fila
-              </h4>
+
+            {/* Total OS Count */}
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ORDEM DE SERVIÇOS</span>
+              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+                {totalOSCount}
+              </h3>
+              <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+                <FileText className="h-3.5 w-3.5 text-emerald-400 light-theme:text-emerald-600" />
+                <span>Total de O.S. no período</span>
+              </div>
+              <FileText className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            </div>
+
+            {/* Ticket Medio */}
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TICKET MÉDIO</span>
+              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ticketMedio)}
+              </h3>
+              <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+                <Wallet className="h-3.5 w-3.5 text-violet-400 light-theme:text-violet-600" />
+                <span>Valor médio por O.S.</span>
+              </div>
+              <Wallet className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
           </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 flex-shrink-0">
-              <Activity className="h-4 w-4" />
-            </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">EM EXECUÇÃO</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {mockOrders.filter(o => o.status === 'executing').length} Veículos na Rampa
-              </h4>
-            </div>
-          </div>
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-4 rounded-xl flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 flex-shrink-0">
-              <CheckCircle className="h-4 w-4" />
-            </div>
-            <div>
-              <span className="text-[10px] text-[#64748b] font-bold block leading-none">CONCLUÍDOS (HOJE)</span>
-              <h4 className="text-sm font-bold text-white light-theme:text-slate-800 mt-1 leading-none">
-                {mockOrders.filter(o => o.status === 'done').length} Serviços Concluídos
-              </h4>
-            </div>
-          </div>
-        </div>
 
-        {/* Board Columns Grid */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden w-full">
-          {columns.map(col => {
-            const ordersInCol = mockOrders.filter(o => o.status === col.id);
-            return (
-              <div key={col.id} className={`flex flex-col rounded-2xl bg-[#0e111a] light-theme:bg-white border-t-2 border-x border-b border-[#1f2433] light-theme:border-slate-200 p-4 ${col.color} overflow-hidden h-[calc(100vh-270px)]`}>
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-[#1f2433]/40 light-theme:border-slate-100 flex-shrink-0">
-                  <h4 className="font-bold text-white light-theme:text-slate-800 text-xs flex items-center gap-2">
-                    {col.name}
-                    <span className="h-5 w-5 rounded-full bg-[#161924] light-theme:bg-slate-100 text-[10px] font-bold flex items-center justify-center text-[#94a3b8] flex-shrink-0">
-                      {ordersInCol.length}
-                    </span>
-                  </h4>
+          {/* C. Grid/Table of Service Orders with Unified Header */}
+          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl shadow-xl overflow-hidden min-h-0 flex flex-col relative">
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-4 flex-shrink-0 text-left">
+              <div>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Lista de Ordens de Serviço</h3>
+                {filteredOS.length > 0 && (
+                  <p className="text-[10px] text-cyan-400 font-semibold mt-1">
+                    Exibindo de 1 a {filteredOS.length} de {supabaseOrdemServicos.length} registros
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Search Input */}
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome, placa ou OS..."
+                    value={searchOS}
+                    onChange={(e) => setSearchOS(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-1.5 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
                 </div>
 
-                <div className="flex-1 overflow-y-auto space-y-3.5 pr-1 custom-scrollbar w-full">
-                  {ordersInCol.map(order => (
-                    <div
-                      key={order.id}
-                      className="p-4 rounded-xl bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 hover:border-cyan-500/40 transition-all cursor-grab relative overflow-hidden group select-none shadow-md"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-white/5 border border-white/10 text-cyan-400 text-[10px] uppercase tracking-wide leading-none">
-                            {order.plate}
-                          </span>
-                          <h5 className="font-bold text-white light-theme:text-slate-800 text-xs mt-2.5 leading-none">{order.model}</h5>
-                        </div>
-                        <span className="text-xs font-bold text-emerald-400 leading-none">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.price)}
-                        </span>
-                      </div>
+                {/* Período */}
+                <input
+                  type="month"
+                  value={periodoOS}
+                  onChange={(e) => setPeriodoOS(e.target.value)}
+                  className="bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-1.5 px-3.5 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer"
+                />
 
-                      <div className="mt-3 text-[10px] font-medium text-[#94a3b8] light-theme:text-slate-500 leading-relaxed">
-                        <span className="block font-semibold text-slate-300 light-theme:text-slate-700">Serviço: {order.service}</span>
-                        <span className="block text-[#64748b] mt-0.5">Cliente: {order.customer}</span>
-                      </div>
-                    </div>
-                  ))}
+                {/* Dropdown Pessoa */}
+                <div className="relative w-48">
+                  <select
+                    value={selectedPessoaOS}
+                    onChange={(e) => setSelectedPessoaOS(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-1.5 pl-3.5 pr-8 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer appearance-none text-left"
+                  >
+                    <option value="">Todas as Pessoas</option>
+                    {distinctPessoas.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#64748b]">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={fetchSupabaseOrdemServicos}
+                  disabled={loadingOS}
+                  className="h-8 w-8 rounded-xl bg-[#090b11] border border-[#1f2433] light-theme:border-slate-200 light-theme:bg-slate-50 flex items-center justify-center hover:bg-white/5 active:bg-[#090b11] transition-colors disabled:opacity-50 text-[#94a3b8] cursor-pointer"
+                  title="Sincronizar"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loadingOS ? 'animate-spin' : ''}`} />
+                </button>
+
+                {/* Botão Nova OS */}
+                <button
+                  type="button"
+                  onClick={handleOpenCreateOS}
+                  className="flex items-center gap-1.5 px-9 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-1"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Nova OS</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto flex-1 custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#1f2433]/70 light-theme:border-slate-200 text-[#64748b] text-[10px] font-bold uppercase tracking-wider">
+                    <th className="py-4.5 px-6">No. OS</th>
+                    <th className="py-4.5 px-6">Data</th>
+                    <th className="py-4.5 px-6">Pessoa</th>
+                    <th className="py-4.5 px-6">Veículo / Placa</th>
+                    <th className="py-4.5 px-6">Valor Total</th>
+                    <th className="py-4.5 px-6">Status</th>
+                    <th className="py-4.5 px-6 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100 text-xs font-medium">
+                  {loadingOS ? (
+                    <tr>
+                      <td colSpan={7} className="py-20 text-center text-[#64748b]">
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                          <span className="font-semibold uppercase tracking-wider text-[10px]">Carregando ordens...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredOS.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-20 text-center text-[#64748b]">
+                        Nenhuma ordem de serviço encontrada com os filtros selecionados.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOS.map((os) => (
+                      <tr key={os.id} className="hover:bg-white/2 light-theme:hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-6 font-mono font-bold text-white light-theme:text-slate-800">
+                          {os.numero_os || 'OS-N/A'}
+                        </td>
+                        <td className="py-4 px-6 text-[#94a3b8] light-theme:text-slate-500">
+                          {os.data_os
+                            ? new Date(os.data_os).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                            : 'N/A'}
+                        </td>
+                        <td className="py-4 px-6 text-white light-theme:text-slate-800 font-bold">
+                          {os.pessoa_nome || 'N/A'}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {os.placa && (
+                              <span className="px-2 py-0.5 rounded-md font-mono font-bold bg-[#f5f8ff] text-[#2563eb] border border-[#c3d7f9] text-[12px] uppercase shadow-sm tracking-wide">
+                                {os.placa}
+                              </span>
+                            )}
+                            {os.placa_carreta_1 && (
+                              <span className="px-1.5 py-0.5 rounded-md font-mono font-bold bg-[#f5f8ff] text-slate-950 border border-[#c3d7f9] text-[11px] uppercase shadow-sm tracking-wide">
+                                {os.placa_carreta_1}
+                              </span>
+                            )}
+                            {os.placa_carreta_2 && (
+                              <span className="px-1.5 py-0.5 rounded-md font-mono font-bold bg-[#f5f8ff] text-slate-950 border border-[#c3d7f9] text-[11px] uppercase shadow-sm tracking-wide">
+                                {os.placa_carreta_2}
+                              </span>
+                            )}
+                            {os.placa_carreta_3 && (
+                              <span className="px-1.5 py-0.5 rounded-md font-mono font-bold bg-[#f5f8ff] text-slate-950 border border-[#c3d7f9] text-[11px] uppercase shadow-sm tracking-wide">
+                                {os.placa_carreta_3}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 text-emerald-400 font-bold">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(os.valor_total || 0)}
+                        </td>
+                        <td className="py-4 px-6">
+                          {os.status === 'fechada' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 border border-rose-500/20 text-rose-400 shadow-sm leading-none">
+                              <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+                              Fechada
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-sm leading-none">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                              Aberta
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center justify-center gap-2.5">
+                            <button
+                              onClick={() => handleOpenEditOS(os)}
+                              className="h-9 w-9 rounded-xl bg-[#090b11] border border-[#1f2433] text-[#94a3b8] hover:border-violet-500 hover:text-white light-theme:bg-slate-50 light-theme:border-slate-200/80 light-theme:text-slate-500 light-theme:hover:bg-slate-100 light-theme:hover:text-slate-800 transition-all duration-200 flex items-center justify-center cursor-pointer shadow-sm"
+                              title="Editar OS"
+                            >
+                              <Pencil className="h-4 w-4 stroke-[1.5]" />
+                            </button>
+                            <button
+                              disabled={os.status === 'fechada'}
+                              onClick={() => setOsToDelete(os)}
+                              className="h-9 w-9 rounded-xl bg-[#090b11] border border-[#1f2433] text-[#94a3b8] hover:border-red-500 hover:text-red-400 light-theme:bg-slate-50 light-theme:border-slate-200/80 light-theme:text-slate-500 light-theme:hover:bg-red-50 light-theme:hover:text-red-600 transition-all duration-200 flex items-center justify-center shadow-sm disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-[#1f2433] disabled:hover:text-[#94a3b8] light-theme:disabled:hover:bg-slate-50 light-theme:disabled:hover:text-slate-500"
+                              title={os.status === 'fechada' ? "OS Fechada não pode ser excluída" : "Excluir OS"}
+                            >
+                              <Trash2 className="h-4 w-4 stroke-[1.5]" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* D. Confirmation delete modal */}
+          {osToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOsToDelete(null)} />
+              <div className="bg-[#0e111a] border border-[#1f2433] rounded-3xl p-6 max-w-md w-full relative z-10 shadow-2xl animate-scaleUp text-white">
+                <div className="flex items-start gap-4">
+                  <div className="h-11 w-11 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white text-base leading-snug">Excluir Ordem de Serviço</h3>
+                    <p className="text-xs text-[#94a3b8] mt-2.5 leading-relaxed">
+                      Tem certeza que deseja excluir permanentemente a OS <span className="text-white font-bold">{osToDelete.numero_os}</span> de <span className="text-white font-bold">{osToDelete.pessoa_nome}</span>?
+                    </p>
+                    <p className="text-[10px] text-red-400 mt-2 font-semibold">
+                      ⚠️ Esta ação também excluirá todos os itens de serviço e o lançamento financeiro associado!
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 mt-6 border-t border-[#1f2433] pt-4.5">
+                  <button
+                    onClick={() => setOsToDelete(null)}
+                    disabled={isDeletingOS}
+                    className="px-4 py-2 rounded-xl border border-[#1f2433] text-xs font-bold text-[#94a3b8] hover:text-white transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDeleteOS}
+                    disabled={isDeletingOS}
+                    className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-lg shadow-red-900/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeletingOS ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    <span>Confirmar Exclusão</span>
+                  </button>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          )}
         </div>
+      );
+    }
+
+    // 3. Render Form view (Create / Edit) - Styled like New Payment Method
+    return (
+      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+        <div className="w-full max-w-5xl h-fit max-h-full flex flex-col min-h-0 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl overflow-y-auto custom-scrollbar">
+          <form onSubmit={handleSaveOS} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
+            {/* Header bar */}
+            <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
+              <div>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                  {osFormMode === 'create' ? 'Cadastrar Nova Ordem de Serviço' : formOSStatus === 'fechada' ? 'Visualizar Ordem de Serviço (FECHADA)' : 'Editar Ordem de Serviço'}
+                </h3>
+                <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados da ordem de serviço no Supabase.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setOsFormMode('list');
+                  setSelectedOS(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span>Voltar para a Lista</span>
+              </button>
+            </div>
+
+            {formOSError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 flex-shrink-0">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>{formOSError}</span>
+              </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-6 min-h-0 py-1">
+              {/* Section 1: Dados Gerais */}
+              <div className="space-y-5">
+                <h4 className="text-xs font-extrabold text-white light-theme:text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <Info className="h-4.5 w-4.5 text-cyan-400" />
+                  Dados Gerais da OS
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Numero OS */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Número OS</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={true}
+                      placeholder="OS-00001"
+                      value={formOSNumero}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                      title="O número da OS é gerado automaticamente pelo sequenciador anual do sistema"
+                    />
+                  </div>
+
+                  {/* Data OS */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Data OS</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      disabled={formOSStatus === 'fechada'}
+                      value={formOSData}
+                      onChange={(e) => {
+                        const newDateStr = e.target.value;
+                        setFormOSData(newDateStr);
+                        if (osFormMode === 'create' && newDateStr) {
+                          const year = new Date(newDateStr).getFullYear();
+                          if (!isNaN(year)) {
+                            setFormOSNumero('Gerando...');
+                            getNextOSNumberForYear(year).then(num => setFormOSNumero(num));
+                          }
+                        }
+                      }}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* Opção Cliente Avulso */}
+                  <div className="md:col-span-2 flex items-center gap-2 px-1">
+                    <input
+                      type="checkbox"
+                      id="formOSAvulso"
+                      disabled={formOSStatus === 'fechada'}
+                      checked={formOSAvulso}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        setFormOSAvulso(isChecked);
+                        if (isChecked) {
+                          setFormOSPessoaId('');
+                          setFormOSVeiculoId('');
+                        } else {
+                          setFormOSPessoaNome('');
+                          setFormOSPlaca('');
+                        }
+                      }}
+                      className="rounded border-[#1f2433] light-theme:border-slate-300 bg-[#090b11] light-theme:bg-slate-50 text-cyan-500 light-theme:text-blue-600 focus:ring-cyan-400 light-theme:focus:ring-blue-500 accent-cyan-500 light-theme:accent-blue-600 h-4 w-4 cursor-pointer"
+                    />
+                    <label htmlFor="formOSAvulso" className="text-xs font-semibold text-slate-300 light-theme:text-slate-700 cursor-pointer select-none">
+                      Cliente Avulso / Não Cadastrado (Digitação livre)
+                    </label>
+                  </div>
+
+                  {/* Pessoa Selection */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">
+                      {formOSAvulso ? 'Pessoa / Cliente (Livre) *' : 'Pessoa / Cliente *'}
+                    </label>
+                    {formOSAvulso ? (
+                      <input
+                        type="text"
+                        required
+                        disabled={formOSStatus === 'fechada'}
+                        placeholder="Digite o nome do cliente..."
+                        value={formOSPessoaNome}
+                        onChange={(e) => setFormOSPessoaNome(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      />
+                    ) : (
+                      <select
+                        required
+                        disabled={formOSStatus === 'fechada'}
+                        value={formOSPessoaId}
+                        onChange={(e) => {
+                          const pid = e.target.value;
+                          setFormOSPessoaId(pid);
+                          const p = supabaseData.find(x => x.id === pid);
+                          if (p) setFormOSPessoaNome(p.nome_pessoa || '');
+                        }}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecione uma Pessoa...</option>
+                        {supabaseData.map(p => (
+                          <option key={p.id} value={p.id}>{p.nome_pessoa}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Veiculo Selection */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">
+                      {formOSAvulso ? 'Placa do Veículo (Livre)' : 'Veículo cadastrado'}
+                    </label>
+                    {formOSAvulso ? (
+                      <input
+                        type="text"
+                        disabled={formOSStatus === 'fechada'}
+                        placeholder="Ex: ABC1D23"
+                        value={formOSPlaca}
+                        onChange={(e) => setFormOSPlaca(e.target.value.toUpperCase())}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+                      />
+                    ) : (
+                      <select
+                        disabled={formOSStatus === 'fechada'}
+                        value={formOSVeiculoId}
+                        onChange={(e) => {
+                          const vid = e.target.value;
+                          setFormOSVeiculoId(vid);
+                          const v = supabaseVehicles.find(x => x.id === vid);
+                          if (v) {
+                            setFormOSPlaca(v.placa || '');
+                            if (v.pessoa_id) {
+                              setFormOSPessoaId(v.pessoa_id);
+                              setFormOSPessoaNome(v.pessoa_nome || '');
+                            }
+                          }
+                        }}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecione um Veículo...</option>
+                        {supabaseVehicles
+                          .filter(v => !formOSPessoaId || v.pessoa_id === formOSPessoaId)
+                          .map(v => (
+                            <option key={v.id} value={v.id}>{v.placa} ({v.marca_modelo || 'Sem Modelo'})</option>
+                          ))
+                        }
+                      </select>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Frota, Placas e Motorista */}
+              <div className="space-y-5">
+                <h4 className="text-xs font-extrabold text-white light-theme:text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                  <Car className="h-4.5 w-4.5 text-cyan-400" />
+                  Informações do Veículo, Frota e Motorista
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Placa Cavalo */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa (Cavalo)</label>
+                    <input
+                      type="text"
+                      required
+                      disabled={formOSStatus === 'fechada'}
+                      placeholder="BRA2E20"
+                      value={formOSPlaca}
+                      onChange={(e) => setFormOSPlaca(e.target.value.toUpperCase())}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Motorista */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Motorista</label>
+                    <input
+                      type="text"
+                      disabled={formOSStatus === 'fechada'}
+                      placeholder="Nome do motorista"
+                      value={formOSMotorista}
+                      onChange={(e) => setFormOSMotorista(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Frota */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Prefixo / Frota</label>
+                    <input
+                      type="text"
+                      disabled={formOSStatus === 'fechada'}
+                      placeholder="No. da frota"
+                      value={formOSFrota}
+                      onChange={(e) => setFormOSFrota(e.target.value)}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  {/* Carreta 1 */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa Carreta 1</label>
+                    <input
+                      type="text"
+                      disabled={formOSStatus === 'fechada'}
+                      placeholder="Placa carreta 1"
+                      value={formOSPlacaCarreta1}
+                      onChange={(e) => setFormOSPlacaCarreta1(e.target.value.toUpperCase())}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Carreta 2 */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa Carreta 2</label>
+                    <input
+                      type="text"
+                      disabled={formOSStatus === 'fechada'}
+                      placeholder="Placa carreta 2"
+                      value={formOSPlacaCarreta2}
+                      onChange={(e) => setFormOSPlacaCarreta2(e.target.value.toUpperCase())}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Carreta 3 */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa Carreta 3</label>
+                    <input
+                      type="text"
+                      disabled={formOSStatus === 'fechada'}
+                      placeholder="Placa carreta 3"
+                      value={formOSPlacaCarreta3}
+                      onChange={(e) => setFormOSPlacaCarreta3(e.target.value.toUpperCase())}
+                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono uppercase disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons (Moved before Itens e Serviços Prestados) */}
+              <div className="flex items-center justify-start gap-3 py-2 flex-shrink-0">
+                <button
+                  type="submit"
+                  disabled={formOSStatus === 'fechada' || formOSSubmitting}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {formOSSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                  <span>Salvar Ordem de Serviço</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOsFormMode('list');
+                    setSelectedOS(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-[#1f2433] hover:bg-[#2b3247] light-theme:bg-slate-100 light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:text-white font-bold text-xs transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+              </div>
+
+              {/* Section 3: Itens da Ordem de Serviço */}
+              <div className="bg-[#090b11]/25 light-theme:bg-slate-50/50 border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl space-y-4 overflow-hidden">
+                <div className="flex items-center justify-between w-full">
+                  <h4 className="text-xs font-extrabold text-white light-theme:text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Layers className="h-4.5 w-4.5 text-cyan-400" />
+                    Itens e Serviços Prestados
+                  </h4>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      disabled={osFormMode === 'create' || formOSStatus === 'fechada'}
+                      onClick={() => {
+                        setFormOSItems([...formOSItems, { id: `new-${Date.now()}`, descricao: '', qtde: 1, valor: 0, valor_total: 0 }]);
+                        setHighlightAddItem(false);
+                      }}
+                      className={`flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer transition-all duration-300 ${highlightAddItem
+                        ? 'ring-4 ring-cyan-400 animate-pulse scale-105 shadow-cyan-500/40'
+                        : ''
+                        }`}
+                      title={osFormMode === 'create' ? 'Salve a Ordem de Serviço primeiro para poder adicionar itens' : formOSStatus === 'fechada' ? 'Ordem de Serviço fechada' : 'Adicionar novo item de serviço'}
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Adicionar Item</span>
+                    </button>
+                  </div>
+                </div>
+
+                {formOSItems.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-8 border border-dashed border-[#1f2433]/70 light-theme:border-slate-200 rounded-xl bg-[#090b11]/20 light-theme:bg-slate-50/50 text-center animate-fadeIn">
+                    <Layers className="h-8 w-8 text-[#64748b] mb-2.5 opacity-50" />
+                    <p className="text-xs text-[#64748b] font-medium">Nenhum item de serviço cadastrado nesta ordem.</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Adicione serviços clicando no botão "+ Adicionar Item" no topo direito.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
+                      <thead>
+                        <tr className="border-b border-[#1f2433]/70 light-theme:border-slate-100 text-[#64748b] text-[10px] font-bold uppercase tracking-wider">
+                          <th className="py-2.5 px-3 w-7/12">Descrição do Serviço / Produto</th>
+                          <th className="py-2.5 px-3 w-1.5/12 text-center">Qtd</th>
+                          <th className="py-2.5 px-3 w-2/12">Valor Unitário</th>
+                          <th className="py-2.5 px-3 w-2/12">Total</th>
+                          <th className="py-2.5 px-3 w-1/12 text-center">Remover</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-50 text-xs">
+                        {formOSItems.map((item, idx) => {
+                          const rowTotal = (item.qtde || 1) * (item.valor || 0);
+                          return (
+                            <tr key={item.id} className="align-middle">
+                              <td className="py-3 px-2">
+                                <input
+                                  type="text"
+                                  disabled={osFormMode === 'create' || formOSStatus === 'fechada'}
+                                  placeholder={osFormMode === 'create' ? "Salve a OS acima para habilitar os itens..." : formOSStatus === 'fechada' ? "Visualização apenas" : "Ex: Lavagem completa com cera"}
+                                  value={item.descricao || ''}
+                                  onChange={(e) => {
+                                    const list = [...formOSItems];
+                                    list[idx].descricao = e.target.value;
+                                    setFormOSItems(list);
+                                  }}
+                                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-lg py-1.5 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <input
+                                  type="number"
+                                  disabled={osFormMode === 'create' || formOSStatus === 'fechada'}
+                                  min="1"
+                                  step="any"
+                                  value={item.qtde || 1}
+                                  onChange={(e) => {
+                                    const list = [...formOSItems];
+                                    list[idx].qtde = parseFloat(e.target.value) || 1;
+                                    list[idx].valor_total = list[idx].qtde * (list[idx].valor || 0);
+                                    setFormOSItems(list);
+                                  }}
+                                  className="w-20 mx-auto bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-lg py-1.5 px-2 text-xs text-center text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                              </td>
+                              <td className="py-3 px-2">
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-2.5 text-[#64748b] text-[10px] font-bold">R$</span>
+                                  <input
+                                    type="text"
+                                    disabled={osFormMode === 'create' || formOSStatus === 'fechada'}
+                                    placeholder="0,00"
+                                    value={item.valor !== undefined ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(item.valor) : '0,00'}
+                                    onChange={(e) => {
+                                      const list = [...formOSItems];
+                                      const rawDigits = e.target.value.replace(/\D/g, '');
+                                      if (!rawDigits) {
+                                        list[idx].valor = 0;
+                                        list[idx].valor_total = 0;
+                                        setFormOSItems(list);
+                                        return;
+                                      }
+                                      const cents = parseInt(rawDigits, 10);
+                                      const parsedVal = cents / 100;
+                                      list[idx].valor = parsedVal;
+                                      list[idx].valor_total = (list[idx].qtde || 1) * parsedVal;
+                                      setFormOSItems(list);
+                                    }}
+                                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-lg py-1.5 pl-8 pr-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-3 px-2 text-emerald-400 font-bold font-mono">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(rowTotal)}
+                              </td>
+                              <td className="py-3 px-2 text-center">
+                                <button
+                                  type="button"
+                                  disabled={osFormMode === 'create' || formOSStatus === 'fechada'}
+                                  onClick={() => {
+                                    const list = formOSItems.filter((_, i) => i !== idx);
+                                    setFormOSItems(list);
+                                  }}
+                                  className="h-7 w-7 rounded-md bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 transition-colors flex items-center justify-center mx-auto disabled:opacity-30 disabled:cursor-not-allowed animate-scaleUp"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="-mx-6 -mb-6 mt-4 bg-[#0e111a] light-theme:bg-[#18224f] border-t border-[#1f2433] light-theme:border-[#242f63]/50 rounded-b-2xl py-4 px-6 flex items-center justify-between">
+                  <span className="text-xs font-bold text-[#8fa0dd] light-theme:text-slate-200 uppercase tracking-widest">
+                    TOTAL DA OS
+                  </span>
+                  <span className="text-lg font-extrabold text-emerald-400 light-theme:text-emerald-300 font-mono">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                      formOSItems.reduce((acc, curr) => acc + ((curr.qtde || 1) * (curr.valor || 0)), 0)
+                    )}
+                  </span>
+                </div>
+              </div>
+
+              {/* Section 4: Observações e Fechamento */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-4">
+                {/* Left Column: Observações da OS */}
+                <div className="lg:col-span-2 bg-[#090b11]/25 light-theme:bg-slate-50/50 border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl space-y-4">
+                  <h4 className="text-xs font-extrabold text-white light-theme:text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <FileText className="h-4.5 w-4.5 text-cyan-400" />
+                    Observações da OS
+                  </h4>
+                  <textarea
+                    placeholder="Descreva observações..."
+                    disabled={formOSStatus === 'fechada'}
+                    value={formOSObservacao}
+                    onChange={(e) => setFormOSObservacao(e.target.value)}
+                    className="w-full h-32 bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-3 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors resize-none placeholder-[#64748b] disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Right Column: Fechar OS */}
+                <div className="bg-[#090b11]/25 light-theme:bg-slate-50/50 border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl space-y-5">
+                  <h4 className="text-xs font-extrabold text-white light-theme:text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                    <Lock className="h-4.5 w-4.5 text-cyan-400" />
+                    Fechar OS.
+                  </h4>
+
+                  {/* Status Info */}
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-center gap-2.5 text-[#94a3b8] light-theme:text-slate-600">
+                      <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
+                      <span className="font-semibold">Status:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] uppercase ${formOSStatus === 'aberta' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'}`}>
+                        {formOSStatus === 'aberta' ? 'Aberta' : 'Fechada'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-[#94a3b8] light-theme:text-slate-600">
+                      <CheckCircle className="h-4.5 w-4.5 text-emerald-500" />
+                      <span className="font-semibold">Usuário:</span>
+                      <span className="font-medium text-white light-theme:text-slate-800">
+                        {(() => {
+                          const fullName = userProfile?.nome_completo || session?.user?.user_metadata?.nome_completo;
+                          if (fullName) return fullName.trim().split(' ')[0];
+                          if (session?.user?.email) {
+                            const emailUser = session.user.email.split('@')[0];
+                            if (emailUser.toLowerCase().startsWith('paulog')) return 'Paulo';
+                            const namePart = emailUser.split(/[._-]/)[0];
+                            return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+                          }
+                          return 'Operador';
+                        })()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Warning Banner */}
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 light-theme:text-amber-800 light-theme:bg-amber-50/80 light-theme:border-amber-200/50 text-[10px] leading-relaxed flex items-start gap-2">
+                    <Info className="h-4.5 w-4.5 flex-shrink-0 mt-0.5 text-amber-500" />
+                    <span>Para fechar a Ordem de Serviço e liberar a impressão do recibo, selecione a Forma de Pagamento.</span>
+                  </div>
+
+                  {/* Centro de Custo Select */}
+                  <div className="flex flex-col gap-1.5 text-left">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Centro de Custo</label>
+                    <div className="relative">
+                      <Layers className="absolute left-3.5 top-3 h-4.5 w-4.5 text-[#64748b]" />
+                      <select
+                        required={formOSStatus === 'fechada'}
+                        disabled={formOSStatus === 'fechada'}
+                        value={formOSCentroCustoId}
+                        onChange={(e) => setFormOSCentroCustoId(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-11 pr-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecione...</option>
+                        {supabaseCentroCusto.filter(c => c.tipo_movimentacao === 'ENTRADAS' || c.tipo_movimentacao === 'RECEITAS' || c.tipo_movimentacao === 'Não Informado').map(c => (
+                          <option key={c.id} value={c.id}>{c.nome_centro_custo || c.descricao}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Forma de Pagamento Select */}
+                  <div className="flex flex-col gap-1.5 text-left">
+                    <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Forma de pagamento</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3.5 top-3 h-4.5 w-4.5 text-[#64748b]" />
+                      <select
+                        required={formOSStatus === 'fechada'}
+                        disabled={formOSStatus === 'fechada'}
+                        value={formOSFormaPagamentoId}
+                        onChange={(e) => setFormOSFormaPagamentoId(e.target.value)}
+                        className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-11 pr-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecione...</option>
+                        {supabaseFormaPagamento.map(f => (
+                          <option key={f.id} value={f.id}>{f.descricao}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="space-y-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!formOSCentroCustoId) {
+                          alert("Por favor, selecione o Centro de Custo para fechar a OS.");
+                          return;
+                        }
+                        if (!formOSFormaPagamentoId) {
+                          alert("Por favor, selecione a Forma de Pagamento para fechar a OS.");
+                          return;
+                        }
+                        setFormOSStatus('fechada');
+                        await handleSaveOS(undefined, 'fechada');
+                      }}
+                      disabled={formOSStatus === 'fechada' || formOSSubmitting || formOSItems.length === 0}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      <CheckCircle className="h-4.5 w-4.5" />
+                      <span>Fechar Ordem de Serviço</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handlePrintOS}
+                      disabled={formOSStatus !== 'fechada'}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      <Printer className="h-4.5 w-4.5" />
+                      <span>Imprimir Ordem de Serviço</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        {showOSClosedPopup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowOSClosedPopup(false)} />
+            <div className="bg-[#0e111a] border border-[#1f2433] rounded-3xl p-6 max-w-md w-full relative z-10 shadow-2xl animate-scaleUp text-white text-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <CheckCircle className="h-8 w-8" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-base leading-snug">Ordem de Serviço Fechada!</h3>
+                  <p className="text-xs text-[#94a3b8] mt-3 leading-relaxed">
+                    A Ordem de Serviço foi alterada para o status <strong className="text-emerald-400">Fechada</strong>.
+                  </p>
+                  <p className="text-xs text-[#94a3b8] mt-2 leading-relaxed">
+                    Lançamento financeiro de entrada correspondente gerado com sucesso na tabela de receitas.
+                  </p>
+                  <p className="text-xs text-cyan-400 mt-2 font-semibold">
+                    A O.S. está pronta para ser impressa!
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-center mt-6 pt-4 border-t border-[#1f2433]">
+                <button
+                  type="button"
+                  onClick={() => setShowOSClosedPopup(false)}
+                  className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-violet-900/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  Ok
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -7282,11 +9021,940 @@ const App: React.FC = () => {
     }
   };
 
+  // Fetch all Ordem de Serviços from Supabase
+  const fetchSupabaseOrdemServicos = async () => {
+    setLoadingOS(true);
+    try {
+      let allRecords: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+      const limit = 1000;
+
+      while (hasMore) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicos?select=*&order=data_os.desc&limit=${limit}&offset=${offset}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+          }
+        });
+        if (!res.ok) throw new Error('Falha ao buscar ordens de serviço do Supabase');
+        const json = await res.json();
+        const records = json || [];
+        allRecords = allRecords.concat(records);
+
+        if (records.length < limit) {
+          hasMore = false;
+        } else {
+          offset += limit;
+        }
+      }
+      setSupabaseOrdemServicos(allRecords);
+    } catch (error: any) {
+      console.error(error);
+    } finally {
+      setLoadingOS(false);
+    }
+  };
+
+  const fetchSupabaseOSSequencias = async () => {
+    setLoadingOSSequencias(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?select=*&order=ano.desc`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+      if (!res.ok) throw new Error('Falha ao buscar sequências de O.S. do Supabase');
+      const json = await res.json();
+      setSupabaseOSSequencias(json || []);
+    } catch (error: any) {
+      console.error(error);
+    } finally {
+      setLoadingOSSequencias(false);
+    }
+  };
+
+  // Funções CRUD para gerenciamento de Sequências de O.S.
+  const handleOpenCreateOSSequence = () => {
+    setFormSequenceAno('');
+    setFormSequenceAtual('0');
+    setFormSequenceError(null);
+    setSelectedOSSequence(null);
+    setOsSequenceFormMode('create');
+  };
+
+  const handleOpenEditOSSequence = (seq: OSSequencia) => {
+    setSelectedOSSequence(seq);
+    setFormSequenceAno(String(seq.ano));
+    setFormSequenceAtual(String(seq.atual));
+    setFormSequenceError(null);
+    setOsSequenceFormMode('edit');
+  };
+
+  const handleSaveOSSequence = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormSequenceSubmitting(true);
+    setFormSequenceError(null);
+
+    try {
+      const anoNum = parseInt(formSequenceAno, 10);
+      const atualNum = parseInt(formSequenceAtual, 10);
+
+      if (isNaN(anoNum) || anoNum < 2000 || anoNum > 2100) {
+        throw new Error('Por favor, informe um ano válido entre 2000 e 2100.');
+      }
+      if (isNaN(atualNum) || atualNum < 0) {
+        throw new Error('Por favor, informe um valor de sequência atual válido (igual ou maior que 0).');
+      }
+
+      const payload: any = {
+        ano: anoNum,
+        atual: atualNum,
+        updated_at: new Date().toISOString()
+      };
+
+      if (osSequenceFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify([payload])
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          if (errData.code === '23505') {
+            throw new Error('Já existe uma sequência configurada para este ano!');
+          }
+          throw new Error(errData.message || 'Erro ao criar sequência.');
+        }
+      } else if (osSequenceFormMode === 'edit' && selectedOSSequence) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?id=eq.${selectedOSSequence.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Erro ao atualizar sequência.');
+        }
+      }
+
+      await fetchSupabaseOSSequencias();
+      setOsSequenceFormMode('list');
+      setSelectedOSSequence(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormSequenceError(err.message || 'Erro ao salvar a sequência.');
+    } finally {
+      setFormSequenceSubmitting(false);
+    }
+  };
+
+  const handleDeleteOSSequence = async () => {
+    if (!isExcluindoOSSequence) return;
+    setIsDeletingOSSequence(true);
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?id=eq.${isExcluindoOSSequence.id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (!res.ok) throw new Error('Erro ao excluir sequência do Supabase');
+
+      await fetchSupabaseOSSequencias();
+      setIsExcluindoOSSequence(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir sequência.');
+    } finally {
+      setIsDeletingOSSequence(false);
+    }
+  };
+
+  // Funções CRUD para gerenciamento de OS
+  const getNextOSNumberForYear = async (year: number): Promise<string> => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?ano=eq.${year}&select=atual`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+      if (!res.ok) throw new Error('Erro ao obter sequência');
+      const json = await res.json();
+      const currentSeq = json && json[0] ? json[0].atual : 0;
+      const nextNum = currentSeq + 1;
+      return `OS-${String(nextNum).padStart(5, '0')}`;
+    } catch (error) {
+      console.error('Erro ao gerar sequenciamento automático:', error);
+      return `OS-${Date.now().toString().slice(-5)}`;
+    }
+  };
+
+  const handleOpenCreateOS = () => {
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+    const nowStr = localToday.toISOString().slice(0, 16); // format: "YYYY-MM-DDTHH:mm"
+
+    const year = localToday.getFullYear();
+    setFormOSNumero('Gerando...');
+    setFormOSData(nowStr);
+    getNextOSNumberForYear(year).then(num => setFormOSNumero(num));
+
+    setFormOSAvulso(false);
+    setFormOSPessoaNome('');
+    setFormOSPessoaId('');
+    setFormOSVeiculoId('');
+    setFormOSPlaca('');
+    setFormOSPlacaCarreta1('');
+    setFormOSPlacaCarreta2('');
+    setFormOSPlacaCarreta3('');
+    setFormOSMotorista('');
+    setFormOSFrota('');
+    setFormOSCentroCustoId('');
+    setFormOSFormaPagamentoId('');
+    setFormOSStatus('aberta');
+    setFormOSObservacao('');
+    setFormOSItems([]);
+    setFormOSError(null);
+    setSelectedOS(null);
+    setHighlightAddItem(false);
+    setOsFormMode('create');
+  };
+
+  const handleOpenEditOS = async (os: OrdemServico) => {
+    setSelectedOS(os);
+    setFormOSNumero(os.numero_os || '');
+    setFormOSData(os.data_os ? os.data_os.slice(0, 16) : '');
+    setFormOSPessoaNome(os.pessoa_nome || '');
+    let personId = '';
+    if (os.veiculo_id) {
+      const v = supabaseVehicles.find(x => x.id === os.veiculo_id);
+      if (v && v.pessoa_id) personId = v.pessoa_id;
+    }
+    if (!personId && os.pessoa_nome) {
+      const p = supabaseData.find(x => x.nome_pessoa === os.pessoa_nome);
+      if (p) personId = p.id;
+    }
+    setFormOSPessoaId(personId);
+    setFormOSVeiculoId(os.veiculo_id || '');
+
+    // Se não há ID de veículo e não há ID de pessoa, considera avulso
+    const isAvulso = !os.veiculo_id && !personId;
+    setFormOSAvulso(isAvulso);
+    setFormOSPlaca(os.placa || '');
+    setFormOSPlacaCarreta1(os.placa_carreta_1 || '');
+    setFormOSPlacaCarreta2(os.placa_carreta_2 || '');
+    setFormOSPlacaCarreta3(os.placa_carreta_3 || '');
+    setFormOSMotorista(os.motorista || '');
+    setFormOSFrota(os.frota || '');
+    setFormOSCentroCustoId(os.centro_custo_id || '');
+    setFormOSFormaPagamentoId(os.forma_pagamento_id || '');
+    setFormOSStatus(os.status || 'aberta');
+    setFormOSObservacao(os.observacao || '');
+    setFormOSError(null);
+    setHighlightAddItem(false);
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicoitem?ordem_servico_id=eq.${os.id}&select=*`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+      if (res.ok) {
+        const items = await res.json();
+        if (items && items.length > 0) {
+          setFormOSItems(items);
+        } else {
+          setFormOSItems([]);
+        }
+      } else {
+        setFormOSItems([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setFormOSItems([]);
+    }
+
+    setOsFormMode('edit');
+  };
+
+  const handleSaveOS = async (e?: React.FormEvent, statusOverride?: 'aberta' | 'fechada') => {
+    if (e) e.preventDefault();
+    setFormOSSubmitting(true);
+    setFormOSError(null);
+
+    try {
+      // Filtrar apenas itens que tenham descrição preenchida ou valor maior que zero
+      const activeItems = formOSItems.filter(item => {
+        const hasDesc = item.descricao && item.descricao.trim() !== '';
+        const hasVal = item.valor !== undefined && item.valor > 0;
+        return hasDesc || hasVal;
+      });
+
+      // Se o usuário iniciou o preenchimento de algum item (ou seja, colocou descrição ou valor),
+      // então a descrição e o valor tornam-se obrigatórios para aquela inserção.
+      for (const item of activeItems) {
+        if (!item.descricao || item.descricao.trim() === '') {
+          throw new Error('Por favor, preencha a descrição de todos os itens de serviços adicionados.');
+        }
+        if (item.valor === undefined || item.valor <= 0) {
+          throw new Error(`Por favor, preencha um valor unitário válido para o item "${item.descricao}".`);
+        }
+      }
+
+      const parsedItems = activeItems.map(item => {
+        const qtde = parseFloat(String(item.qtde || 1));
+        const valor = parseFloat(String(item.valor || 0));
+        return {
+          id: item.id && !String(item.id).startsWith('new-') ? item.id : crypto.randomUUID(),
+          descricao: item.descricao!.trim(),
+          qtde,
+          valor,
+          valor_total: qtde * valor
+        };
+      });
+
+      const totalOSValue = parsedItems.reduce((acc, curr) => acc + curr.valor_total, 0);
+
+      let pName = formOSPessoaNome;
+      if (!pName && formOSPessoaId) {
+        const p = supabaseData.find(x => x.id === formOSPessoaId);
+        if (p) pName = p.nome_pessoa || 'Sem Nome';
+      }
+
+      const osId = osFormMode === 'create' ? crypto.randomUUID() : selectedOS!.id;
+
+      const payloadOS: any = {
+        id: osId,
+        numero_os: formOSNumero || `OS-${osId.slice(-6)}`,
+        data_os: formOSData ? new Date(formOSData).toISOString() : new Date().toISOString(),
+        pessoa_nome: pName || 'Cliente',
+        placa: formOSPlaca || null,
+        placa_carreta_1: formOSPlacaCarreta1 || null,
+        placa_carreta_2: formOSPlacaCarreta2 || null,
+        placa_carreta_3: formOSPlacaCarreta3 || null,
+        motorista: formOSMotorista || null,
+        frota: formOSFrota || null,
+        centro_custo_id: formOSCentroCustoId || null,
+        forma_pagamento_id: formOSFormaPagamentoId || null,
+        status: statusOverride || formOSStatus,
+        valor_total: totalOSValue,
+        observacao: formOSObservacao || null,
+        veiculo_id: formOSVeiculoId || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (osFormMode === 'create') {
+        payloadOS.created_at = new Date().toISOString();
+        payloadOS.created_by = session?.user?.id || null;
+
+        const { error } = await supabase
+          .from('ordemservicos')
+          .insert([payloadOS]);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('ordemservicos')
+          .update(payloadOS)
+          .eq('id', osId);
+        if (error) throw error;
+      }
+
+      if (osFormMode === 'edit') {
+        await supabase
+          .from('ordemservicoitem')
+          .delete()
+          .eq('ordem_servico_id', osId);
+      }
+
+      const finalItems = parsedItems.map(item => ({
+        id: item.id,
+        ordem_servico_id: osId,
+        descricao: item.descricao,
+        qtde: item.qtde,
+        valor: item.valor,
+        valor_total: item.valor_total,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        created_by: session?.user?.id || null
+      }));
+
+      if (finalItems.length > 0) {
+        const { error: itemsErr } = await supabase
+          .from('ordemservicoitem')
+          .insert(finalItems);
+        if (itemsErr) throw itemsErr;
+      }
+
+      if ((statusOverride || formOSStatus) === 'fechada') {
+        const checkEntrada = await fetch(`${SUPABASE_URL}/rest/v1/entradas?ordem_servico_id=eq.${osId}&select=id,data_entrada`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+          }
+        });
+        const existingEntrada = await checkEntrada.json();
+
+        const cc = supabaseCentroCusto.find(c => c.id === formOSCentroCustoId);
+        const fp = supabaseFormaPagamento.find(f => f.id === formOSFormaPagamentoId);
+
+        const payloadEntrada: any = {
+          id: existingEntrada && existingEntrada.length > 0 ? existingEntrada[0].id : crypto.randomUUID(),
+          ordem_servico_id: osId,
+          data_entrada: existingEntrada && existingEntrada.length > 0 && existingEntrada[0].data_entrada
+            ? existingEntrada[0].data_entrada
+            : new Date().toISOString(),
+          descricao_entrada: `Receita OS ${formOSNumero}`,
+          valor: totalOSValue,
+          centro_custo_id: formOSCentroCustoId || null,
+          nome_centro_custo: cc ? (cc.nome_centro_custo || cc.descricao) : null,
+          forma_pagamento_id: formOSFormaPagamentoId || null,
+          descricao_forma_pagamento: fp ? fp.descricao : null,
+          pessoa_id: formOSPessoaId || null,
+          nome_pessoa: pName || 'Cliente',
+          placa_veiculo: formOSPlaca || null,
+          veiculo_id: formOSVeiculoId || null,
+          updated_at: new Date().toISOString()
+        };
+
+        if (existingEntrada && existingEntrada.length > 0) {
+          await supabase
+            .from('entradas')
+            .update(payloadEntrada)
+            .eq('id', payloadEntrada.id);
+        } else {
+          payloadEntrada.created_at = new Date().toISOString();
+          payloadEntrada.created_by = session?.user?.id || null;
+          await supabase
+            .from('entradas')
+            .insert([payloadEntrada]);
+        }
+        await fetchSupabaseEntradas();
+      }
+      if (osFormMode === 'create') {
+        const year = new Date(formOSData).getFullYear();
+        if (!isNaN(year)) {
+          const seqRes = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?ano=eq.${year}&select=id,atual`, {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+            }
+          });
+          if (seqRes.ok) {
+            const seqJson = await seqRes.json();
+            if (seqJson && seqJson[0]) {
+              const seqId = seqJson[0].id;
+              const seqAtual = seqJson[0].atual;
+              await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?id=eq.${seqId}`, {
+                method: 'PATCH',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ atual: seqAtual + 1, updated_at: new Date().toISOString() })
+              });
+            } else {
+              await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia`, {
+                method: 'POST',
+                headers: {
+                  'apikey': SUPABASE_ANON_KEY,
+                  'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify([{ id: crypto.randomUUID(), ano: year, atual: 1, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }])
+              });
+            }
+          }
+        }
+      }
+
+      await fetchSupabaseOrdemServicos();
+      await fetchSupabaseOSSequencias();
+      const isClosing = (statusOverride || formOSStatus) === 'fechada';
+      if (osFormMode === 'create' || isClosing) {
+        setOsFormMode('edit');
+        setSelectedOS(payloadOS);
+        setHighlightAddItem(isClosing ? false : true);
+        if (isClosing) {
+          setShowOSClosedPopup(true);
+        }
+      } else {
+        setOsFormMode('list');
+        setSelectedOS(null);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setFormOSError(err.message || 'Erro ao salvar a ordem de serviço.');
+    } finally {
+      setFormOSSubmitting(false);
+    }
+  };
+
+  const handlePrintOS = () => {
+    if (!formOSNumero) {
+      alert("Nenhuma ordem de serviço carregada para impressão.");
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Por favor, permita pop-ups para imprimir o recibo.");
+      return;
+    }
+
+    const customer = supabaseData.find(x => x.id === formOSPessoaId || (x.nome_pessoa && x.nome_pessoa === formOSPessoaNome));
+    const customerCpfCnpj = customer ? (customer.cpf || customer.cnpj || '') : '';
+    const customerPhone = customer ? (customer.celular_whatsapp || customer.telefone || '') : '';
+    const customerUf = customer ? (customer.uf || '') : '';
+    const customerCep = customer ? (customer.cep || '') : '';
+
+    const totalOSValue = formOSItems.reduce((acc, curr) => acc + ((curr.qtde || 1) * (curr.valor || 0)), 0);
+
+    const formatCurrency = (val: number) => {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    };
+
+    const subtotalFormatted = formatCurrency(totalOSValue);
+    const totalOSFormatted = formatCurrency(totalOSValue);
+
+    const minRows = 3;
+    const items = [...formOSItems];
+    let itemsHtml = '';
+
+    for (let i = 0; i < Math.max(items.length, minRows); i++) {
+      const item = items[i];
+      if (item) {
+        itemsHtml += `
+          <tr class="item-row">
+            <td class="qty-cell">${item.qtde || 1}</td>
+            <td class="product-cell">${item.descricao || 'Serviço'}</td>
+            <td class="price-cell">${formatCurrency(item.valor || 0)}</td>
+            <td class="total-cell" style="font-weight: bold;">${formatCurrency((item.qtde || 1) * (item.valor || 0))}</td>
+          </tr>
+        `;
+      } else {
+        itemsHtml += `
+          <tr class="item-row empty-row">
+            <td class="qty-cell">&nbsp;</td>
+            <td class="product-cell">&nbsp;</td>
+            <td class="price-cell">&nbsp;</td>
+            <td class="total-cell">&nbsp;</td>
+          </tr>
+        `;
+      }
+    }
+
+    const fp = supabaseFormaPagamento.find(f => f.id === formOSFormaPagamentoId);
+    const paymentMethod = fp ? fp.descricao : 'Não Informada';
+
+    const getCardHtml = (viaLabel: string) => `
+      <div class="os-card">
+        <!-- Row 1: Header -->
+        <div class="row header-row">
+          <div class="col logo-col">
+            <img src="logos/LavajatoBR050_logo.png" alt="Logo">
+          </div>
+          <div class="col company-col">
+            <h2>LAVA-JATO E ESTACIONAMENTO DE CAMINHÕES BR050</h2>
+            <p>Av. Teodoreto Veloso de Carvalho - 7.333 - Sibipiruna</p>
+            <p>Araguari - MG - (34) 3246-0709</p>
+            <p>CNPJ: 32.448.609/0001-14</p>
+          </div>
+          <div class="col os-col">
+            <h3>Ordem de Serviço: ${formOSNumero}</h3>
+            <p class="fiscal-warning">Não possui valor fiscal</p>
+            <p>${viaLabel}</p>
+          </div>
+        </div>
+
+        <!-- Row 2: Forma de Pagamento & Fone -->
+        <div class="row">
+          <div class="col payment-col">
+            <strong>Forma de Pagamento:</strong> ${paymentMethod}
+          </div>
+          <div class="col phone-col">
+            <strong>Fone:</strong> ${customerPhone || '&nbsp;'}
+          </div>
+        </div>
+
+        <!-- Row 3: Cliente Details -->
+        <div class="row customer-row">
+          <div class="col customer-main-col">
+            <div><strong>Cliente:</strong> ${formOSPessoaNome || 'Cliente'}</div>
+            <div><strong>CNPJ/CPF:</strong> ${customerCpfCnpj || '&nbsp;'}</div>
+            <div class="plates-line">
+              <span><strong>Placa 1:</strong> ${formOSPlaca || ''}</span>
+              <span><strong>Placa 2:</strong> ${formOSPlacaCarreta1 || ''}</span>
+              <span><strong>Placa 3:</strong> ${formOSPlacaCarreta2 || ''}</span>
+              <span><strong>Frota:</strong> ${formOSFrota || ''}</span>
+            </div>
+            <div><strong>Motorista:</strong> ${formOSMotorista || ''}</div>
+          </div>
+          <div class="col customer-right-col">
+            <span><strong>UF:</strong> ${customerUf || '&nbsp;'}</span>
+            <span><strong>CEP:</strong> ${customerCep || '&nbsp;'}</span>
+          </div>
+        </div>
+
+        <!-- Row 4: Items Table -->
+        <div class="row items-row">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width: 8%;">Qtd.</th>
+                <th class="product-header" style="width: 52%;">Produto</th>
+                <th style="width: 20%;">Unitário</th>
+                <th style="width: 20%;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+              <tr class="totals-row">
+                <td colspan="2" style="border-right: 1px solid #000;"></td>
+                <td style="border-right: 1px solid #000;">
+                  <div class="totals-container">
+                    <span>Subtotal:</span>
+                    <span>${subtotalFormatted}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="totals-container">
+                    <span>Total Geral:</span>
+                    <span>${totalOSFormatted}</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Row 5: Observação -->
+        <div class="row observation-row">
+          <div class="col" style="width: 100%;">
+            <strong>[Observação]</strong>
+            <div style="margin-top: 4px; white-space: pre-wrap; font-family: inherit;">${formOSObservacao || ''}</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Ordem de Serviço - ${formOSNumero}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 20px;
+            }
+            html, body {
+              height: 100%;
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              color: #000;
+              background-color: #fff;
+              display: flex;
+              flex-direction: column;
+              padding: 20px;
+            }
+            .via-section {
+              height: 50%;
+              box-sizing: border-box;
+              display: flex;
+              flex-direction: column;
+              justify-content: flex-start;
+              page-break-inside: avoid;
+            }
+            .first-via {
+              padding-bottom: 10px;
+            }
+            .second-via {
+              padding-top: 10px;
+            }
+            .divider-container {
+              margin-top: auto;
+              padding-top: 15px;
+              padding-bottom: 5px;
+            }
+            .divider-line {
+              border-top: 1px dashed #000;
+              width: 100%;
+              text-align: center;
+              font-size: 9px;
+              color: #555;
+              line-height: 1;
+            }
+            .divider-line span {
+              background: #fff;
+              padding: 0 10px;
+              position: relative;
+              top: -5px;
+            }
+            .os-card {
+              width: 100%;
+              border: 1px solid #000;
+              border-radius: 12px;
+              overflow: hidden;
+              box-sizing: border-box;
+            }
+            .row {
+              display: flex;
+              width: 100%;
+              border-bottom: 1px solid #000;
+              box-sizing: border-box;
+            }
+            .row:last-child {
+              border-bottom: none;
+            }
+            .col {
+              padding: 8px 10px;
+              box-sizing: border-box;
+            }
+            /* Header Layout */
+            .header-row {
+              align-items: stretch;
+            }
+            .logo-col {
+              width: 18%;
+              border-right: 1px solid #000;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+            }
+            .logo-col img {
+              max-width: 100%;
+              max-height: 70px;
+              object-fit: contain;
+            }
+            .company-col {
+              width: 54%;
+              border-right: 1px solid #000;
+              text-align: center;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+            .company-col h2 {
+              font-size: 13px;
+              font-weight: bold;
+              margin: 0 0 3px 0;
+            }
+            .company-col p {
+              font-size: 10px;
+              margin: 1px 0;
+            }
+            .os-col {
+              width: 28%;
+              text-align: center;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+            .os-col h3 {
+              font-size: 13px;
+              font-weight: bold;
+              margin: 0 0 3px 0;
+            }
+            .os-col p {
+              font-size: 10px;
+              margin: 1px 0;
+            }
+            .os-col .fiscal-warning {
+              font-weight: bold;
+            }
+            /* Payment & Phone row */
+            .payment-col {
+              width: 72%;
+              border-right: 1px solid #000;
+              font-size: 11px;
+            }
+            .phone-col {
+              width: 28%;
+              font-size: 11px;
+            }
+            /* Customer Row */
+            .customer-row {
+              align-items: stretch;
+            }
+            .customer-main-col {
+              width: 72%;
+              border-right: 1px solid #000;
+              font-size: 11px;
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+            }
+            .customer-right-col {
+              width: 28%;
+              font-size: 11px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            .plates-line {
+              display: flex;
+              gap: 15px;
+            }
+            /* Items Table */
+            .items-row {
+              padding: 0;
+              display: block;
+            }
+            .items-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .items-table th, .items-table td {
+              padding: 6px 8px;
+              border-right: 1px solid #000;
+              border-bottom: 1px solid #000;
+              font-size: 11px;
+              box-sizing: border-box;
+            }
+            .items-table th:first-child, .items-table td:first-child {
+              border-left: none;
+            }
+            .items-table th:last-child, .items-table td:last-child {
+              border-right: none;
+            }
+            .items-table th {
+              font-weight: bold;
+              text-align: center;
+              background-color: transparent;
+              border-top: none;
+            }
+            .items-table th.product-header {
+              text-align: left;
+            }
+            .items-table td.qty-cell {
+              text-align: center;
+            }
+            .items-table td.product-cell {
+              text-align: left;
+            }
+            .items-table td.price-cell {
+              text-align: right;
+            }
+            .items-table td.total-cell {
+              text-align: right;
+            }
+            /* Totals Row */
+            .totals-row td {
+              border-bottom: none !important;
+              font-weight: bold;
+            }
+            .totals-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            /* Observations Row */
+            .observation-row {
+              min-height: 60px;
+              font-size: 11px;
+            }
+            @media print {
+              body {
+                padding: 0;
+              }
+              .os-card {
+                border: 1px solid #000;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="via-section first-via">
+            ${getCardHtml('VIA CLIENTE')}
+            <div class="divider-container">
+              <div class="divider-line">
+                <span>corte aqui</span>
+              </div>
+            </div>
+          </div>
+          <div class="via-section second-via">
+            ${getCardHtml('VIA EMPRESA')}
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleDeleteOS = async () => {
+    if (!osToDelete) return;
+    if (osToDelete.status === 'fechada') {
+      alert('Ordens de Serviço fechadas não podem ser excluídas.');
+      return;
+    }
+    setIsDeletingOS(true);
+
+    try {
+      await supabase
+        .from('ordemservicoitem')
+        .delete()
+        .eq('ordem_servico_id', osToDelete.id);
+
+      await supabase
+        .from('entradas')
+        .delete()
+        .eq('ordem_servico_id', osToDelete.id);
+
+      const { error } = await supabase
+        .from('ordemservicos')
+        .delete()
+        .eq('id', osToDelete.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseOrdemServicos();
+      await fetchSupabaseEntradas();
+      setOsToDelete(null);
+    } catch (err: any) {
+      console.error(err);
+      alert('Erro ao excluir a ordem de serviço: ' + err.message);
+    } finally {
+      setIsDeletingOS(false);
+    }
+  };
+
   // Funções CRUD para gerenciamento de Despesas/Custos
   const handleOpenCreateDespesa = () => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
+
     setFormDataDespesa(todayStr);
     setFormDescricaoDespesa('');
     setFormValorDespesa('');
@@ -7326,7 +9994,7 @@ const App: React.FC = () => {
       if (isNaN(valorNum)) {
         throw new Error('Por favor, informe um valor numérico válido.');
       }
-      
+
       let provisaoNum = 0;
       if (formValorProvisaoDespesa) {
         provisaoNum = parseFloat(formValorProvisaoDespesa.replace(/\./g, '').replace(',', '.'));
@@ -7448,14 +10116,14 @@ const App: React.FC = () => {
       if (isNaN(valorNum)) {
         throw new Error('Por favor, informe um valor de mensalidade válido.');
       }
-      
+
       const diaVencNum = parseInt(formDiaVencimentoMensalista);
       if (isNaN(diaVencNum) || diaVencNum < 1 || diaVencNum > 31) {
         throw new Error('Por favor, informe um dia de vencimento válido (1 a 31).');
       }
 
       const cc = supabaseCentroCusto.find(c => c.id === formCentroCustoIdMensalista);
-      
+
       const payload: any = {
         ativo: formAtivoMensalista,
         centro_custo_id: formCentroCustoIdMensalista || null,
@@ -7559,7 +10227,7 @@ const App: React.FC = () => {
       for (let i = 0; i < qty; i++) {
         // Obter a data de vencimento correspondente para o mês i
         const vencDate = new Date(currentYear, currentMonth, diaVenc, 12, 0, 0);
-        
+
         // Se a data pulou de mês por causa do dia (ex: dia 31 em fevereiro), limitamos para o último dia do mês correto
         if (vencDate.getMonth() !== currentMonth) {
           const lastDay = new Date(currentYear, currentMonth + 1, 0, 12, 0, 0);
@@ -7761,7 +10429,7 @@ const App: React.FC = () => {
   const handleOpenCreateEntrada = () => {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
+
     setFormDataEntrada(todayStr);
     setFormDescricaoEntrada('');
     setFormValorEntrada('');
@@ -7776,6 +10444,10 @@ const App: React.FC = () => {
   };
 
   const handleOpenEditEntrada = (entrada: Entrada) => {
+    if (entrada.ordem_servico_id) {
+      alert('Lançamentos gerados por Ordem de Serviço não podem ser alterados diretamente.');
+      return;
+    }
     setSelectedEntrada(entrada);
     setFormDataEntrada(entrada.data_entrada ? entrada.data_entrada.split('T')[0] : '');
     setFormDescricaoEntrada(entrada.descricao_entrada || '');
@@ -7855,6 +10527,10 @@ const App: React.FC = () => {
 
   const handleDeleteEntrada = async () => {
     if (!isExcluindoEntrada) return;
+    if (isExcluindoEntrada.ordem_servico_id) {
+      alert('Lançamentos gerados por Ordem de Serviço não podem ser excluídos diretamente.');
+      return;
+    }
     setIsDeletingEntrada(true);
 
     try {
@@ -7872,6 +10548,45 @@ const App: React.FC = () => {
       alert(err.message || 'Erro ao excluir a entrada.');
     } finally {
       setIsDeletingEntrada(false);
+    }
+  };
+
+  const handleEstornarEntrada = async () => {
+    if (!isEstornandoEntrada) return;
+    setIsReversingEntrada(true);
+
+    try {
+      // 1. Excluir a entrada (receita)
+      const { error: deleteError } = await supabase
+        .from('entradas')
+        .delete()
+        .eq('id', isEstornandoEntrada.id);
+
+      if (deleteError) throw deleteError;
+
+      // 2. Reabrir a Ordem de Serviço (mudar status para 'aberta')
+      if (isEstornandoEntrada.ordem_servico_id) {
+        const { error: osError } = await supabase
+          .from('ordemservicos')
+          .update({ status: 'aberta', updated_at: new Date().toISOString() })
+          .eq('id', isEstornandoEntrada.ordem_servico_id);
+
+        if (osError) throw osError;
+      }
+
+      // 3. Sincronizar dados
+      await fetchSupabaseEntradas();
+      await fetchSupabaseOrdemServicos();
+      setEstornoSuccessMsg('Lançamento estornado e Ordem de Serviço reaberta com sucesso!');
+      setTimeout(() => {
+        setIsEstornandoEntrada(null);
+        setEstornoSuccessMsg(null);
+      }, 2500);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao estornar o lançamento.');
+    } finally {
+      setIsReversingEntrada(false);
     }
   };
 
@@ -7997,7 +10712,7 @@ const App: React.FC = () => {
     setFormVeiculoMarcaModelo(veiculo.marca_modelo || '');
     setFormVeiculoTipo(veiculo.tipo || 'CARRETA');
     setFormVeiculoPessoaId(veiculo.pessoa_id || '');
-    
+
     if (veiculo.motorista) {
       if (Array.isArray(veiculo.motorista)) {
         setFormVeiculoMotorista(veiculo.motorista.join(', '));
@@ -8007,7 +10722,7 @@ const App: React.FC = () => {
     } else {
       setFormVeiculoMotorista('');
     }
-    
+
     setFormVeiculoAtivo(veiculo.ativo !== false);
     setFormVeiculoError(null);
     setVeiculoFormMode('edit');
@@ -8427,6 +11142,8 @@ const App: React.FC = () => {
       fetchSupabaseDespesas();
       fetchBubbleEntradas();
       fetchSupabaseEntradas();
+      fetchSupabaseOrdemServicos();
+      fetchSupabaseOSSequencias();
     }
   }, [session]);
 
@@ -8616,6 +11333,280 @@ const App: React.FC = () => {
     return true;
   });
 
+  const renderOSSequence = () => {
+    // Filter sequences
+    const filteredSequences = supabaseOSSequencias.filter(seq =>
+      String(seq.ano).includes(searchOSSequence)
+    );
+
+    return (
+      <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0 text-left">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-white light-theme:text-slate-800 tracking-tight flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-violet-900/30">
+                <ListOrdered className="h-5 w-5" />
+              </div>
+              Sequência de Ordens de Serviço
+            </h2>
+            <p className="text-xs text-[#64748b] mt-1.5 leading-relaxed max-w-2xl">
+              Gerencie a numeração sequencial anual das suas Ordens de Serviço. Cada ano inicia automaticamente a sequência a partir do valor configurado (ex: atual 0 gera <span className="text-cyan-400 font-bold">OS-00001</span>).
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchSupabaseOSSequencias}
+              disabled={loadingOSSequencias}
+              className="h-9 px-3 rounded-xl bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 hover:bg-[#1a1f2e] light-theme:hover:bg-slate-50 text-[#94a3b8] hover:text-white transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <RefreshCw className={`h-4 w-4 ${loadingOSSequencias ? 'animate-spin' : ''}`} />
+            </button>
+
+            {osSequenceFormMode === 'list' && (
+              <button
+                onClick={handleOpenCreateOSSequence}
+                className="h-9 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Configurar Novo Ano</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Info Alert Box */}
+        <div className="bg-violet-950/20 border border-violet-500/20 rounded-2xl p-4 flex gap-3 flex-shrink-0">
+          <Info className="h-5 w-5 text-violet-400 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-[#94a3b8] leading-relaxed">
+            <strong className="text-white">Como funciona:</strong> Ao criar uma nova OS com data em determinado ano (ex: 2026), o sistema busca a sequência daquele ano e atribui o número sequencial incrementado de 5 dígitos (ex: <code className="text-cyan-400 bg-cyan-400/10 px-1 py-0.5 rounded font-mono">OS-00001</code>). Bloqueamos a digitação manual para garantir que o sequenciamento ocorra sempre sem furos ou duplicidades.
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 overflow-hidden">
+          {/* List panel (2/3 width) */}
+          <div className="lg:col-span-2 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl flex flex-col min-h-0 overflow-hidden">
+            {/* Search filter */}
+            <div className="p-4 border-b border-[#1f2433] light-theme:border-slate-100 flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#64748b]" />
+                <input
+                  type="text"
+                  placeholder="Buscar por ano..."
+                  value={searchOSSequence}
+                  onChange={(e) => setSearchOSSequence(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-10 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                />
+              </div>
+            </div>
+
+            {/* Sequences Grid/Table */}
+            <div className="flex-grow overflow-y-auto custom-scrollbar p-2">
+              {loadingOSSequencias ? (
+                <div className="h-full flex items-center justify-center flex-col gap-2 py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                  <span className="text-xs text-[#64748b] font-medium">Buscando dados no Supabase...</span>
+                </div>
+              ) : filteredSequences.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center gap-3 text-center py-16">
+                  <div className="h-12 w-12 rounded-2xl bg-[#1f2433]/30 flex items-center justify-center text-[#64748b]">
+                    <Hash className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white light-theme:text-slate-800">Nenhuma sequência encontrada</h4>
+                    <p className="text-[10px] text-[#64748b] mt-1">Configurar um novo ano para inicializar o contador.</p>
+                  </div>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#1f2433]/60 light-theme:border-slate-100 text-[#64748b] text-[10px] font-extrabold uppercase tracking-wider">
+                      <th className="py-3 px-4">Ano</th>
+                      <th className="py-3 px-4">Último Gerado</th>
+                      <th className="py-3 px-4">Próximo a Gerar</th>
+                      <th className="py-3 px-4 text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1f2433]/30 light-theme:divide-slate-50 text-xs">
+                    {filteredSequences.map((seq) => (
+                      <tr key={seq.id} className="hover:bg-white/2 light-theme:hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 px-4 font-bold text-white light-theme:text-slate-700 text-sm">
+                          {seq.ano}
+                        </td>
+                        <td className="py-3.5 px-4 text-[#94a3b8] light-theme:text-slate-500 font-mono">
+                          {seq.atual === 0 ? 'Nenhum' : `OS-${String(seq.atual).padStart(5, '0')}`}
+                        </td>
+                        <td className="py-3.5 px-4 text-emerald-400 font-extrabold font-mono">
+                          OS-{String(seq.atual + 1).padStart(5, '0')}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditOSSequence(seq)}
+                              className="h-7 w-7 rounded-md bg-[#1f2433] hover:bg-[#2b3247] light-theme:bg-slate-100 light-theme:hover:bg-slate-200 text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors flex items-center justify-center cursor-pointer"
+                              title="Editar valor atual da sequência"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsExcluindoOSSequence(seq)}
+                              className="h-7 w-7 rounded-md bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 transition-colors flex items-center justify-center cursor-pointer"
+                              title="Excluir sequência"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {/* Form Panel (1/3 width) */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl p-5 flex flex-col min-h-0 overflow-y-auto">
+            {osSequenceFormMode === 'list' ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4 py-12">
+                <div className="h-10 w-10 rounded-full bg-violet-600/10 flex items-center justify-center text-violet-400 mb-3">
+                  <ListOrdered className="h-5 w-5" />
+                </div>
+                <h4 className="text-xs font-bold text-white light-theme:text-slate-800">Gerenciador de Contadores</h4>
+                <p className="text-[10px] text-[#64748b] mt-1.5 max-w-xs leading-relaxed">
+                  Selecione uma sequência para editar seu contador atual ou configure um novo ano operacional.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSaveOSSequence} className="flex flex-col gap-4 text-left">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                    {osSequenceFormMode === 'create' ? 'Configurar Novo Ano' : 'Editar Sequência'}
+                  </h3>
+                  <p className="text-[10px] text-[#64748b] mt-1">
+                    {osSequenceFormMode === 'create' ? 'Inicialize o contador de OS para um novo ano.' : 'Altere o contador atual deste ano.'}
+                  </p>
+                </div>
+
+                {formSequenceError && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span>{formSequenceError}</span>
+                  </div>
+                )}
+
+                {/* Ano Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Ano Operacional</label>
+                  <input
+                    type="number"
+                    required
+                    min="2000"
+                    max="2100"
+                    placeholder="Ex: 2026"
+                    disabled={osSequenceFormMode === 'edit'}
+                    value={formSequenceAno}
+                    onChange={(e) => setFormSequenceAno(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Contador Atual Input */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Sequência Atual (Último Gerado)</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="Ex: 0"
+                    value={formSequenceAtual}
+                    onChange={(e) => setFormSequenceAtual(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                  <span className="text-[9px] text-[#64748b] leading-normal block mt-1">
+                    Insira <strong className="text-white">0</strong> para que a próxima OS desse ano seja <strong className="text-emerald-400">OS-00001</strong>.
+                  </span>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-start gap-2 pt-2 border-t border-[#1f2433] light-theme:border-slate-100 mt-2">
+                  <button
+                    type="submit"
+                    disabled={formSequenceSubmitting}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {formSequenceSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>Salvar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOsSequenceFormMode('list');
+                      setSelectedOSSequence(null);
+                    }}
+                    className="px-5 py-2.5 rounded-xl text-[#94a3b8] hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* Modal de confirmação de exclusão */}
+        <AnimatePresence>
+          {isExcluindoOSSequence && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl max-w-md w-full p-6 text-left shadow-2xl relative"
+              >
+                <div className="flex items-center gap-3 text-red-400">
+                  <AlertTriangle className="h-6 w-6" />
+                  <h3 className="font-extrabold text-sm uppercase tracking-wider text-white light-theme:text-slate-800">
+                    Confirmar Exclusão
+                  </h3>
+                </div>
+
+                <p className="text-xs text-[#94a3b8] mt-3 leading-relaxed">
+                  Tem certeza que deseja excluir a sequência de OS configurada para o ano de <strong className="text-white">{isExcluindoOSSequence.ano}</strong>? Isso poderá inviabilizar o auto-incremento automático para novas ordens criadas neste ano até que uma nova seja cadastrada!
+                </p>
+
+                <div className="flex items-center justify-end gap-2.5 mt-5 pt-3 border-t border-[#1f2433] light-theme:border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleDeleteOSSequence}
+                    disabled={isDeletingOSSequence}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    {isDeletingOSSequence && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>Sim, Excluir</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsExcluindoOSSequence(null)}
+                    className="px-4 py-2 rounded-xl bg-[#1f2433] hover:bg-[#2b3247] light-theme:bg-slate-100 light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:text-white font-bold text-xs transition-all cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
   if (loadingAuth) {
     return (
       <div className="min-h-screen w-screen bg-[#090b11] light-theme:bg-slate-50 flex flex-col items-center justify-center gap-4 text-white font-sans relative">
@@ -8662,6 +11653,7 @@ const App: React.FC = () => {
           {currentTab === 'centrocusto' && renderCentroCusto()}
           {currentTab === 'ordemservico' && renderOrdemServico()}
           {currentTab === 'laudo' && renderLaudo()}
+          {currentTab === 'os_sequence' && renderOSSequence()}
 
           {currentTab === 'migracoes' && (
             <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0">
