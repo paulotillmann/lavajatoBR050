@@ -715,20 +715,8 @@ const App: React.FC = () => {
         .upsert(updateData);
 
       if (dbError) {
-        currentStep = 'atualizar-perfil-db-fallback';
-        console.warn("Falha ao atualizar avatar_url/celular na tabela, tentando apenas campos básicos...", dbError);
-        // Tenta apenas nome_completo e email caso as outras colunas não existam ou tenham restrições
-        const fallbackData = {
-          id: targetId,
-          auth_user_id: session.user.id,
-          nome_completo: profileName,
-          email: profileEmail,
-          updated_at: new Date().toISOString(),
-        };
-        const { error: dbRetryError } = await supabase
-          .from('profiles')
-          .upsert(fallbackData);
-        if (dbRetryError) throw dbRetryError;
+        console.error("Erro ao atualizar profiles:", dbError);
+        throw dbError;
       }
 
       // Regra de Auditoria: Inserir log manual
