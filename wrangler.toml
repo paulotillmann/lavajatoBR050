@@ -1,0 +1,4 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "lavajatobr050"
+compatibility_date = "2026-06-17"
+pages_build_output_dir = "./dist"
