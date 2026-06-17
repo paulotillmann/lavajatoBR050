@@ -701,6 +701,8 @@ const App: React.FC = () => {
       currentStep = 'atualizar-perfil-db';
       console.log(`Executando ${currentStep} para o id: ${targetId}`);
       const updateData: any = {
+        id: targetId,
+        auth_user_id: session.user.id,
         nome_completo: profileName,
         email: profileEmail,
         celular_whatsapp: profileWhatsapp,
@@ -710,22 +712,22 @@ const App: React.FC = () => {
 
       const { error: dbError } = await supabase
         .from('profiles')
-        .update(updateData)
-        .eq('id', targetId);
+        .upsert(updateData);
 
       if (dbError) {
         currentStep = 'atualizar-perfil-db-fallback';
         console.warn("Falha ao atualizar avatar_url/celular na tabela, tentando apenas campos básicos...", dbError);
         // Tenta apenas nome_completo e email caso as outras colunas não existam ou tenham restrições
         const fallbackData = {
+          id: targetId,
+          auth_user_id: session.user.id,
           nome_completo: profileName,
           email: profileEmail,
           updated_at: new Date().toISOString(),
         };
         const { error: dbRetryError } = await supabase
           .from('profiles')
-          .update(fallbackData)
-          .eq('id', targetId);
+          .upsert(fallbackData);
         if (dbRetryError) throw dbRetryError;
       }
 
