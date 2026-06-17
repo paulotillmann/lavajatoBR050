@@ -643,8 +643,10 @@ const App: React.FC = () => {
       return;
     }
 
+    let currentStep = 'inicialização';
     try {
       // 1. Atualiza metadados no Auth do Supabase (apenas se o email mudou de fato, comparando case-insensivelmente)
+      currentStep = 'verificar-email';
       const emailChanged = profileEmail && session?.user?.email && 
         profileEmail.trim().toLowerCase() !== session.user.email.trim().toLowerCase();
 
@@ -661,20 +663,29 @@ const App: React.FC = () => {
         console.log("Email de login alterado. Solicitando atualização no auth do Supabase...");
       }
 
-      console.log("Executando supabase.auth.updateUser...");
+      currentStep = 'auth.updateUser';
+      console.log(`Executando ${currentStep}...`);
       const { error: authError } = await supabase.auth.updateUser(updatePayload);
       if (authError) throw authError;
 
       // Buscar a chave primária correta do perfil do usuário (id ou auth_user_id)
-      const { data: currentProfile } = await supabase
+      currentStep = 'buscar-perfil-db';
+      console.log(`Executando ${currentStep}...`);
+      const { data: currentProfile, error: fetchProfileErr } = await supabase
         .from('profiles')
         .select('id')
         .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
         .maybeSingle();
 
+      if (fetchProfileErr) {
+        console.warn("Erro ao buscar id do perfil:", fetchProfileErr);
+      }
+
       const targetId = currentProfile?.id || session.user.id;
 
       // 2. Insere/atualiza na tabela profiles
+      currentStep = 'atualizar-perfil-db';
+      console.log(`Executando ${currentStep} para o id: ${targetId}`);
       const updateData: any = {
         nome_completo: profileName,
         email: profileEmail,
@@ -683,13 +694,13 @@ const App: React.FC = () => {
         updated_at: new Date().toISOString(),
       };
 
-      console.log("Atualizando tabela profiles para o id:", targetId);
       const { error: dbError } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', targetId);
 
       if (dbError) {
+        currentStep = 'atualizar-perfil-db-fallback';
         console.warn("Falha ao atualizar avatar_url/celular na tabela, tentando apenas campos básicos...", dbError);
         // Tenta apenas nome_completo e email caso as outras colunas não existam ou tenham restrições
         const fallbackData = {
@@ -705,6 +716,8 @@ const App: React.FC = () => {
       }
 
       // Regra de Auditoria: Inserir log manual
+      currentStep = 'gravar-log-auditoria';
+      console.log(`Executando ${currentStep}...`);
       try {
         await supabase.from('logs').insert({
           auth_user_id: session.user.id,
@@ -717,13 +730,17 @@ const App: React.FC = () => {
       }
 
       // Recarrega o perfil do usuário na memória
+      currentStep = 'recarregar-perfil';
+      console.log(`Executando ${currentStep}...`);
       await fetchUserProfile(session.user.id);
       setProfileMessage({ type: 'success', text: 'Dados atualizados com sucesso!' });
     } catch (err: any) {
-      console.error("Erro completo ao atualizar perfil:", err);
+      console.error(`Erro completo no passo ${currentStep}:`, err);
       let errMsg = err.message || 'Erro ao atualizar dados.';
       if (errMsg === 'Failed to fetch') {
-        errMsg = 'Falha na conexão com o servidor (Failed to fetch). Verifique sua internet ou se o banco de dados Supabase está online.';
+        errMsg = `Falha na conexão com o servidor (Failed to fetch) no passo [${currentStep}]. Verifique sua internet ou se o banco de dados Supabase está online.`;
+      } else {
+        errMsg = `Erro no passo [${currentStep}]: ${errMsg}`;
       }
       setProfileMessage({ type: 'error', text: errMsg });
     } finally {
