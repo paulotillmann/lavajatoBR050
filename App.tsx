@@ -626,7 +626,16 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!session?.user) return;
     setUpdatingProfile(true);
-    setProfileMessage(null);
+    // Validar se o avatar_url é um Base64 gigantesco antigo no estado do browser
+    if (profileAvatarUrl && profileAvatarUrl.startsWith('data:') && profileAvatarUrl.length > 100000) {
+      setProfileMessage({ 
+        type: 'error', 
+        text: 'A imagem atual está no formato antigo (Base64) e é muito grande. Por favor, recarregue a página (F5) e selecione o arquivo de imagem novamente para realizar o upload de forma correta.' 
+      });
+      setUpdatingProfile(false);
+      return;
+    }
+
     try {
       // 1. Atualiza metadados no Auth do Supabase
       const { error: authError } = await supabase.auth.updateUser({
