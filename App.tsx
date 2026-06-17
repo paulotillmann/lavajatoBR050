@@ -454,17 +454,17 @@ const App: React.FC = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+        .maybeSingle();
 
-      if (error) {
+      if (error || !data) {
         console.warn('Perfil não encontrado de imediato, tentando novamente...');
         setTimeout(async () => {
           const { data: retryData, error: retryError } = await supabase
             .from('profiles')
             .select('*')
-            .eq('id', userId)
-            .single();
+            .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+            .maybeSingle();
           if (!retryError && retryData) {
             setUserProfile(retryData);
           }
@@ -648,6 +648,15 @@ const App: React.FC = () => {
       });
       if (authError) throw authError;
 
+      // Buscar a chave primária correta do perfil do usuário (id ou auth_user_id)
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .or(`id.eq.${session.user.id},auth_user_id.eq.${session.user.id}`)
+        .maybeSingle();
+
+      const targetId = currentProfile?.id || session.user.id;
+
       // 2. Insere/atualiza na tabela profiles
       const updateData: any = {
         nome_completo: profileName,
@@ -660,7 +669,7 @@ const App: React.FC = () => {
       const { error: dbError } = await supabase
         .from('profiles')
         .update(updateData)
-        .eq('id', session.user.id);
+        .eq('id', targetId);
 
       if (dbError) {
         console.warn("Falha ao atualizar avatar_url/celular na tabela, tentando apenas campos básicos...", dbError);
@@ -673,7 +682,7 @@ const App: React.FC = () => {
         const { error: dbRetryError } = await supabase
           .from('profiles')
           .update(fallbackData)
-          .eq('id', session.user.id);
+          .eq('id', targetId);
         if (dbRetryError) throw dbRetryError;
       }
 
