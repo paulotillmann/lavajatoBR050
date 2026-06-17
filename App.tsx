@@ -752,15 +752,9 @@ const App: React.FC = () => {
         .upload(filePath, file, { cacheControl: '3600', upsert: true });
 
       if (error) {
-        console.warn("Storage falhou. Salvando foto como Base64...", error);
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64data = reader.result as string;
-          setProfileAvatarUrl(base64data);
-          setProfileMessage({ type: 'success', text: 'Foto carregada temporariamente (Base64). Clique em salvar para confirmar!' });
-          setUploadingAvatar(false);
-        };
-        reader.readAsDataURL(file);
+        console.error("Storage falhou:", error);
+        setProfileMessage({ type: 'error', text: `Falha no upload para o storage: ${error.message || 'Erro desconhecido'}` });
+        setUploadingAvatar(false);
         return;
       }
 
