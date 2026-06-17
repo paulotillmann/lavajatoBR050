@@ -30,3 +30,8 @@ dist-ssr
 
 # Temporary and local scratch scripts (contains db passwords and management tokens)
 scratch/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
