@@ -16228,26 +16228,31 @@ const App: React.FC = () => {
                       </div>
 
                       {/* File upload input */}
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-2">
                         <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Fazer Upload de Foto</label>
-                        <div className="relative h-9 bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl flex items-center px-3 text-xxs overflow-hidden hover:border-violet-500/55 transition-colors">
+                        <div className="relative border-2 border-dashed border-[#1f2433] light-theme:border-slate-200 hover:border-violet-500/50 light-theme:hover:border-violet-500/50 bg-[#090b11]/30 light-theme:bg-slate-50/50 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-300">
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleAvatarUpload}
                             disabled={uploadingAvatar}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            className="absolute inset-0 opacity-0 cursor-pointer z-10"
                           />
-                          <span className="text-[#64748b] font-medium flex items-center gap-1.5">
+                          <div className="h-10 w-10 rounded-full bg-violet-500/10 text-violet-400 flex items-center justify-center border border-violet-500/20 shadow-inner">
                             {uploadingAvatar ? (
-                              <>
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />
-                                Carregando arquivo...
-                              </>
+                              <Loader2 className="h-5 w-5 animate-spin text-cyan-400" />
                             ) : (
-                              'Clique aqui para escolher um arquivo de imagem'
+                              <Cloud className="h-5 w-5" />
                             )}
-                          </span>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-xs font-semibold text-white light-theme:text-slate-800">
+                              {uploadingAvatar ? 'Carregando arquivo...' : 'Clique para escolher sua foto'}
+                            </p>
+                            <p className="text-[10px] text-[#64748b] mt-1">
+                              Suporta PNG, JPG ou GIF
+                            </p>
+                          </div>
                         </div>
                       </div>
 
