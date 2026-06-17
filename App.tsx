@@ -1978,6 +1978,8 @@ const App: React.FC = () => {
       }
     };
 
+    const avatarUrlToShow = userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '';
+
     return (
       <header className="px-8 h-20 bg-[#090b11]/80 light-theme:bg-white/80 border-b border-[#1f2433] light-theme:border-slate-200 backdrop-blur-md flex items-center justify-between z-10">
         <div>
@@ -2032,10 +2034,10 @@ const App: React.FC = () => {
             className="flex items-center gap-3 pl-3 border-l border-[#1f2433] light-theme:border-slate-200 cursor-pointer text-left focus:outline-none group hover:opacity-95 active:scale-98 transition-all"
             title="Editar dados do perfil"
           >
-            {userProfile?.avatar_url && !userProfile.avatar_url.startsWith('from-') ? (
-              <img src={userProfile.avatar_url} className="h-9 w-9 rounded-xl object-cover shadow-md shadow-violet-900/20" alt="Avatar" />
+            {avatarUrlToShow && !avatarUrlToShow.startsWith('from-') ? (
+              <img src={avatarUrlToShow} className="h-9 w-9 rounded-xl object-cover shadow-md shadow-violet-900/20" alt="Avatar" />
             ) : (
-              <div className={`h-9 w-9 rounded-xl bg-gradient-to-tr ${userProfile?.avatar_url && userProfile.avatar_url.startsWith('from-') ? userProfile.avatar_url : 'from-violet-600 to-indigo-600'} flex items-center justify-center text-white font-bold text-xs tracking-wide shadow-md shadow-violet-900/20 uppercase`} title={userProfile?.nome_completo || session?.user?.email}>
+              <div className={`h-9 w-9 rounded-xl bg-gradient-to-tr ${avatarUrlToShow && avatarUrlToShow.startsWith('from-') ? avatarUrlToShow : 'from-violet-600 to-indigo-600'} flex items-center justify-center text-white font-bold text-xs tracking-wide shadow-md shadow-violet-900/20 uppercase`} title={userProfile?.nome_completo || session?.user?.email}>
                 {userProfile?.nome_completo
                   ? userProfile.nome_completo.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
                   : session?.user?.email?.slice(0, 2).toUpperCase() || 'US'}
