@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Label, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import carretaImg from './logos/carreta.png';
@@ -259,6 +260,61 @@ interface OSSequencia {
   updated_at?: string;
 }
 
+interface LaudoHigienizacao {
+  id: string;
+  numero_laudo: number;
+  data_laudo: string;
+  entrada_data_hora?: string;
+  saida_data_hora?: string;
+  placa_cavalo: string;
+  placa_carreta_1?: string;
+  placa_carreta_2?: string;
+  empresa?: string;
+  frota?: string;
+  modelo?: string;
+
+  cavalo_interno?: boolean;
+  cavalo_interno_soprar?: boolean;
+  cavalo_interno_aspirar?: boolean;
+  cavalo_interno_hidratacao?: boolean;
+  cavalo_interno_motor?: boolean;
+  cavalo_externo?: boolean;
+  cavalo_externo_agua_quente?: boolean;
+  cavalo_externo_agua_fria?: boolean;
+  cavalo_cera?: boolean;
+
+  carreta_interno?: boolean;
+  carreta_interno_agua_quente?: boolean;
+  carreta_interno_agua_fria?: boolean;
+  carreta_externo?: boolean;
+  carreta_externo_agua_quente?: boolean;
+  carreta_externo_agua_fria?: boolean;
+  carreta_externo_jato_agua?: boolean;
+  carreta_externo_boca_superior?: boolean;
+  carreta_externo_boca_lateral?: boolean;
+  carreta_externo_embaixo?: boolean;
+  carreta_externo_lona?: boolean;
+
+  secagem_manual_funcionario?: string;
+  nome_motorista?: string;
+  lavador_nome?: string;
+  lacres?: string[];
+  ultimas_cargas?: string[];
+  observacoes?: string;
+
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string;
+  slug?: string;
+}
+
+interface LaudoConfig {
+  id: string;
+  ultimo_numero: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 const getDefaultDashboardMonth = () => {
   const today = new Date();
   const year = today.getFullYear();
@@ -289,8 +345,25 @@ const App: React.FC = () => {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // User Profile Modal States
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [profileTab, setProfileTab] = useState<'dados' | 'foto' | 'senha' | 'logs'>('dados');
+  const [profileName, setProfileName] = useState('');
+  const [profileWhatsapp, setProfileWhatsapp] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profileRole, setProfileRole] = useState('operator');
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
+  const [profilePassword, setProfilePassword] = useState('');
+  const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [userLogs, setUserLogs] = useState<any[]>([]);
+  const [loadingUserLogs, setLoadingUserLogs] = useState(false);
+
   // Navigation View State
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'entradas' | 'despesas' | 'mensalistas' | 'pessoas' | 'veiculos' | 'formapagamento' | 'centrocusto' | 'ordemservico' | 'migracoes' | 'laudo' | 'os_sequence'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'entradas' | 'despesas' | 'mensalistas' | 'pessoas' | 'veiculos' | 'formapagamento' | 'centrocusto' | 'ordemservico' | 'migracoes' | 'laudo' | 'os_sequence' | 'laudo_sequence'>('dashboard');
 
   // Dashboard Filters State
   const [dashboardFilterMonth, setDashboardFilterMonth] = useState(getDefaultDashboardMonth());
@@ -298,6 +371,20 @@ const App: React.FC = () => {
   const [dashboardFilterFormaPagamento, setDashboardFilterFormaPagamento] = useState('');
   const [isDashboardFilterModalOpen, setIsDashboardFilterModalOpen] = useState(false);
   const [entradasBoxViewMode, setEntradasBoxViewMode] = useState<'detalhado' | 'simplificado'>('detalhado');
+  const [faturamentoSetoresViewMode, setFaturamentoSetoresViewMode] = useState<'centrocusto' | 'formapagamento'>('centrocusto');
+
+  const [showPrivacyValues, setShowPrivacyValues] = useState<boolean>(() => {
+    const saved = localStorage.getItem('lavajato_privacy_mode');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const togglePrivacyValues = () => {
+    setShowPrivacyValues(prev => {
+      const newVal = !prev;
+      localStorage.setItem('lavajato_privacy_mode', JSON.stringify(newVal));
+      return newVal;
+    });
+  };
 
   const hasActiveDashboardFilters = !!(dashboardFilterMonth || dashboardFilterCentroCusto || dashboardFilterFormaPagamento);
 
@@ -349,7 +436,7 @@ const App: React.FC = () => {
       setIsLancamentosOpen(false);
       setIsConfigOpen(false);
     }
-    if (['migracoes', 'os_sequence'].includes(currentTab)) {
+    if (['migracoes', 'os_sequence', 'laudo_sequence'].includes(currentTab)) {
       setIsConfigOpen(true);
       setIsLancamentosOpen(false);
       setIsCadastrosOpen(false);
@@ -514,6 +601,179 @@ const App: React.FC = () => {
       alert('Erro ao sair: ' + err.message);
     }
   };
+
+  // Profile management helper functions
+  const fetchUserLogs = async (userId: string) => {
+    setLoadingUserLogs(true);
+    try {
+      const { data, error } = await supabase
+        .from('logs')
+        .select('*')
+        .eq('auth_user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (!error && data) {
+        setUserLogs(data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar logs:', err);
+    } finally {
+      setLoadingUserLogs(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session?.user) return;
+    setUpdatingProfile(true);
+    setProfileMessage(null);
+    try {
+      // 1. Atualiza metadados no Auth do Supabase
+      const { error: authError } = await supabase.auth.updateUser({
+        email: profileEmail !== session?.user?.email ? profileEmail : undefined,
+        data: {
+          nome_completo: profileName,
+          celular_whatsapp: profileWhatsapp,
+          avatar_url: profileAvatarUrl,
+        }
+      });
+      if (authError) throw authError;
+
+      // 2. Insere/atualiza na tabela profiles
+      const updateData: any = {
+        nome_completo: profileName,
+        email: profileEmail,
+        celular_whatsapp: profileWhatsapp,
+        avatar_url: profileAvatarUrl,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', session.user.id);
+
+      if (dbError) {
+        console.warn("Falha ao atualizar avatar_url/celular na tabela, tentando apenas campos básicos...", dbError);
+        // Tenta apenas nome_completo e email caso as outras colunas não existam ou tenham restrições
+        const fallbackData = {
+          nome_completo: profileName,
+          email: profileEmail,
+          updated_at: new Date().toISOString(),
+        };
+        const { error: dbRetryError } = await supabase
+          .from('profiles')
+          .update(fallbackData)
+          .eq('id', session.user.id);
+        if (dbRetryError) throw dbRetryError;
+      }
+
+      // Regra de Auditoria: Inserir log manual
+      try {
+        await supabase.from('logs').insert({
+          auth_user_id: session.user.id,
+          usuario_email: session.user.email,
+          acao: 'EDITAR_PERFIL',
+          detalhes: 'Usuário alterou seus dados cadastrais (nome/celular).'
+        });
+      } catch (logErr) {
+        console.warn('Erro ao criar log de auditoria:', logErr);
+      }
+
+      // Recarrega o perfil do usuário na memória
+      await fetchUserProfile(session.user.id);
+      setProfileMessage({ type: 'success', text: 'Dados atualizados com sucesso!' });
+    } catch (err: any) {
+      setProfileMessage({ type: 'error', text: err.message || 'Erro ao atualizar dados.' });
+    } finally {
+      setUpdatingProfile(false);
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (profilePassword !== profileConfirmPassword) {
+      setProfileMessage({ type: 'error', text: 'As senhas não coincidem.' });
+      return;
+    }
+    setUpdatingPassword(true);
+    setProfileMessage(null);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: profilePassword
+      });
+      if (error) throw error;
+
+      // Log de Auditoria
+      try {
+        await supabase.from('logs').insert({
+          auth_user_id: session.user.id,
+          usuario_email: session.user.email,
+          acao: 'ALTERAR_SENHA',
+          detalhes: 'Usuário atualizou sua senha de acesso.'
+        });
+      } catch (logErr) {
+        console.warn('Erro ao criar log de auditoria:', logErr);
+      }
+
+      setProfilePassword('');
+      setProfileConfirmPassword('');
+      setProfileMessage({ type: 'success', text: 'Senha alterada com sucesso!' });
+    } catch (err: any) {
+      setProfileMessage({ type: 'error', text: err.message || 'Erro ao alterar a senha.' });
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !session?.user) return;
+
+    setUploadingAvatar(true);
+    setProfileMessage(null);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}-${Math.floor(Date.now() / 1000)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      // Tenta fazer o upload para a pasta 'avatars' no Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { cacheControl: '3600', upsert: true });
+
+      if (error) {
+        console.warn("Storage falhou. Salvando foto como Base64...", error);
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64data = reader.result as string;
+          setProfileAvatarUrl(base64data);
+          setProfileMessage({ type: 'success', text: 'Foto carregada temporariamente (Base64). Clique em salvar para confirmar!' });
+          setUploadingAvatar(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // Obtém URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setProfileAvatarUrl(publicUrl);
+      setProfileMessage({ type: 'success', text: 'Foto carregada com sucesso! Clique em salvar para confirmar.' });
+    } catch (err: any) {
+      setProfileMessage({ type: 'error', text: err.message || 'Erro ao carregar a foto.' });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isProfileModalOpen && profileTab === 'logs' && session?.user?.id) {
+      fetchUserLogs(session.user.id);
+    }
+  }, [isProfileModalOpen, profileTab, session?.user?.id]);
 
   const renderLoginScreen = () => {
     return (
@@ -1245,6 +1505,69 @@ const App: React.FC = () => {
   const [formSequenceSubmitting, setFormSequenceSubmitting] = useState(false);
   const [searchOSSequence, setSearchOSSequence] = useState('');
 
+  // Laudo de Higienização States
+  const [supabaseLaudos, setSupabaseLaudos] = useState<LaudoHigienizacao[]>([]);
+  const [loadingLaudos, setLoadingLaudos] = useState(false);
+  const [searchLaudoEmpresa, setSearchLaudoEmpresa] = useState('');
+  const [searchLaudoPlaca, setSearchLaudoPlaca] = useState('');
+  const [laudoFormMode, setLaudoFormMode] = useState<'list' | 'create' | 'edit'>('list');
+  const [selectedLaudo, setSelectedLaudo] = useState<LaudoHigienizacao | null>(null);
+  const [isDeletingLaudo, setIsDeletingLaudo] = useState<LaudoHigienizacao | null>(null);
+  const [formLaudoSubmitting, setFormLaudoSubmitting] = useState(false);
+  const [formLaudoError, setFormLaudoError] = useState<string | null>(null);
+
+  // States do formulário de Laudo
+  const [formLaudoNumero, setFormLaudoNumero] = useState<number | string>('Gerando...');
+  const [formLaudoData, setFormLaudoData] = useState('');
+  const [formLaudoEntrada, setFormLaudoEntrada] = useState('');
+  const [formLaudoSaida, setFormLaudoSaida] = useState('');
+  const [formLaudoPlacaCavalo, setFormLaudoPlacaCavalo] = useState('');
+  const [formLaudoPlacaCarreta1, setFormLaudoPlacaCarreta1] = useState('');
+  const [formLaudoPlacaCarreta2, setFormLaudoPlacaCarreta2] = useState('');
+  const [formLaudoEmpresa, setFormLaudoEmpresa] = useState('');
+  const [formLaudoFrota, setFormLaudoFrota] = useState('');
+  const [formLaudoModelo, setFormLaudoModelo] = useState('');
+
+  // Cavalo checkboxes
+  const [formLaudoCavaloInterno, setFormLaudoCavaloInterno] = useState(false);
+  const [formLaudoCavaloInternoSoprar, setFormLaudoCavaloInternoSoprar] = useState(false);
+  const [formLaudoCavaloInternoAspirar, setFormLaudoCavaloInternoAspirar] = useState(false);
+  const [formLaudoCavaloInternoHidratacao, setFormLaudoCavaloInternoHidratacao] = useState(false);
+  const [formLaudoCavaloInternoMotor, setFormLaudoCavaloInternoMotor] = useState(false);
+  const [formLaudoCavaloExterno, setFormLaudoCavaloExterno] = useState(false);
+  const [formLaudoCavaloExternoAguaQuente, setFormLaudoCavaloExternoAguaQuente] = useState(false);
+  const [formLaudoCavaloExternoAguaFria, setFormLaudoCavaloExternoAguaFria] = useState(false);
+  const [formLaudoCavaloCera, setFormLaudoCavaloCera] = useState(false);
+
+  // Carreta checkboxes
+  const [formLaudoCarretaInterno, setFormLaudoCarretaInterno] = useState(false);
+  const [formLaudoCarretaInternoAguaQuente, setFormLaudoCarretaInternoAguaQuente] = useState(false);
+  const [formLaudoCarretaInternoAguaFria, setFormLaudoCarretaInternoAguaFria] = useState(false);
+  const [formLaudoCarretaExterno, setFormLaudoCarretaExterno] = useState(false);
+  const [formLaudoCarretaExternoAguaQuente, setFormLaudoCarretaExternoAguaQuente] = useState(false);
+  const [formLaudoCarretaExternoAguaFria, setFormLaudoCarretaExternoAguaFria] = useState(false);
+  const [formLaudoCarretaExternoJatoAgua, setFormLaudoCarretaExternoJatoAgua] = useState(false);
+  const [formLaudoCarretaExternoBocaSuperior, setFormLaudoCarretaExternoBocaSuperior] = useState(false);
+  const [formLaudoCarretaExternoBocaLateral, setFormLaudoCarretaExternoBocaLateral] = useState(false);
+  const [formLaudoCarretaExternoEmbaixo, setFormLaudoCarretaExternoEmbaixo] = useState(false);
+  const [formLaudoCarretaExternoLona, setFormLaudoCarretaExternoLona] = useState(false);
+
+  // Responsaveis & Outros
+  const [formLaudoSecagemManualFunc, setFormLaudoSecagemManualFunc] = useState('');
+  const [formLaudoNomeMotorista, setFormLaudoNomeMotorista] = useState('');
+  const [formLaudoLavadorNome, setFormLaudoLavadorNome] = useState('');
+  const [formLaudoLacres, setFormLaudoLacres] = useState<string[]>(Array(10).fill(''));
+  const [formLaudoUltimasCargas, setFormLaudoUltimasCargas] = useState<string[]>(Array(3).fill(''));
+  const [formLaudoObservacoes, setFormLaudoObservacoes] = useState('');
+
+  // Laudo Config (ultimo numero) States
+  const [laudoConfig, setLaudoConfig] = useState<LaudoConfig | null>(null);
+  const [loadingLaudoConfig, setLoadingLaudoConfig] = useState(false);
+  const [formLaudoConfigUltimoNumero, setFormLaudoConfigUltimoNumero] = useState('');
+  const [formLaudoConfigError, setFormLaudoConfigError] = useState<string | null>(null);
+  const [formLaudoConfigSuccess, setFormLaudoConfigSuccess] = useState<string | null>(null);
+  const [formLaudoConfigSubmitting, setFormLaudoConfigSubmitting] = useState(false);
+
   // ==========================================
   // ENOLI DESIGN SYSTEM - CUSTOM RENDER VIEWS
   // ==========================================
@@ -1515,7 +1838,7 @@ const App: React.FC = () => {
             </button>
 
             <AnimatePresence>
-              {(isConfigOpen || currentTab === 'migracoes' || currentTab === 'os_sequence') && (
+              {(isConfigOpen || currentTab === 'migracoes' || currentTab === 'os_sequence' || currentTab === 'laudo_sequence') && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1542,6 +1865,17 @@ const App: React.FC = () => {
                   >
                     <ListOrdered className="h-4.5 w-4.5" />
                     <span>Sequência de O.S.</span>
+                  </button>
+
+                  <button
+                    onClick={() => setCurrentTab('laudo_sequence')}
+                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'laudo_sequence'
+                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                      }`}
+                  >
+                    <ListOrdered className="h-4.5 w-4.5" />
+                    <span>Sequência de Laudos</span>
                   </button>
                 </motion.div>
               )}
@@ -1619,6 +1953,8 @@ const App: React.FC = () => {
         case 'ordemservico': return 'Ordens de Serviço';
         case 'migracoes': return 'Migração de Dados (Bubble ➔ Supabase)';
         case 'laudo': return 'Laudo de Higienização';
+        case 'os_sequence': return 'Sequência de O.S.';
+        case 'laudo_sequence': return 'Sequência de Laudos';
         default: return 'LavajatoBR050';
       }
     };
@@ -1636,6 +1972,8 @@ const App: React.FC = () => {
         case 'ordemservico': return 'Gestão de ordens de serviços';
         case 'migracoes': return 'Importação de tabelas legadas do Bubble.io para produção.';
         case 'laudo': return 'Gerenciamento e emissão de laudos de higienização detalhados.';
+        case 'os_sequence': return 'Configuração do sequenciador numérico anual de Ordens de Serviço.';
+        case 'laudo_sequence': return 'Configuração do sequenciador numérico de laudos de higienização.';
         default: return 'Painel de Gestão Operacional';
       }
     };
@@ -1661,6 +1999,16 @@ const App: React.FC = () => {
             />
           </div>
 
+          {/* Privacy Toggle Button */}
+          <button
+            type="button"
+            onClick={togglePrivacyValues}
+            className="h-9 w-9 rounded-xl bg-[#0e111a] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 flex items-center justify-center hover:bg-white/5 light-theme:hover:bg-slate-200 transition-colors text-[#94a3b8] light-theme:text-slate-600 hover:text-white light-theme:hover:text-slate-800 focus:outline-none"
+            title={showPrivacyValues ? "Ocultar valores" : "Mostrar valores"}
+          >
+            {showPrivacyValues ? <Eye className="h-4.5 w-4.5" /> : <EyeOff className="h-4.5 w-4.5" />}
+          </button>
+
           {/* Quick Info Notification Button */}
           <button className="h-9 w-9 rounded-xl bg-[#0e111a] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 flex items-center justify-center hover:bg-white/5 light-theme:hover:bg-slate-200 transition-colors relative group">
             <Bell className="h-4.5 w-4.5 text-[#94a3b8] light-theme:text-slate-600 group-hover:text-white light-theme:group-hover:text-slate-800" />
@@ -1668,37 +2016,1042 @@ const App: React.FC = () => {
           </button>
 
           {/* User profile capsule */}
-          <div className="flex items-center gap-3 pl-3 border-l border-[#1f2433] light-theme:border-slate-200">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xs tracking-wide shadow-md shadow-violet-900/20 uppercase" title={userProfile?.nome_completo || session?.user?.email}>
-              {userProfile?.nome_completo
-                ? userProfile.nome_completo.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-                : session?.user?.email?.slice(0, 2).toUpperCase() || 'US'}
-            </div>
+          <button
+            onClick={() => {
+              setProfileName(userProfile?.nome_completo || session?.user?.user_metadata?.nome_completo || '');
+              setProfileWhatsapp(userProfile?.celular_whatsapp || session?.user?.user_metadata?.celular_whatsapp || '');
+              setProfileEmail(session?.user?.email || userProfile?.email || '');
+              setProfileRole(userProfile?.role || 'operator');
+              setProfileAvatarUrl(userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '');
+              setProfilePassword('');
+              setProfileConfirmPassword('');
+              setProfileMessage(null);
+              setProfileTab('dados');
+              setIsProfileModalOpen(true);
+            }}
+            className="flex items-center gap-3 pl-3 border-l border-[#1f2433] light-theme:border-slate-200 cursor-pointer text-left focus:outline-none group hover:opacity-95 active:scale-98 transition-all"
+            title="Editar dados do perfil"
+          >
+            {userProfile?.avatar_url && !userProfile.avatar_url.startsWith('from-') ? (
+              <img src={userProfile.avatar_url} className="h-9 w-9 rounded-xl object-cover shadow-md shadow-violet-900/20" alt="Avatar" />
+            ) : (
+              <div className={`h-9 w-9 rounded-xl bg-gradient-to-tr ${userProfile?.avatar_url && userProfile.avatar_url.startsWith('from-') ? userProfile.avatar_url : 'from-violet-600 to-indigo-600'} flex items-center justify-center text-white font-bold text-xs tracking-wide shadow-md shadow-violet-900/20 uppercase`} title={userProfile?.nome_completo || session?.user?.email}>
+                {userProfile?.nome_completo
+                  ? userProfile.nome_completo.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                  : session?.user?.email?.slice(0, 2).toUpperCase() || 'US'}
+              </div>
+            )}
             <div className="hidden sm:block">
-              <h4 className="text-xs font-bold text-white light-theme:text-slate-800 leading-none">
+              <h4 className="text-xs font-bold text-white light-theme:text-slate-800 leading-none group-hover:text-violet-400 light-theme:group-hover:text-blue-650 transition-colors">
                 {userProfile?.nome_completo || session?.user?.user_metadata?.nome_completo || session?.user?.email?.split('@')[0] || 'Operador'}
               </h4>
               <p className="text-[10px] text-[#64748b] font-medium mt-1 leading-none">
                 {userProfile?.role === 'admin' ? 'Administrador' : userProfile?.role === 'client' ? 'Cliente' : 'Operador'}
               </p>
             </div>
-          </div>
+          </button>
         </div>
       </header>
     );
   };
 
   const renderLaudo = () => {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl gap-4">
-        <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-violet-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-violet-900/20">
-          <FileText className="h-8 w-8 text-white animate-pulse" />
+    const filteredLaudos = supabaseLaudos.filter(l => {
+      if (searchLaudoEmpresa && !l.empresa?.toLowerCase().includes(searchLaudoEmpresa.toLowerCase())) {
+        return false;
+      }
+      if (searchLaudoPlaca) {
+        const term = searchLaudoPlaca.toLowerCase();
+        const matchesCavalo = l.placa_cavalo?.toLowerCase().includes(term);
+        const matchesCarreta1 = l.placa_carreta_1?.toLowerCase().includes(term);
+        const matchesCarreta2 = l.placa_carreta_2?.toLowerCase().includes(term);
+        if (!matchesCavalo && !matchesCarreta1 && !matchesCarreta2) return false;
+      }
+      return true;
+    });
+
+    if (laudoFormMode === 'list') {
+      return (
+        <div className="h-full flex flex-col gap-5 w-full overflow-hidden text-left">
+          {/* A. KPI Header */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full flex-shrink-0">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[120px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TOTAL DE LAUDOS</span>
+              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+                {showPrivacyValues ? supabaseLaudos.length : '••'}
+              </h3>
+              <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
+                <FileText className="h-3.5 w-3.5 text-emerald-400 light-theme:text-emerald-600" />
+                <span>Laudos emitidos no total</span>
+              </div>
+              <FileText className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            </div>
+
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[120px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ÚLTIMO LAUDO GERADO</span>
+              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+                {laudoConfig ? String(laudoConfig.ultimo_numero).padStart(6, '0') : 'N/A'}
+              </h3>
+              <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
+                <Clock className="h-3.5 w-3.5 text-cyan-400 light-theme:text-cyan-600" />
+                <span>Sequência atual do sistema</span>
+              </div>
+              <ListOrdered className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            </div>
+
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[120px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS HIGIENIZADOS</span>
+              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+                {showPrivacyValues ? Array.from(new Set(supabaseLaudos.map(l => l.placa_cavalo))).length : '••'}
+              </h3>
+              <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
+                <Truck className="h-3.5 w-3.5 text-violet-400 light-theme:text-violet-600" />
+                <span>Cavalos/Tratores únicos</span>
+              </div>
+              <Truck className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            </div>
+          </div>
+
+          {/* B. Filter and Grid Section */}
+          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl shadow-xl overflow-hidden min-h-0 flex flex-col relative">
+            <div className="flex items-center justify-between mb-5 flex-wrap gap-4 flex-shrink-0">
+              <div>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Laudos de Higienização Cadastrados</h3>
+                <p className="text-[10px] text-cyan-400 font-semibold mt-1">
+                  Exibindo {filteredLaudos.length} de {supabaseLaudos.length} registros
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Filter Inputs */}
+                <div className="relative w-48">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Empresa..."
+                    value={searchLaudoEmpresa}
+                    onChange={(e) => setSearchLaudoEmpresa(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-1.5 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                <div className="relative w-40">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748b] pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Placa..."
+                    value={searchLaudoPlaca}
+                    onChange={(e) => setSearchLaudoPlaca(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-1.5 pl-9 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+                  />
+                </div>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={fetchSupabaseLaudos}
+                  disabled={loadingLaudos}
+                  className="h-8 w-8 rounded-xl bg-[#090b11] border border-[#1f2433] light-theme:border-slate-200 light-theme:bg-slate-50 flex items-center justify-center hover:bg-white/5 active:bg-[#090b11] transition-colors disabled:opacity-50 text-[#94a3b8] cursor-pointer"
+                  title="Atualizar"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loadingLaudos ? 'animate-spin' : ''}`} />
+                </button>
+
+                {/* Novo Laudo Button */}
+                <button
+                  type="button"
+                  onClick={handleOpenCreateLaudo}
+                  className="flex items-center gap-1.5 px-6 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/15 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Novo Laudo</span>
+                </button>
+              </div>
+            </div>
+
+            {/* C. Grid Table */}
+            <div className="overflow-x-auto flex-1 custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#1f2433]/70 light-theme:border-slate-200 text-[#64748b] text-[10px] font-bold uppercase tracking-wider">
+                    <th className="py-4 px-6">Nº Laudo</th>
+                    <th className="py-4 px-6">Data</th>
+                    <th className="py-4 px-6">Empresa</th>
+                    <th className="py-4 px-6">Placa Cavalo</th>
+                    <th className="py-4 px-6">Carreta 1/2</th>
+                    <th className="py-4 px-6">Modelo</th>
+                    <th className="py-4 px-6">Lavador</th>
+                    <th className="py-4 px-6 text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100 text-xs font-medium">
+                  {loadingLaudos ? (
+                    <tr>
+                      <td colSpan={8} className="py-20 text-center text-[#64748b]">
+                        <div className="flex flex-col items-center gap-3">
+                          <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
+                          <span className="font-semibold uppercase tracking-wider text-[10px]">Carregando laudos...</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredLaudos.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-20 text-center text-[#64748b]">
+                        Nenhum laudo de higienização encontrado.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredLaudos.map((laudo) => (
+                      <tr key={laudo.id} className="hover:bg-white/2 light-theme:hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-6 font-mono font-bold text-white light-theme:text-slate-800">
+                          {String(laudo.numero_laudo).padStart(6, '0')}
+                        </td>
+                        <td className="py-4 px-6 text-[#94a3b8] light-theme:text-slate-500">
+                          {laudo.data_laudo ? new Date(laudo.data_laudo).toLocaleDateString('pt-BR') : 'N/A'}
+                        </td>
+                        <td className="py-4 px-6 text-white light-theme:text-slate-800 font-bold">
+                          {laudo.empresa || 'N/A'}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="px-2 py-0.5 rounded-md font-mono font-bold bg-[#f5f8ff] text-[#2563eb] border border-[#c3d7f9] text-[12px] uppercase shadow-sm tracking-wide">
+                            {laudo.placa_cavalo}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-[#94a3b8] light-theme:text-slate-500 font-mono">
+                          {laudo.placa_carreta_1 || laudo.placa_carreta_2 ? (
+                            <div className="flex flex-col gap-0.5">
+                              {laudo.placa_carreta_1 && <span>{laudo.placa_carreta_1} (1)</span>}
+                              {laudo.placa_carreta_2 && <span>{laudo.placa_carreta_2} (2)</span>}
+                            </div>
+                          ) : '-'}
+                        </td>
+                        <td className="py-4 px-6">
+                          {laudo.modelo ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-400 capitalize">
+                              {laudo.modelo}
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="py-4 px-6 text-[#94a3b8] light-theme:text-slate-500">
+                          {laudo.lavador_nome || 'N/A'}
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handlePrintLaudo(laudo)}
+                              className="h-7.5 w-7.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/25 text-emerald-400 transition-colors flex items-center justify-center cursor-pointer"
+                              title="Imprimir Laudo"
+                            >
+                              <Printer className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditLaudo(laudo)}
+                              className="h-7.5 w-7.5 rounded-lg bg-[#1f2433] hover:bg-[#2b3247] light-theme:bg-slate-100 light-theme:hover:bg-slate-200 text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors flex items-center justify-center cursor-pointer"
+                              title="Editar Laudo"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsDeletingLaudo(laudo)}
+                              className="h-7.5 w-7.5 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/25 text-red-400 transition-colors flex items-center justify-center cursor-pointer"
+                              title="Excluir Laudo"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* D. Delete Confirmation Modal */}
+          <AnimatePresence>
+            {isDeletingLaudo && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-6 w-full max-w-md shadow-2xl"
+                >
+                  <div className="flex flex-col gap-4 text-center">
+                    <div className="h-12 w-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mx-auto">
+                      <AlertTriangle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-white light-theme:text-slate-800">Confirmar Exclusão</h4>
+                      <p className="text-xs text-[#64748b] mt-1.5">
+                        Deseja realmente excluir o laudo nº <strong>{String(isDeletingLaudo.numero_laudo).padStart(6, '0')}</strong>?<br />
+                        Esta ação não pode ser desfeita.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-3 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsDeletingLaudo(null)}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold bg-[#1f2433] light-theme:bg-slate-100 hover:bg-[#2b3247] light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 transition-colors cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteLaudo}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white transition-all shadow-md shadow-red-950/20 cursor-pointer"
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
-        <div className="text-center max-w-md flex flex-col gap-2">
-          <h3 className="text-lg font-bold text-white light-theme:text-slate-800">Laudo de Higienização</h3>
-          <p className="text-xs text-[#94a3b8] light-theme:text-slate-500 leading-relaxed">
-            Esta funcionalidade está sendo preparada para conectar-se diretamente às suas ordens de serviço. Em breve você poderá emitir laudos técnicos detalhados com fotos e certificações.
-          </p>
+      );
+    }
+
+    // FORM MODE: CREATE OR EDIT
+    return (
+      <div className="h-full flex flex-col gap-6 overflow-hidden text-left min-h-0">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-white light-theme:text-slate-800 tracking-tight flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-violet-900/30">
+                <FileText className="h-5 w-5" />
+              </div>
+              {laudoFormMode === 'create' ? 'Novo Laudo de Higienização' : `Editar Laudo nº ${String(formLaudoNumero).padStart(6, '0')}`}
+            </h2>
+            <p className="text-xs text-[#64748b] mt-1.5 leading-relaxed">
+              Preencha os campos abaixo de acordo com a vistoria realizada no veículo.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setLaudoFormMode('list')}
+            className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span>Voltar para a Lista</span>
+          </button>
+        </div>
+
+        {/* Form Container */}
+        <form onSubmit={handleSaveLaudo} className="flex-1 overflow-y-auto custom-scrollbar bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-6 md:p-8 flex flex-col gap-6 text-xs text-white light-theme:text-slate-800">
+          {formLaudoError && (
+            <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl flex items-start gap-2.5">
+              <AlertTriangle className="h-4.5 w-4.5 flex-shrink-0 mt-0.5" />
+              <span>{formLaudoError}</span>
+            </div>
+          )}
+
+          {/* Seção 1: Identificação */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-4 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              1. Identificação e Horários
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Número do Laudo</label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 flex items-center pointer-events-none text-white/40">
+                    <Hash className="h-3.5 w-3.5" />
+                  </div>
+                  <input
+                    type="text"
+                    disabled
+                    value={formLaudoNumero === 'Gerando...' ? 'Gerando...' : String(formLaudoNumero).padStart(6, '0')}
+                    className="w-full bg-[#0e111a] light-theme:bg-[#18224f] border border-[#1f2433] light-theme:border-[#242f63]/50 rounded-xl py-2 pl-8 pr-12 font-mono text-white light-theme:text-white font-bold text-center tracking-widest text-base shadow-lg disabled:opacity-100"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    {formLaudoNumero === 'Gerando...' ? (
+                      <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                    ) : (
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 border border-white/20 text-white/90">
+                        AUTO
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Data do Laudo</label>
+                <input
+                  type="date"
+                  required
+                  value={formLaudoData}
+                  onChange={(e) => setFormLaudoData(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Horário Entrada</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formLaudoEntrada}
+                  onChange={(e) => setFormLaudoEntrada(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Horário Saída</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={formLaudoSaida}
+                  onChange={(e) => setFormLaudoSaida(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 2: Dados do Veículo */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-4 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              2. Dados do Veículo
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa Cavalo (Trator)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="EX: ABC1D23"
+                  value={formLaudoPlacaCavalo}
+                  onChange={(e) => setFormLaudoPlacaCavalo(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 uppercase"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa Carreta 1</label>
+                <input
+                  type="text"
+                  placeholder="EX: XYZ9D87"
+                  value={formLaudoPlacaCarreta1}
+                  onChange={(e) => setFormLaudoPlacaCarreta1(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 uppercase"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Placa Carreta 2</label>
+                <input
+                  type="text"
+                  placeholder="EX: IJK2A45"
+                  value={formLaudoPlacaCarreta2}
+                  onChange={(e) => setFormLaudoPlacaCarreta2(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 uppercase"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Nome do Motorista</label>
+                <input
+                  type="text"
+                  placeholder="Nome completo do motorista"
+                  value={formLaudoNomeMotorista}
+                  onChange={(e) => setFormLaudoNomeMotorista(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Modelo do Veículo</label>
+                <div className="relative">
+                  <select
+                    value={formLaudoModelo}
+                    onChange={(e) => setFormLaudoModelo(e.target.value)}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 pl-3.5 pr-8 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 cursor-pointer appearance-none text-left"
+                  >
+                    <option value="">Selecione o Modelo...</option>
+                    <option value="tanque">Tanque</option>
+                    <option value="graneleiro">Graneleiro</option>
+                    <option value="boiadeiro">Boiadeiro</option>
+                    <option value="bau">Baú</option>
+                    <option value="cacamba">Caçamba</option>
+                    <option value="container">Container</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#64748b]">
+                    <ChevronDown className="h-4 w-4" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Empresa (Transportadora)</label>
+                <input
+                  type="text"
+                  placeholder="EX: Transportadora Rápido Ltda"
+                  value={formLaudoEmpresa}
+                  onChange={(e) => setFormLaudoEmpresa(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Frota (Código)</label>
+                <input
+                  type="text"
+                  placeholder="EX: 4402"
+                  value={formLaudoFrota}
+                  onChange={(e) => setFormLaudoFrota(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 3: Higienização Cavalo */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-4 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              3. Higienização Cavalo (Checklist)
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-[#090b11]/30 light-theme:bg-slate-50/50 border border-[#1f2433]/70 light-theme:border-slate-200 rounded-2xl p-5">
+              {/* Interno Column */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-white light-theme:text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={formLaudoCavaloInterno}
+                    onChange={(e) => {
+                      setFormLaudoCavaloInterno(e.target.checked);
+                      if (!e.target.checked) {
+                        setFormLaudoCavaloInternoSoprar(false);
+                        setFormLaudoCavaloInternoAspirar(false);
+                        setFormLaudoCavaloInternoHidratacao(false);
+                        setFormLaudoCavaloInternoMotor(false);
+                      }
+                    }}
+                    className="h-4 w-4 rounded bg-[#090b11] border-[#1f2433] text-violet-600 focus:ring-violet-500 cursor-pointer"
+                  />
+                  <span>Higienização Interna</span>
+                </label>
+
+                {formLaudoCavaloInterno && (
+                  <div className="pl-6 flex flex-col gap-2.5 animate-fadeIn">
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCavaloInternoSoprar}
+                        onChange={(e) => setFormLaudoCavaloInternoSoprar(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Soprar</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCavaloInternoAspirar}
+                        onChange={(e) => setFormLaudoCavaloInternoAspirar(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Aspirar</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCavaloInternoHidratacao}
+                        onChange={(e) => setFormLaudoCavaloInternoHidratacao(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Hidratação</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCavaloInternoMotor}
+                        onChange={(e) => setFormLaudoCavaloInternoMotor(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Motor</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Externo Column */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-white light-theme:text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={formLaudoCavaloExterno}
+                    onChange={(e) => {
+                      setFormLaudoCavaloExterno(e.target.checked);
+                      if (!e.target.checked) {
+                        setFormLaudoCavaloExternoAguaQuente(false);
+                        setFormLaudoCavaloExternoAguaFria(false);
+                      }
+                    }}
+                    className="h-4 w-4 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                  />
+                  <span>Higienização Externa</span>
+                </label>
+
+                {formLaudoCavaloExterno && (
+                  <div className="pl-6 flex flex-col gap-2.5 animate-fadeIn">
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCavaloExternoAguaQuente}
+                        onChange={(e) => setFormLaudoCavaloExternoAguaQuente(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Água Quente</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCavaloExternoAguaFria}
+                        onChange={(e) => setFormLaudoCavaloExternoAguaFria(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Água Fria</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Extras Column */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-white light-theme:text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={formLaudoCavaloCera}
+                    onChange={(e) => setFormLaudoCavaloCera(e.target.checked)}
+                    className="h-4 w-4 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                  />
+                  <span>Aplicação de Cera</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 4: Higienização Carreta */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-4 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              4. Higienização Carreta (Checklist)
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#090b11]/30 light-theme:bg-slate-50/50 border border-[#1f2433]/70 light-theme:border-slate-200 rounded-2xl p-5">
+              {/* Carreta Interno */}
+              <div className="space-y-3 border-r border-[#1f2433]/70 pr-4 last:border-0">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-white light-theme:text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={formLaudoCarretaInterno}
+                    onChange={(e) => {
+                      setFormLaudoCarretaInterno(e.target.checked);
+                      if (!e.target.checked) {
+                        setFormLaudoCarretaInternoAguaQuente(false);
+                        setFormLaudoCarretaInternoAguaFria(false);
+                      }
+                    }}
+                    className="h-4 w-4 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                  />
+                  <span>Interna Carreta</span>
+                </label>
+
+                {formLaudoCarretaInterno && (
+                  <div className="pl-6 flex flex-col gap-2.5 animate-fadeIn">
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaInternoAguaQuente}
+                        onChange={(e) => setFormLaudoCarretaInternoAguaQuente(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Água Quente</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaInternoAguaFria}
+                        onChange={(e) => setFormLaudoCarretaInternoAguaFria(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Água Fria</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Carreta Externo */}
+              <div className="space-y-3">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-white light-theme:text-slate-800">
+                  <input
+                    type="checkbox"
+                    checked={formLaudoCarretaExterno}
+                    onChange={(e) => {
+                      setFormLaudoCarretaExterno(e.target.checked);
+                      if (!e.target.checked) {
+                        setFormLaudoCarretaExternoAguaQuente(false);
+                        setFormLaudoCarretaExternoAguaFria(false);
+                        setFormLaudoCarretaExternoJatoAgua(false);
+                        setFormLaudoCarretaExternoBocaSuperior(false);
+                        setFormLaudoCarretaExternoBocaLateral(false);
+                        setFormLaudoCarretaExternoEmbaixo(false);
+                        setFormLaudoCarretaExternoLona(false);
+                      }
+                    }}
+                    className="h-4 w-4 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                  />
+                  <span>Externa Carreta</span>
+                </label>
+
+                {formLaudoCarretaExterno && (
+                  <div className="pl-6 grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-fadeIn">
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoAguaQuente}
+                        onChange={(e) => setFormLaudoCarretaExternoAguaQuente(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Água Quente</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoAguaFria}
+                        onChange={(e) => setFormLaudoCarretaExternoAguaFria(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Água Fria</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoJatoAgua}
+                        onChange={(e) => setFormLaudoCarretaExternoJatoAgua(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Jato D'Água</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoBocaSuperior}
+                        onChange={(e) => setFormLaudoCarretaExternoBocaSuperior(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Boca Superior</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoBocaLateral}
+                        onChange={(e) => setFormLaudoCarretaExternoBocaLateral(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Boca Lateral</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoEmbaixo}
+                        onChange={(e) => setFormLaudoCarretaExternoEmbaixo(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Embaixo</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoLona}
+                        onChange={(e) => setFormLaudoCarretaExternoLona(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Lona</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 5: Responsáveis e Operacionais */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-4 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              5. Secagem e Responsáveis
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Secagem Manual (Funcionário)</label>
+                <input
+                  type="text"
+                  placeholder="Nome do funcionário"
+                  value={formLaudoSecagemManualFunc}
+                  onChange={(e) => setFormLaudoSecagemManualFunc(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Lavador (Nome Completo)</label>
+                <input
+                  type="text"
+                  placeholder="Nome do lavador responsável"
+                  value={formLaudoLavadorNome}
+                  onChange={(e) => setFormLaudoLavadorNome(e.target.value)}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Seção 6: Lacres */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-2 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              6. Lacres Aplicados
+            </h3>
+            <p className="text-[#64748b] text-[10px] mb-3 leading-normal">Insira a numeração dos lacres nos campos abaixo, conforme necessário.</p>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {Array.from({ length: 10 }).map((_, idx) => (
+                <div key={`lacre-field-${idx}`} className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-bold text-[#64748b] uppercase tracking-wider block">Lacre {idx + 1}</label>
+                  <input
+                    type="text"
+                    placeholder="Número"
+                    value={formLaudoLacres[idx] || ''}
+                    onChange={(e) => {
+                      const copy = [...formLaudoLacres];
+                      copy[idx] = e.target.value;
+                      setFormLaudoLacres(copy);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-1.5 px-3 font-mono text-xs focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Seção 7: Últimas Cargas */}
+          <div className="border-b border-[#1f2433] light-theme:border-slate-100 pb-5">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-2 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              7. Histórico das 3 Últimas Cargas
+            </h3>
+            <p className="text-[#64748b] text-[10px] mb-3 leading-normal">Informe o histórico de cargas sob responsabilidade da transportadora.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {Array.from({ length: 3 }).map((_, idx) => (
+                <div key={`carga-field-${idx}`} className="flex flex-col gap-1.5">
+                  <label className="text-[9px] font-bold text-[#64748b] uppercase tracking-wider block">{idx + 1}ª Carga Anterior</label>
+                  <input
+                    type="text"
+                    placeholder="Descrição da carga"
+                    value={formLaudoUltimasCargas[idx] || ''}
+                    onChange={(e) => {
+                      const copy = [...formLaudoUltimasCargas];
+                      copy[idx] = e.target.value;
+                      setFormLaudoUltimasCargas(copy);
+                    }}
+                    className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Seção 8: Observações */}
+          <div className="pb-2">
+            <h3 className="text-sm font-bold text-cyan-400 light-theme:text-[#18224f] mb-3 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 light-theme:bg-[#18224f]" />
+              8. Observações Gerais
+            </h3>
+
+            <div className="flex flex-col gap-1.5">
+              <textarea
+                placeholder="Insira observações relevantes ou anotações especiais sobre a higienização do veículo..."
+                rows={4}
+                value={formLaudoObservacoes}
+                onChange={(e) => setFormLaudoObservacoes(e.target.value)}
+                className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-2xl p-4 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 resize-none"
+              />
+            </div>
+          </div>
+
+          {/* Form Actions Footer */}
+          <div className="flex items-center gap-3 pt-5 border-t border-[#1f2433] light-theme:border-slate-100 mt-2">
+            <button
+              type="button"
+              onClick={() => setLaudoFormMode('list')}
+              className="py-2.5 px-6 rounded-xl text-xs font-bold bg-[#1f2433] light-theme:bg-slate-100 hover:bg-[#2b3247] light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={formLaudoSubmitting}
+              className="py-2.5 px-8 rounded-xl text-xs font-bold bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white shadow-lg shadow-violet-900/20 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {formLaudoSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Salvando Laudo...</span>
+                </>
+              ) : (
+                <span>Salvar Laudo</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  };
+
+  const renderLaudoSequence = () => {
+    return (
+      <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0 text-left">
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-white light-theme:text-slate-800 tracking-tight flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-violet-900/30">
+                <ListOrdered className="h-5 w-5" />
+              </div>
+              Sequência de Laudos de Higienização
+            </h2>
+            <p className="text-xs text-[#64748b] mt-1.5 leading-relaxed max-w-2xl">
+              Gerencie a numeração sequencial geral dos laudos de higienização do sistema. O próximo laudo gerado será incremental em relação ao último configurado.
+            </p>
+          </div>
+
+          <button
+            onClick={fetchSupabaseLaudoConfig}
+            disabled={loadingLaudoConfig}
+            className="h-9 px-3 rounded-xl bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 hover:bg-[#1a1f2e] light-theme:hover:bg-slate-50 text-[#94a3b8] hover:text-white transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingLaudoConfig ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        {/* Info Alert Box */}
+        <div className="bg-violet-950/20 light-theme:bg-violet-50 border border-violet-500/20 light-theme:border-violet-200/60 rounded-2xl p-4 flex gap-3 flex-shrink-0">
+          <Info className="h-5 w-5 text-violet-400 light-theme:text-violet-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-[#94a3b8] light-theme:text-slate-600 leading-relaxed">
+            <strong className="text-white light-theme:text-slate-800">Funcionamento:</strong> O valor configurado representa o **último laudo impresso/gerado** (ex: ao definir o valor em <code className="text-cyan-400 bg-cyan-400/10 light-theme:text-cyan-700 light-theme:bg-cyan-50 px-1 py-0.5 rounded font-mono">9900</code>, o próximo laudo gerado pelo sistema receberá automaticamente o número <code className="text-emerald-400 bg-emerald-400/10 light-theme:text-emerald-700 light-theme:bg-emerald-50 px-1 py-0.5 rounded font-mono">009901</code>). Esse contador é atualizado automaticamente na criação de novos registros.
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-grow grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0 overflow-hidden">
+          {/* Form Panel (Left 1/3) */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl p-5 flex flex-col min-h-0 overflow-y-auto">
+            <form onSubmit={handleSaveLaudoConfig} className="flex flex-col gap-4 text-left">
+              <div>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800">
+                  Configurar Contador
+                </h3>
+                <p className="text-[10px] text-[#64748b] mt-1">
+                  Ajuste o valor inicial ou corrente do sequenciador.
+                </p>
+              </div>
+
+              {formLaudoConfigError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span>{formLaudoConfigError}</span>
+                </div>
+              )}
+
+              {formLaudoConfigSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{formLaudoConfigSuccess}</span>
+                </div>
+              )}
+
+              {/* Ultimo Numero Input */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Último Número Gerado</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  placeholder="Ex: 9900"
+                  value={formLaudoConfigUltimoNumero}
+                  onChange={(e) => {
+                    setFormLaudoConfigUltimoNumero(e.target.value);
+                    if (formLaudoConfigSuccess) setFormLaudoConfigSuccess(null);
+                    if (formLaudoConfigError) setFormLaudoConfigError(null);
+                  }}
+                  className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors"
+                />
+                <span className="text-[9px] text-[#64748b] leading-normal block mt-1">
+                  Ex: Ao inserir <strong className="text-white">9900</strong>, o próximo laudo emitido será o de número <strong className="text-emerald-400">9901</strong>.
+                </span>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex items-center justify-start gap-2 pt-2 border-t border-[#1f2433] light-theme:border-slate-100 mt-2">
+                <button
+                  type="submit"
+                  disabled={formLaudoConfigSubmitting}
+                  className="py-2 px-5 rounded-lg bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-md shadow-violet-950/20 active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {formLaudoConfigSubmitting ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <span>Salvar Configuração</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Details / History Panel (Right 2/3) */}
+          <div className="lg:col-span-2 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl p-6 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Status do Sequenciador</h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-[#090b11]/50 light-theme:bg-slate-50 border border-[#1f2433]/50 light-theme:border-slate-100 rounded-xl">
+                  <span className="text-[9px] font-bold text-[#64748b] uppercase tracking-wider block mb-1">Último Laudo</span>
+                  <span className="text-xl font-bold text-white light-theme:text-slate-700 font-mono">
+                    {laudoConfig ? String(laudoConfig.ultimo_numero).padStart(6, '0') : 'N/A'}
+                  </span>
+                </div>
+
+                <div className="p-4 bg-[#090b11]/50 light-theme:bg-slate-50 border border-[#1f2433]/50 light-theme:border-slate-100 rounded-xl">
+                  <span className="text-[9px] font-bold text-[#64748b] uppercase tracking-wider block mb-1">Próximo Laudo a Gerar</span>
+                  <span className="text-xl font-bold text-emerald-400 font-mono">
+                    {laudoConfig ? String(laudoConfig.ultimo_numero + 1).padStart(6, '0') : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-xxs text-[#64748b] border-t border-[#1f2433] light-theme:border-slate-100 pt-4 leading-normal mt-4">
+              Modificado em: {laudoConfig?.updated_at ? new Date(laudoConfig.updated_at).toLocaleString('pt-BR') : 'N/A'}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -1858,6 +3211,78 @@ const App: React.FC = () => {
       return `hsl(354, 85%, ${lightness}%)`;
     };
 
+    // Computations for Faturamento Estacionamento e Box (Pie/Donut Chart)
+    const pieCCMap: { [key: string]: number } = {};
+    const pieFPMap: { [key: string]: number } = {};
+
+    filteredEntradas.forEach(ent => {
+      const ccName = (ent.nome_centro_custo || '').trim().toUpperCase();
+      if (ccName === 'ESTACIONAMENTO' || ccName.startsWith('BOX')) {
+        // Center of Cost
+        pieCCMap[ccName] = (pieCCMap[ccName] || 0) + (ent.valor || 0);
+
+        // Payment Method
+        const fpName = (ent.descricao_forma_pagamento || 'NÃO DEFINIDO').trim().toUpperCase();
+        pieFPMap[fpName] = (pieFPMap[fpName] || 0) + (ent.valor || 0);
+      }
+    });
+
+    const totalCCSum = Object.values(pieCCMap).reduce((acc, val) => acc + val, 0);
+    const totalFPSum = Object.values(pieFPMap).reduce((acc, val) => acc + val, 0);
+    const useMockPieData = faturamentoSetoresViewMode === 'centrocusto' ? totalCCSum === 0 : totalFPSum === 0;
+
+    let rawPieDataList: { name: string; value: number }[] = [];
+    if (faturamentoSetoresViewMode === 'centrocusto') {
+      if (useMockPieData) {
+        rawPieDataList = [
+          { name: 'ESTACIONAMENTO', value: 18500 },
+          { name: 'BOX 01', value: 12400 },
+          { name: 'BOX 02', value: 9800 },
+          { name: 'BOX 03', value: 7200 },
+          { name: 'BOX 04', value: 4500 },
+        ];
+      } else {
+        rawPieDataList = Object.entries(pieCCMap).map(([name, val]) => ({
+          name,
+          value: val,
+        }));
+      }
+    } else {
+      // payment method mode
+      if (useMockPieData) {
+        rawPieDataList = [
+          { name: 'PIX', value: 24500 },
+          { name: 'CARTÃO CRÉDITO', value: 15200 },
+          { name: 'CARTÃO DÉBITO', value: 8700 },
+          { name: 'DINHEIRO', value: 4000 },
+        ];
+      } else {
+        rawPieDataList = Object.entries(pieFPMap).map(([name, val]) => ({
+          name,
+          value: val,
+        }));
+      }
+    }
+
+    // Apply the faturamento color palette sorted by segment size
+    const faturamentoPalette = ['#006d77', '#35bcae', '#ede8c4', '#f7cc1d', '#ff9f1c'];
+    const pieDataList = rawPieDataList
+      .sort((a, b) => b.value - a.value)
+      .map((item, idx) => ({
+        ...item,
+        color: faturamentoPalette[idx % faturamentoPalette.length],
+      }));
+
+    pieDataList.sort((a, b) => b.value - a.value);
+    const totalPieValue = pieDataList.reduce((acc, curr) => acc + curr.value, 0) || 1;
+
+    let currentPieOffset = 0;
+    const cumulativePieOffsets = pieDataList.map(item => {
+      const offset = currentPieOffset;
+      currentPieOffset += (item.value / totalPieValue) * 100;
+      return offset;
+    });
+
     const combinedTransactions = [
       ...filteredEntradas.map(item => ({
         id: `ent-${item.id}`,
@@ -1888,6 +3313,11 @@ const App: React.FC = () => {
     ];
 
     const totalDespesasVal = filteredDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    const totalEntradasVal = filteredEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    const faturamentoBrutoVal = totalEntradasVal || (hasActiveDashboardFilters ? 0 : 92510);
+    const totalDespesasValCalculated = totalDespesasVal || (hasActiveDashboardFilters ? 0 : 35500);
+    const faturamentoGeralVal = faturamentoBrutoVal - totalDespesasValCalculated;
+
     const costBreakdown = [
       { name: 'Produtos / Insumos', val: 35, color: '#10b981', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.35 : (hasActiveDashboardFilters ? 0 : 1240) },
       { name: 'Salários / Comissões', val: 45, color: '#8b5cf6', amount: totalDespesasVal > 0 ? totalDespesasVal * 0.45 : (hasActiveDashboardFilters ? 0 : 1600) },
@@ -1970,99 +3400,257 @@ const App: React.FC = () => {
       maxBoxVal = Math.ceil(rawMaxBoxVal / 2000) * 2000;
     }
 
+    // Computations for Daily Grid breakdown (Entradas por Centro de Custos)
+    const currentMonthEntradas = supabaseEntradas.filter(ent => {
+      if (!ent.data_entrada) return false;
+      const datePart = ent.data_entrada.split('T')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        const entYear = parseInt(parts[0], 10);
+        const entMonth = parseInt(parts[1], 10);
+        return entYear === selectedYear && entMonth === selectedMonth;
+      }
+      return false;
+    });
+
+    const getWeekdayAbbrev = (d: Date) => {
+      const dayIndex = d.getDay();
+      const abbrevs = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+      return abbrevs[dayIndex];
+    };
+
+    const formatValue = (val: number) => {
+      return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    };
+
+    const dailyGridData = Array.from({ length: numDays }, (_, idx) => {
+      const day = idx + 1;
+      const date = new Date(selectedYear, selectedMonth - 1, day);
+      const formattedDate = `${String(day).padStart(2, '0')}/${String(selectedMonth).padStart(2, '0')}`;
+      const label = `${getWeekdayAbbrev(date)}(${formattedDate})`;
+
+      return {
+        day,
+        label,
+        lavadorAVista: 0,
+        lavadorAPrazo: 0,
+        estacionamento: 0,
+        total: 0,
+      };
+    });
+
+    currentMonthEntradas.forEach(ent => {
+      if (!ent.data_entrada) return;
+      const datePart = ent.data_entrada.split('T')[0];
+      const parts = datePart.split('-');
+      if (parts.length === 3) {
+        const entDay = parseInt(parts[2], 10);
+        if (entDay >= 1 && entDay <= numDays) {
+          const ccName = (ent.nome_centro_custo || '').trim().toUpperCase();
+          const value = ent.valor || 0;
+          
+          const isLavador = ['BOX 01', 'BOX 02', 'BOX 03', 'BOX 04'].includes(ccName);
+          const isEstacionamento = ccName === 'ESTACIONAMENTO';
+          
+          if (isLavador) {
+            const fp = supabaseFormaPagamento.find(f => f.id === ent.forma_pagamento_id);
+            const fpDesc = (ent.descricao_forma_pagamento || '').trim().toUpperCase();
+            
+            let isAVista = false;
+            if (fp && fp.tipo_transacao) {
+              isAVista = fp.tipo_transacao.toUpperCase() === 'À VISTA' || fp.tipo_transacao.toUpperCase() === 'A VISTA';
+            } else {
+              isAVista = ['DINHEIRO', 'CARTÃO DÉBITO', 'CARTAO DEBITO', 'PIX', 'CHEQUE A VISTA', 'À VISTA', 'A VISTA'].some(
+                term => fpDesc.includes(term)
+              );
+            }
+            
+            if (isAVista) {
+              dailyGridData[entDay - 1].lavadorAVista += value;
+            } else {
+              dailyGridData[entDay - 1].lavadorAPrazo += value;
+            }
+          } else if (isEstacionamento) {
+            dailyGridData[entDay - 1].estacionamento += value;
+          }
+        }
+      }
+    });
+
+    // Compute row totals and column totals
+    dailyGridData.forEach(row => {
+      row.total = row.lavadorAVista + row.lavadorAPrazo + row.estacionamento;
+    });
+
+    const totalLavadorAVista = dailyGridData.reduce((sum, row) => sum + row.lavadorAVista, 0);
+    const totalLavadorAPrazo = dailyGridData.reduce((sum, row) => sum + row.lavadorAPrazo, 0);
+    const totalEstacionamento = dailyGridData.reduce((sum, row) => sum + row.estacionamento, 0);
+    const totalGeral = totalLavadorAVista + totalLavadorAPrazo + totalEstacionamento;
+
     return (
-      <div className="h-full overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-6 w-full relative">
-        {/* Active Filters Pill */}
-        {hasActiveDashboardFilters && (
-          <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 w-fit animate-fadeIn">
-            <span>Filtros ativos no Painel:</span>
-            {dashboardFilterMonth && (
-              <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900 font-mono">
-                {(() => {
-                  const parts = dashboardFilterMonth.split('-');
-                  if (parts.length === 2) {
-                    const monthNames = [
-                      'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                      'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-                    ];
-                    const monthIdx = parseInt(parts[1], 10) - 1;
-                    const monthName = monthNames[monthIdx] || parts[1];
-                    return `${monthName}/${parts[0]}`;
-                  }
-                  return dashboardFilterMonth;
-                })()}
-              </span>
-            )}
-            {dashboardFilterCentroCusto && (
-              <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900">
-                Centro de Custo: {supabaseCentroCusto.find(c => c.id === dashboardFilterCentroCusto)?.nome_centro_custo || 'N/A'}
-              </span>
-            )}
-            {dashboardFilterFormaPagamento && (
-              <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900">
-                Forma de Pagamento: {supabaseFormaPagamento.find(f => f.id === dashboardFilterFormaPagamento)?.descricao || 'N/A'}
-              </span>
-            )}
+      <div className="h-full overflow-y-auto pt-4 pr-2 pb-6 custom-scrollbar flex flex-col gap-6 w-full relative">
+        {/* Filter Area at the Top */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {hasActiveDashboardFilters && (
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2 bg-slate-200 border border-slate-300 rounded-xl text-xs font-bold text-slate-900 w-fit animate-fadeIn">
+              <span>Filtros ativos no Painel:</span>
+              {dashboardFilterMonth && (
+                <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900 font-mono">
+                  {(() => {
+                    const parts = dashboardFilterMonth.split('-');
+                    if (parts.length === 2) {
+                      const monthNames = [
+                        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+                      ];
+                      const monthIdx = parseInt(parts[1], 10) - 1;
+                      const monthName = monthNames[monthIdx] || parts[1];
+                      return `${monthName}/${parts[0]}`;
+                    }
+                    return dashboardFilterMonth;
+                  })()}
+                </span>
+              )}
+              {dashboardFilterCentroCusto && (
+                <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900">
+                  Centro de Custo: {supabaseCentroCusto.find(c => c.id === dashboardFilterCentroCusto)?.nome_centro_custo || 'N/A'}
+                </span>
+              )}
+              {dashboardFilterFormaPagamento && (
+                <span className="px-2 py-0.5 rounded bg-slate-300 text-slate-900">
+                  Forma de Pagamento: {supabaseFormaPagamento.find(f => f.id === dashboardFilterFormaPagamento)?.descricao || 'N/A'}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setDashboardFilterMonth(getDefaultDashboardMonth());
+                  setDashboardFilterCentroCusto('');
+                  setDashboardFilterFormaPagamento('');
+                }}
+                className="ml-2 text-slate-600 hover:text-slate-900 hover:underline cursor-pointer transition-colors"
+              >
+                Limpar Filtros
+              </button>
+            </div>
+          )}
+
+          <div className="relative overflow-visible flex-shrink-0">
             <button
               type="button"
-              onClick={() => {
-                setDashboardFilterMonth(getDefaultDashboardMonth());
-                setDashboardFilterCentroCusto('');
-                setDashboardFilterFormaPagamento('');
-              }}
-              className="ml-2 text-slate-600 hover:text-slate-900 hover:underline cursor-pointer transition-colors"
+              onClick={() => setIsDashboardFilterModalOpen(true)}
+              className="h-9 w-9 rounded-full bg-[#0e111a] light-theme:bg-[#18224f] border border-[#1f2433] light-theme:border-[#18224f] flex items-center justify-center hover:bg-white/5 light-theme:hover:opacity-90 hover:scale-105 active:scale-95 transition-all cursor-pointer group shadow-sm"
+              title="Filtrar Painel"
             >
-              Limpar Filtros
+              <Filter className="h-4.5 w-4.5 text-[#94a3b8] light-theme:text-white group-hover:text-white transition-colors" />
             </button>
+            {hasActiveDashboardFilters && (
+              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-rose-500 text-[8px] font-extrabold flex items-center justify-center text-white ring-2 ring-[#0e111a] light-theme:ring-[#18224f] pointer-events-none animate-pulse">
+                !
+              </span>
+            )}
           </div>
-        )}
+        </div>
+
 
         {/* Top Operational Cards Group */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO GERAL</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filteredEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) || (hasActiveDashboardFilters ? 0 : 92510))}
-            </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span>{filteredEntradas.length} entradas no sistema</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
+          {/* Faturamento Geral (Líquido) */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-blue-500/30 light-theme:hover:border-blue-300">
+            <div className="flex justify-between items-start w-full gap-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO LÍQUIDO</span>
+              <div className="h-7 w-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/25 flex items-center justify-center text-blue-400 light-theme:text-blue-600 border border-blue-500/20 flex-shrink-0">
+                <TrendingUp className="h-4 w-4" />
+              </div>
             </div>
-            <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoGeralVal)
+                : 'R$ ••••••'}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-blue-400 light-theme:text-blue-600 mt-4 relative z-10">
+              <TrendingUp className="h-3.5 w-3.5" />
+              <span>Resultado líquido</span>
+            </div>
+            <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-blue-500/5 dark:text-blue-400/5 light-theme:text-blue-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">CUSTOS TOTAIS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(filteredDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) || (hasActiveDashboardFilters ? 0 : 35500))}
+          {/* Faturamento Bruto */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-emerald-500/30 light-theme:hover:border-emerald-300">
+            <div className="flex justify-between items-start w-full gap-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO BRUTO</span>
+              <div className="h-7 w-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/25 flex items-center justify-center text-emerald-400 light-theme:text-emerald-600 border border-emerald-500/20 flex-shrink-0">
+                <DollarSign className="h-4 w-4" />
+              </div>
+            </div>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoBrutoVal)
+                : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-              <TrendingDown className="h-3.5 w-3.5" />
-              <span>{filteredDespesas.length} despesas no total</span>
+              <DollarSign className="h-3.5 w-3.5" />
+              <span>{showPrivacyValues ? `${filteredEntradas.length} entradas no sistema` : '•• entradas no sistema'}</span>
             </div>
-            <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <DollarSign className="absolute -right-3 -bottom-3 h-20 w-20 text-emerald-500/5 dark:text-emerald-400/5 light-theme:text-emerald-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
           </div>
 
+          {/* Custos Totais */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-rose-500/30 light-theme:hover:border-rose-300">
+            <div className="flex justify-between items-start w-full gap-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">CUSTOS TOTAIS</span>
+              <div className="h-7 w-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/25 flex items-center justify-center text-rose-400 light-theme:text-rose-600 border border-rose-500/20 flex-shrink-0">
+                <TrendingDown className="h-4 w-4" />
+              </div>
+            </div>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDespesasValCalculated)
+                : 'R$ ••••••'}
+            </h3>
+            <div className="flex items-center gap-1.5 text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
+              <TrendingDown className="h-3.5 w-3.5" />
+              <span>{showPrivacyValues ? `${filteredDespesas.length} despesas no total` : '•• despesas no total'}</span>
+            </div>
+            <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-rose-500/5 dark:text-rose-400/5 light-theme:text-rose-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
+          </div>
+
+          {/* Mensalistas VIP */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS VIP</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseMensalistas.filter(m => m.ativo).length || 24} Ativos
+            <div className="flex justify-between items-start w-full gap-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS VIP</span>
+              <div className="h-7 w-7 rounded-lg bg-violet-500/10 dark:bg-violet-500/25 flex items-center justify-center text-violet-400 light-theme:text-violet-600 border border-violet-500/20 flex-shrink-0">
+                <Users className="h-4 w-4" />
+              </div>
+            </div>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues
+                ? `${supabaseMensalistas.filter(m => m.ativo).length || 24} Ativos`
+                : '•• Ativos'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Calendar className="h-3.5 w-3.5" />
-              <span>De {supabaseMensalistas.length || 28} cadastrados</span>
+              <span>{showPrivacyValues ? `De ${supabaseMensalistas.length || 28} cadastrados` : 'De •• cadastrados'}</span>
             </div>
             <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
+          {/* Veículos Cadastrados */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS CADASTRADOS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseVehicles.length || 42} Veículos
+            <div className="flex justify-between items-start w-full gap-2">
+              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS CADASTRADOS</span>
+              <div className="h-7 w-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/25 flex items-center justify-center text-amber-500 light-theme:text-amber-600 border border-amber-500/20 flex-shrink-0">
+                <Car className="h-4 w-4" />
+              </div>
+            </div>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues
+                ? `${supabaseVehicles.length || 42} Veículos`
+                : '•• Veículos'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
               <Car className="h-3.5 w-3.5" />
-              <span>{supabaseVehicles.filter(v => v.ativo).length || 38} operacionais</span>
+              <span>{showPrivacyValues ? `${supabaseVehicles.filter(v => v.ativo).length || 38} operacionais` : '•• operacionais'}</span>
             </div>
             <Car className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
@@ -2128,195 +3716,47 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Pure SVG Grouped or Stacked Bar Chart */}
+              {/* Recharts Grouped or Stacked Bar Chart */}
               <div className="w-full overflow-x-auto custom-scrollbar">
                 <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
-                  <svg className="w-full h-full" viewBox="0 0 820 250" preserveAspectRatio="none">
-                    {/* Horizontal Grid Lines */}
-                    <line x1="38" y1="220" x2="812" y2="220" stroke="#1f2433" strokeOpacity="0.4" className="light-theme:stroke-slate-200" strokeWidth="1" />
-                    <line x1="38" y1="175" x2="812" y2="175" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="38" y1="130" x2="812" y2="130" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="38" y1="85" x2="812" y2="85" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="38" y1="40" x2="812" y2="40" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-
-                    {/* Vertical Grid Lines (one per day slot) */}
-                    {displayBoxData.map((d, idx) => {
-                      const slotWidth = 770 / numDays;
-                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
-                      return (
-                        <line
-                          key={`v-grid-${d.day}`}
-                          x1={slotCenter}
-                          y1="40"
-                          x2={slotCenter}
-                          y2="220"
-                          stroke="#1f2433"
-                          strokeOpacity="0.05"
-                          className="light-theme:stroke-slate-200/40"
-                          strokeWidth="1"
-                        />
-                      );
-                    })}
-
-                    {/* Y Axis Labels */}
-                    <text x="30" y="223" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">0</text>
-                    <text x="30" y="178" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal * 0.25)}
-                    </text>
-                    <text x="30" y="133" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal * 0.50)}
-                    </text>
-                    <text x="30" y="88" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal * 0.75)}
-                    </text>
-                    <text x="30" y="43" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxBoxVal)}
-                    </text>
-
-                    {/* Draw Bars */}
-                    {displayBoxData.map((d, idx) => {
-                      const slotWidth = 770 / numDays;
-                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
-
-                      if (entradasBoxViewMode === 'detalhado') {
-                        // Side-by-side grouped bars
-                        const activeWidth = slotWidth * 0.82;
-                        const barWidth = activeWidth / 4;
-
-                        const boxes = [
-                          { key: 'BOX 01' as const, color: '#2563eb' },
-                          { key: 'BOX 02' as const, color: '#93c5fd' },
-                          { key: 'BOX 03' as const, color: '#1e3a8a' },
-                          { key: 'BOX 04' as const, color: '#94a3b8' }
-                        ];
-
-                        return (
-                          <g key={`day-group-${d.day}`}>
-                            {boxes.map((box, bIdx) => {
-                              const val = d[box.key];
-                              const height = (val / maxBoxVal) * 180;
-                              const y = 220 - height;
-                              const x = slotCenter - activeWidth / 2 + bIdx * barWidth;
-
-                              return val > 0 ? (
-                                <rect
-                                  key={`bar-${d.day}-${box.key}`}
-                                  x={x}
-                                  y={y}
-                                  width={Math.max(barWidth - 0.5, 1.5)}
-                                  height={Math.max(height, 0.5)}
-                                  fill={box.color}
-                                  rx="1"
-                                  className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
-                                >
-                                  <title>Dia {d.day} | {box.key}: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)}</title>
-                                </rect>
-                              ) : null;
-                            })}
-                          </g>
-                        );
-                      } else {
-                        // Stacked bars
-                        const barWidth = Math.max(slotWidth * 0.65, 3);
-                        const x = slotCenter - barWidth / 2;
-
-                        const val1 = d['BOX 01'];
-                        const val2 = d['BOX 02'];
-                        const val3 = d['BOX 03'];
-                        const val4 = d['BOX 04'];
-
-                        const h1 = (val1 / maxBoxVal) * 180;
-                        const h2 = (val2 / maxBoxVal) * 180;
-                        const h3 = (val3 / maxBoxVal) * 180;
-                        const h4 = (val4 / maxBoxVal) * 180;
-
-                        return (
-                          <g key={`day-stack-${d.day}`}>
-                            {val1 > 0 && (
-                              <rect
-                                x={x}
-                                y={220 - h1}
-                                width={barWidth}
-                                height={h1}
-                                fill="#2563eb"
-                                rx="0.5"
-                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
-                              >
-                                <title>Dia {d.day} | BOX 01: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val1)}</title>
-                              </rect>
-                            )}
-                            {val2 > 0 && (
-                              <rect
-                                x={x}
-                                y={220 - h1 - h2}
-                                width={barWidth}
-                                height={h2}
-                                fill="#93c5fd"
-                                rx="0.5"
-                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
-                              >
-                                <title>Dia {d.day} | BOX 02: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val2)}</title>
-                              </rect>
-                            )}
-                            {val3 > 0 && (
-                              <rect
-                                x={x}
-                                y={220 - h1 - h2 - h3}
-                                width={barWidth}
-                                height={h3}
-                                fill="#1e3a8a"
-                                rx="0.5"
-                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
-                              >
-                                <title>Dia {d.day} | BOX 03: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val3)}</title>
-                              </rect>
-                            )}
-                            {val4 > 0 && (
-                              <rect
-                                x={x}
-                                y={220 - h1 - h2 - h3 - h4}
-                                width={barWidth}
-                                height={h4}
-                                fill="#94a3b8"
-                                rx="0.5"
-                                className="hover:opacity-80 transition-opacity duration-150 cursor-pointer"
-                              >
-                                <title>Dia {d.day} | BOX 04: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val4)}</title>
-                              </rect>
-                            )}
-                          </g>
-                        );
-                      }
-                    })}
-
-                    {/* X Axis labels */}
-                    {displayBoxData.map((d, idx) => {
-                      const slotWidth = 770 / numDays;
-                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
-
-                      return (
-                        <text
-                          key={`x-label-${d.day}`}
-                          x={slotCenter}
-                          y="233"
-                          className="text-[8px] fill-[#64748b] font-bold"
-                          textAnchor="middle"
-                        >
-                          {d.day}
-                        </text>
-                      );
-                    })}
-
-                    {/* X Axis Title */}
-                    <text
-                      x="425"
-                      y="245"
-                      className="text-[8px] fill-[#64748b] font-extrabold uppercase tracking-widest"
-                      textAnchor="middle"
-                    >
-                      DIAS
-                    </text>
-                  </svg>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={displayBoxData} barCategoryGap="15%" barGap={1} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="day"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 9, fontWeight: 'bold' }}
+                        tickMargin={10}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 9, fontWeight: 'bold' }}
+                        tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
+                        width={55}
+                      />
+                      <Tooltip
+                        formatter={(value: any, name: string) => [
+                          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                          name
+                        ]}
+                        contentStyle={{
+                          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+                          borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
+                          borderRadius: '12px',
+                          color: theme === 'dark' ? '#fff' : '#1e293b',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        }}
+                      />
+                      <Bar dataKey="BOX 01" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#2563eb" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="BOX 02" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#93c5fd" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="BOX 03" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#1e3a8a" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="BOX 04" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#94a3b8" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
@@ -2346,176 +3786,100 @@ const App: React.FC = () => {
               {/* Pure SVG Grouped Bar Chart */}
               <div className="w-full overflow-x-auto custom-scrollbar">
                 <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
-                  <svg className="w-full h-full" viewBox="0 0 820 250" preserveAspectRatio="none">
-                    {/* Horizontal Grid Lines */}
-                    <line x1="38" y1="220" x2="812" y2="220" stroke="#1f2433" strokeOpacity="0.4" className="light-theme:stroke-slate-200" strokeWidth="1" />
-                    <line x1="38" y1="175" x2="812" y2="175" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="38" y1="130" x2="812" y2="130" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="38" y1="85" x2="812" y2="85" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-                    <line x1="38" y1="40" x2="812" y2="40" stroke="#1f2433" strokeOpacity="0.1" className="light-theme:stroke-slate-100" strokeWidth="1" strokeDasharray="3 3" />
-
-                    {/* Vertical Grid Lines (one per month slot) */}
-                    {displayCashflowData.map((d, idx) => {
-                      const slotWidth = 770 / 12;
-                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
-                      return (
-                        <line
-                          key={`v-grid-cf-${idx}`}
-                          x1={slotCenter}
-                          y1="40"
-                          x2={slotCenter}
-                          y2="220"
-                          stroke="#1f2433"
-                          strokeOpacity="0.05"
-                          className="light-theme:stroke-slate-200/40"
-                          strokeWidth="1"
-                        />
-                      );
-                    })}
-
-                    {/* Y Axis Labels */}
-                    <text x="30" y="223" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">0</text>
-                    <text x="30" y="178" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal * 0.25)}
-                    </text>
-                    <text x="30" y="133" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal * 0.50)}
-                    </text>
-                    <text x="30" y="88" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal * 0.75)}
-                    </text>
-                    <text x="30" y="43" className="text-[9px] fill-[#64748b] font-bold" textAnchor="end">
-                      {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(maxCashflowVal)}
-                    </text>
-
-                    {/* Draw Bars */}
-                    {displayCashflowData.map((d, idx) => {
-                      const slotWidth = 770 / 12;
-                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
-
-                      const activeWidth = slotWidth * 0.75;
-                      const barWidth = activeWidth / 2;
-
-                      const hEnt = (d.entradas / maxCashflowVal) * 180;
-                      const yEnt = 220 - hEnt;
-
-                      const hDes = (d.despesas / maxCashflowVal) * 180;
-                      const yDes = 220 - hDes;
-
-                      const xEnt = slotCenter - activeWidth / 2;
-                      const xDes = slotCenter - activeWidth / 2 + barWidth;
-
-                      return (
-                        <g key={`cf-month-group-${idx}`}>
-                          {/* Entradas Bar */}
-                          {d.entradas > 0 && (
-                            <rect
-                              x={xEnt}
-                              y={yEnt}
-                              width={Math.max(barWidth - 1, 2)}
-                              height={Math.max(hEnt, 0.5)}
-                              fill="#10b981"
-                              rx="1.5"
-                              className="hover:opacity-85 transition-opacity duration-150 cursor-pointer"
-                            >
-                              <title>{d.month} | Entradas: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.entradas)}</title>
-                            </rect>
-                          )}
-                          {/* Despesas Bar */}
-                          {d.despesas > 0 && (
-                            <rect
-                              x={xDes}
-                              y={yDes}
-                              width={Math.max(barWidth - 1, 2)}
-                              height={Math.max(hDes, 0.5)}
-                              fill="#f43f5e"
-                              rx="1.5"
-                              className="hover:opacity-85 transition-opacity duration-150 cursor-pointer"
-                            >
-                              <title>{d.month} | Despesas: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(d.despesas)}</title>
-                            </rect>
-                          )}
-                        </g>
-                      );
-                    })}
-
-                    {/* X Axis labels */}
-                    {displayCashflowData.map((d, idx) => {
-                      const slotWidth = 770 / 12;
-                      const slotCenter = 40 + idx * slotWidth + slotWidth / 2;
-                      return (
-                        <text
-                          key={`x-label-cf-${idx}`}
-                          x={slotCenter}
-                          y="233"
-                          className="text-[9px] fill-[#64748b] font-bold"
-                          textAnchor="middle"
-                        >
-                          {d.month}
-                        </text>
-                      );
-                    })}
-
-                    {/* X Axis Title */}
-                    <text
-                      x="425"
-                      y="245"
-                      className="text-[8px] fill-[#64748b] font-extrabold uppercase tracking-widest"
-                      textAnchor="middle"
-                    >
-                      MESES
-                    </text>
-                  </svg>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={displayCashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="month"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                        tickMargin={10}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                        tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
+                        width={55}
+                      />
+                      <Tooltip
+                        formatter={(value: any, name: string) => [
+                          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                          name === 'entradas' ? 'Entradas' : 'Despesas'
+                        ]}
+                        contentStyle={{
+                          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+                          borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
+                          borderRadius: '12px',
+                          color: theme === 'dark' ? '#fff' : '#1e293b',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        }}
+                      />
+                      <Bar dataKey="entradas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="despesas" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
 
-            {/* List Section: Últimas Transações */}
+            {/* Grid Section: Entradas por Centro de Custos */}
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Últimas Transações</h3>
-                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Histórico financeiro consolidado de entradas e despesas.</p>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Entradas por Centro de Custos</h3>
+                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Entradas diárias (Lavador e Estacionamento)</p>
                 </div>
-                <button type="button" onClick={() => setCurrentTab('entradas')} className="text-xs text-[#94a3b8] hover:text-white transition-colors">Ver Histórico Completo</button>
               </div>
 
-              <div className="overflow-x-auto w-full">
+              <div className="overflow-y-auto max-h-[480px] pr-1 w-full border border-[#1f2433]/40 light-theme:border-slate-100 rounded-xl custom-scrollbar">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#1f2433] light-theme:border-slate-100 text-[10px] text-[#64748b] uppercase tracking-wider font-bold">
-                      <th className="pb-3">Descrição / Item</th>
-                      <th className="pb-3">Categoria</th>
-                      <th className="pb-3">Data</th>
-                      <th className="pb-3 text-right">Valor</th>
-                      <th className="pb-3 text-center">Status</th>
+                  <thead className="sticky top-0 bg-[#0e111a] light-theme:bg-white z-20 shadow-[0_1px_0_0_rgba(31,36,51,1)] light-theme:shadow-[0_1px_0_0_rgba(241,245,249,1)]">
+                    <tr className="text-[10px] text-[#64748b] uppercase tracking-wider font-bold text-center">
+                      <th rowSpan={2} className="p-3 text-left align-middle border-r border-[#1f2433]/30 light-theme:border-slate-100">DATA</th>
+                      <th colSpan={2} className="p-2 border-b border-[#1f2433]/30 light-theme:border-slate-100 font-bold border-r border-[#1f2433]/30 light-theme:border-slate-100">LAVADOR</th>
+                      <th rowSpan={2} className="p-3 align-middle border-r border-[#1f2433]/30 light-theme:border-slate-100">ESTACIONAMENTO</th>
+                      <th rowSpan={2} className="p-3 text-right align-middle">TOTAL</th>
+                    </tr>
+                    <tr className="text-[9px] text-[#64748b] uppercase tracking-wider font-bold text-center border-b border-[#1f2433]/30 light-theme:border-slate-100">
+                      <th className="p-2 border-r border-[#1f2433]/30 light-theme:border-slate-100">À VISTA</th>
+                      <th className="p-2 border-r border-[#1f2433]/30 light-theme:border-slate-100">À PRAZO</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                    {transactionsToDisplay.map(item => (
-                      <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                        <td className="py-3 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
-                          <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${item.type === 'entrada' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                            {item.type === 'entrada' ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                          </div>
-                          <span className="truncate max-w-[200px]">{item.description}</span>
-                        </td>
-                        <td className="py-3 font-medium text-slate-300 light-theme:text-slate-500">{item.category}</td>
-                        <td className="py-3 font-medium text-[#64748b]">{item.date.toLocaleDateString('pt-BR')}</td>
-                        <td className={`py-3 text-right font-bold ${item.type === 'entrada' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                          {item.type === 'entrada' ? '+' : '-'} {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
-                        </td>
-                        <td className="py-3 text-center">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.type === 'entrada'
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                            : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                            }`}>
-                            {item.badge}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-[#1f2433]/20 light-theme:divide-slate-100">
+                    {dailyGridData.map((row, index) => {
+                      const isRowEmpty = row.lavadorAVista === 0 && row.lavadorAPrazo === 0 && row.estacionamento === 0;
+                      return (
+                        <tr key={row.day} className={`text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors ${index % 2 === 1 ? 'bg-[#131622]/40 light-theme:bg-slate-50/30' : ''}`}>
+                          <td className="p-3 font-semibold text-white light-theme:text-slate-800 border-r border-[#1f2433]/20 light-theme:border-slate-100">{row.label}</td>
+                          <td className="p-3 text-center text-slate-300 light-theme:text-slate-600 font-medium border-r border-[#1f2433]/20 light-theme:border-slate-100">
+                            {row.lavadorAVista > 0 ? formatValue(row.lavadorAVista) : ''}
+                          </td>
+                          <td className="p-3 text-center text-slate-300 light-theme:text-slate-600 font-medium border-r border-[#1f2433]/20 light-theme:border-slate-100">
+                            {row.lavadorAPrazo > 0 ? formatValue(row.lavadorAPrazo) : ''}
+                          </td>
+                          <td className="p-3 text-center text-slate-300 light-theme:text-slate-600 font-medium border-r border-[#1f2433]/20 light-theme:border-slate-100">
+                            {row.estacionamento > 0 ? formatValue(row.estacionamento) : ''}
+                          </td>
+                          <td className="p-3 text-right font-bold text-white light-theme:text-slate-800">
+                            {!isRowEmpty ? formatValue(row.total) : ''}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
+                  <tfoot className="sticky bottom-0 bg-[#0e111a] light-theme:bg-white border-t border-[#1f2433] light-theme:border-slate-200 z-10 shadow-[0_-1px_0_0_rgba(31,36,51,1)] light-theme:shadow-[0_-1px_0_0_rgba(241,245,249,1)]">
+                    <tr className="text-xs text-white light-theme:text-slate-800 font-bold bg-[#131622] light-theme:bg-slate-50/80">
+                      <td className="p-3 border-r border-[#1f2433]/20 light-theme:border-slate-100">Total</td>
+                      <td className="p-3 text-center text-white light-theme:text-slate-800 border-r border-[#1f2433]/20 light-theme:border-slate-100">{formatValue(totalLavadorAVista)}</td>
+                      <td className="p-3 text-center text-white light-theme:text-slate-800 border-r border-[#1f2433]/20 light-theme:border-slate-100">{formatValue(totalLavadorAPrazo)}</td>
+                      <td className="p-3 text-center text-white light-theme:text-slate-800 border-r border-[#1f2433]/20 light-theme:border-slate-100">{formatValue(totalEstacionamento)}</td>
+                      <td className="p-3 text-right text-white light-theme:text-slate-800">{formatValue(totalGeral)}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -2598,25 +3962,147 @@ const App: React.FC = () => {
               </div>
             </div>
 
+            {/* Faturamento Estacionamento e Box (Pie/Donut Chart) */}
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-5">
+              <div className="flex items-center justify-between flex-wrap gap-4 text-left">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Faturamento Estacionamento & Box</h3>
+                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">Faturamento mensal consolidado dos setores de estacionamento e boxes.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex bg-[#090b11] light-theme:bg-slate-100 p-0.5 rounded-full border border-[#1f2433] light-theme:border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setFaturamentoSetoresViewMode('centrocusto')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all cursor-pointer ${faturamentoSetoresViewMode === 'centrocusto'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-[#64748b] hover:text-white light-theme:hover:text-slate-800'
+                        }`}
+                    >
+                      centro custo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFaturamentoSetoresViewMode('formapagamento')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-full transition-all cursor-pointer ${faturamentoSetoresViewMode === 'formapagamento'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'text-[#64748b] hover:text-white light-theme:hover:text-slate-800'
+                        }`}
+                    >
+                      forma pag.
+                    </button>
+                  </div>
+                </div>
+              </div>
 
+              <div className="flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
+                <div className="relative w-[238px] h-[238px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Tooltip
+                        formatter={(value: any, name: string) => [
+                          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                          name.toUpperCase()
+                        ]}
+                        contentStyle={{
+                          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+                          borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
+                          borderRadius: '12px',
+                          color: theme === 'dark' ? '#fff' : '#1e293b',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                        }}
+                      />
+                      <Pie
+                        data={pieDataList}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={56}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        cornerRadius={4}
+                        stroke={theme === 'dark' ? '#0e111a' : '#ffffff'}
+                        strokeWidth={3}
+                      >
+                        {pieDataList.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              return (
+                                <text
+                                  x={viewBox.cx}
+                                  y={viewBox.cy}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                >
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy - 4}
+                                    className="text-lg font-extrabold"
+                                    style={{
+                                      fill: theme === 'dark' ? '#ffffff' : '#0f172a',
+                                      fontSize: '16px',
+                                      fontWeight: '800'
+                                    }}
+                                  >
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(totalPieValue)}
+                                  </tspan>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={(viewBox.cy || 0) + 16}
+                                    style={{
+                                      fill: theme === 'dark' ? '#64748b' : '#64748b',
+                                      fontSize: '9px',
+                                      fontWeight: '700',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em'
+                                    }}
+                                  >
+                                    {faturamentoSetoresViewMode === 'centrocusto' ? 'Setores' : 'Pagos'}
+                                  </tspan>
+                                </text>
+                              )
+                            }
+                            return null;
+                          }}
+                        />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="w-full mt-4 flex flex-col gap-2.5 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-xs font-medium text-[#94a3b8] light-theme:text-slate-600">
+                  {pieDataList.map((item, idx) => {
+                    const percentage = (item.value / totalPieValue) * 100;
+                    return (
+                      <div key={idx} className="flex items-center justify-between hover:bg-white/5 light-theme:hover:bg-slate-100/50 p-1.5 rounded transition-colors">
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                          <span className="truncate uppercase font-bold text-white light-theme:text-slate-700">{item.name}</span>
+                        </div>
+                        <div className="font-bold text-[#10b981] light-theme:text-[#10b981] flex-shrink-0 flex items-center gap-1.5">
+                          <span>{percentage.toFixed(1)}%</span>
+                          <span className="text-slate-400 dark:text-slate-500 font-normal">|</span>
+                          <span className="text-white light-theme:text-slate-800 font-mono">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.value)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
           </div>
         </div>
 
-        {/* Botão Flutuante de Filtro */}
-        <button
-          type="button"
-          onClick={() => setIsDashboardFilterModalOpen(true)}
-          className="fixed bottom-6 right-6 z-40 h-14 w-14 rounded-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white flex items-center justify-center shadow-lg shadow-violet-900/30 hover:shadow-violet-900/50 hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer group"
-          title="Filtrar Painel"
-        >
-          <Filter className="h-6 w-6 transition-transform group-hover:rotate-12" />
-          {hasActiveDashboardFilters && (
-            <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-rose-500 text-[8px] font-extrabold flex items-center justify-center text-white ring-2 ring-[#0e111a] light-theme:ring-white">
-              !
-            </span>
-          )}
-        </button>
+
 
         {/* Modal de Filtros do Dashboard */}
         <AnimatePresence>
@@ -2634,12 +4120,12 @@ const App: React.FC = () => {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl max-w-md w-full p-6 text-left shadow-2xl relative z-10"
+                className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl max-w-md w-full p-6 text-left shadow-2xl relative z-10 overflow-hidden"
               >
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-t-3xl" />
 
-                <div className="flex items-center justify-between pb-3.5 border-b border-[#1f2433] light-theme:border-slate-100 mb-5">
-                  <div className="flex items-center gap-2.5 text-violet-400">
+                <div className="flex items-center justify-between pb-4 border-b border-[#1f2433] light-theme:border-slate-100 mb-5">
+                  <div className="flex items-center gap-3 text-violet-400">
                     <Filter className="h-5 w-5" />
                     <h3 className="font-extrabold text-sm uppercase tracking-wider text-white light-theme:text-slate-800">
                       Filtrar Dashboard
@@ -2654,9 +4140,9 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex flex-col gap-4.5">
+                <div className="flex flex-col gap-5">
                   {/* Campo Mês / Ano */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Mês / Ano</label>
                     <input
                       type="month"
@@ -2667,7 +4153,7 @@ const App: React.FC = () => {
                   </div>
 
                   {/* Campo Centro de Custo */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Centro de Custo</label>
                     <div className="relative">
                       <select
@@ -2682,14 +4168,14 @@ const App: React.FC = () => {
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-[#64748b]">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#64748b]">
                         <ChevronDown className="h-4 w-4" />
                       </div>
                     </div>
                   </div>
 
                   {/* Campo Forma de Pagamento */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Forma de Pagamento</label>
                     <div className="relative">
                       <select
@@ -2704,14 +4190,14 @@ const App: React.FC = () => {
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-[#64748b]">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-[#64748b]">
                         <ChevronDown className="h-4 w-4" />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 mt-7 pt-4.5 border-t border-[#1f2433] light-theme:border-slate-100">
+                <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-[#1f2433] light-theme:border-slate-100">
                   {hasActiveDashboardFilters && (
                     <button
                       type="button"
@@ -2829,7 +4315,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DO DIA</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoDia)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoDia) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <TrendingUp className="h-3.5 w-3.5" />
@@ -2842,7 +4328,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DA SEMANA</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDaSemana)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDaSemana) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
               <Calendar className="h-3.5 w-3.5" />
@@ -2855,7 +4341,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DO MÊS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoMes)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoMes) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Wallet className="h-3.5 w-3.5" />
@@ -2868,7 +4354,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MÉDIA POR LANÇAMENTO</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaPorLancamento)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaPorLancamento) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
               <Activity className="h-3.5 w-3.5" />
@@ -3533,7 +5019,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DO DIA</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasDia)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasDia) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
               <TrendingDown className="h-3.5 w-3.5" />
@@ -3545,7 +5031,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DA SEMANA</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasSemana)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasSemana) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
               <Layers className="h-3.5 w-3.5" />
@@ -3557,7 +5043,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DO MÊS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasMes)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasMes) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Calendar className="h-3.5 w-3.5" />
@@ -3569,7 +5055,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MÉDIA POR LANÇAMENTO</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaLancamento)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaLancamento) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <Target className="h-3.5 w-3.5" />
@@ -4570,7 +6056,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS ATIVOS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseMensalistas.filter(m => m.ativo).length} de {supabaseMensalistas.length} Cadastros
+              {showPrivacyValues ? `${supabaseMensalistas.filter(m => m.ativo).length} de ${supabaseMensalistas.length} Cadastros` : '•• de •• Cadastros'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Users className="h-3.5 w-3.5" />
@@ -4582,7 +6068,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO PREVISTO MENSAL</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVipRevenue)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVipRevenue) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
               <DollarSign className="h-3.5 w-3.5" />
@@ -4594,7 +6080,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TICKET MÉDIO MENSALISTA</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseMensalistas.length > 0 ? (totalVipRevenue / supabaseMensalistas.length) : 0)}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseMensalistas.length > 0 ? (totalVipRevenue / supabaseMensalistas.length) : 0) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <Calendar className="h-3.5 w-3.5" />
@@ -5072,7 +6558,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">PESSOAS FÍSICAS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseData.filter(p => p.tipo_pessoa === 'Física').length} Cadastros
+              {showPrivacyValues ? `${supabaseData.filter(p => p.tipo_pessoa === 'Física' || p.tipo_pessoa === 'Cliente' || p.tipo_pessoa === 'Mensalista' || p.tipo_pessoa === 'Outros' || !p.tipo_pessoa).length} Cadastros` : '•• Cadastros'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Users className="h-3.5 w-3.5" />
@@ -5084,7 +6570,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">PESSOAS JURÍDICAS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseData.filter(p => p.tipo_pessoa === 'Jurídica').length} Cadastros
+              {showPrivacyValues ? `${supabaseData.filter(p => p.tipo_pessoa === 'Empresa' || p.tipo_pessoa === 'Jurídica').length} Cadastros` : '•• Cadastros'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <Database className="h-3.5 w-3.5" />
@@ -5094,9 +6580,9 @@ const App: React.FC = () => {
           </div>
 
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ATIVAS NO SUPABASE</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ATIVOS NA BASE DE DADOS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseData.filter(p => p.ativo !== false).length} de {supabaseData.length} Contatos
+              {showPrivacyValues ? `${supabaseData.filter(p => p.ativo !== false).length} de ${supabaseData.length} Contatos` : '•• de •• Contatos'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
               <CheckCircle className="h-3.5 w-3.5" />
@@ -5522,7 +7008,9 @@ const App: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FROTA TOTAL</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">{supabaseVehicles.length} Veículos</h3>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues ? `${supabaseVehicles.length} Veículos` : '•• Veículos'}
+            </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <Car className="h-3.5 w-3.5" />
               <span>Frota total cadastrada</span>
@@ -5533,7 +7021,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MOTORISTAS VINCULADOS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseVehicles.filter(v => v.motorista && v.motorista.length > 0).length} Veículos
+              {showPrivacyValues ? `${supabaseVehicles.filter(v => v.motorista && v.motorista.length > 0).length} Veículos` : '•• Veículos'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <User className="h-3.5 w-3.5" />
@@ -5545,7 +7033,7 @@ const App: React.FC = () => {
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS ATIVOS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {supabaseVehicles.filter(v => v.ativo).length} de {supabaseVehicles.length} Ativos
+              {showPrivacyValues ? `${supabaseVehicles.filter(v => v.ativo).length} de ${supabaseVehicles.length} Ativos` : '•• de •• Ativos'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
               <CheckCircle className="h-3.5 w-3.5" />
@@ -6694,7 +8182,7 @@ const App: React.FC = () => {
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TOTAL DO PERÍODO</span>
               <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPeriodo)}
+                {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPeriodo) : 'R$ ••••••'}
               </h3>
               <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
                 <TrendingUp className="h-3.5 w-3.5 text-cyan-400 light-theme:text-cyan-600" />
@@ -6707,7 +8195,7 @@ const App: React.FC = () => {
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ORDEM DE SERVIÇOS</span>
               <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-                {totalOSCount}
+                {showPrivacyValues ? totalOSCount : '••'}
               </h3>
               <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
                 <FileText className="h-3.5 w-3.5 text-emerald-400 light-theme:text-emerald-600" />
@@ -6720,7 +8208,7 @@ const App: React.FC = () => {
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
               <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TICKET MÉDIO</span>
               <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ticketMedio)}
+                {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ticketMedio) : 'R$ ••••••'}
               </h3>
               <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
                 <Wallet className="h-3.5 w-3.5 text-violet-400 light-theme:text-violet-600" />
@@ -7000,15 +8488,29 @@ const App: React.FC = () => {
                   {/* Numero OS */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Número OS</label>
-                    <input
-                      type="text"
-                      required
-                      disabled={true}
-                      placeholder="OS-00001"
-                      value={formOSNumero}
-                      className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 px-4 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors font-mono disabled:opacity-60 disabled:cursor-not-allowed"
-                      title="O número da OS é gerado automaticamente pelo sequenciador anual do sistema"
-                    />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-white/40">
+                        <Hash className="h-3.5 w-3.5" />
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        disabled={true}
+                        placeholder="OS-00001"
+                        value={formOSNumero}
+                        className="w-full bg-[#0e111a] light-theme:bg-[#18224f] border border-[#1f2433] light-theme:border-[#242f63]/50 rounded-xl py-2 pl-8 pr-12 font-mono text-white light-theme:text-white font-bold text-center tracking-widest text-base shadow-lg disabled:opacity-100"
+                        title="O número da OS é gerado automaticamente pelo sequenciador anual do sistema"
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        {formOSNumero === 'Gerando...' ? (
+                          <Loader2 className="h-3.5 w-3.5 text-white animate-spin" />
+                        ) : (
+                          <span className="text-[9px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded bg-white/10 border border-white/20 text-white/90">
+                            AUTO
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Data OS */}
@@ -9072,6 +10574,1047 @@ const App: React.FC = () => {
       console.error(error);
     } finally {
       setLoadingOSSequencias(false);
+    }
+  };
+
+  const fetchSupabaseLaudos = async () => {
+    setLoadingLaudos(true);
+    try {
+      let allRecords: any[] = [];
+      let offset = 0;
+      let hasMore = true;
+      const limit = 1000;
+
+      while (hasMore) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?select=*&order=numero_laudo.desc&limit=${limit}&offset=${offset}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+          }
+        });
+        if (!res.ok) throw new Error('Falha ao buscar laudos do Supabase');
+        const json = await res.json();
+        const records = json || [];
+        allRecords = allRecords.concat(records);
+
+        if (records.length < limit) {
+          hasMore = false;
+        } else {
+          offset += limit;
+        }
+      }
+      setSupabaseLaudos(allRecords);
+    } catch (error: any) {
+      console.error(error);
+    } finally {
+      setLoadingLaudos(false);
+    }
+  };
+
+  const fetchSupabaseLaudoConfig = async () => {
+    setLoadingLaudoConfig(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/laudo_config?select=*&id=eq.config`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+      if (!res.ok) throw new Error('Falha ao buscar configuração de laudo do Supabase');
+      const json = await res.json();
+      if (json && json.length > 0) {
+        setLaudoConfig(json[0]);
+        setFormLaudoConfigUltimoNumero(String(json[0].ultimo_numero));
+      } else {
+        setLaudoConfig(null);
+      }
+    } catch (error: any) {
+      console.error(error);
+    } finally {
+      setLoadingLaudoConfig(false);
+    }
+  };
+
+  const handlePrintLaudo = (laudo: LaudoHigienizacao) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const lacres = laudo.lacres || Array(10).fill('');
+    const ultimasCargas = laudo.ultimas_cargas || Array(3).fill('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Laudo de Higienização - ${laudo.numero_laudo}</title>
+          <style>
+            @page {
+              size: A4;
+              margin: 15mm 15mm 15mm 15mm;
+            }
+            body {
+              font-family: Arial, sans-serif;
+              color: #000;
+              margin: 0;
+              padding: 0;
+              line-height: 1.3;
+              font-size: 11px;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .header-box {
+              width: 100%;
+              border: 1px solid #000;
+              border-radius: 8px;
+              padding: 8px 12px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              box-sizing: border-box;
+            }
+            .header-left {
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              align-items: center;
+              flex-grow: 1;
+              text-align: center;
+            }
+            .company-name {
+              font-size: 16px;
+              font-weight: bold;
+              margin: 0 0 2px 0;
+              letter-spacing: 0.5px;
+            }
+            .company-info {
+              font-size: 9px;
+              margin: 1px 0;
+              color: #000;
+              font-weight: bold;
+            }
+            .flex-center {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 4px;
+            }
+            .header-right {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding-left: 10px;
+            }
+            .header-right img {
+              height: 55px;
+              object-fit: contain;
+            }
+
+            .title-row {
+              display: flex;
+              align-items: center;
+              margin-top: 10px;
+              width: 100%;
+            }
+            .laudo-num-box {
+              border: 1px solid #000;
+              border-radius: 6px;
+              padding: 3px 12px;
+              font-size: 13px;
+              font-weight: bold;
+              font-family: monospace;
+              min-width: 70px;
+              text-align: center;
+            }
+            .laudo-title {
+              flex-grow: 1;
+              text-align: center;
+              font-size: 16px;
+              font-weight: bold;
+              letter-spacing: 1px;
+            }
+
+            .data-entrada-row {
+              display: flex;
+              gap: 20px;
+              margin-top: 10px;
+              width: 100%;
+              align-items: center;
+            }
+            .data-box-container, .entrada-box-container {
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            }
+            .inline-label {
+              font-size: 10px;
+              font-weight: bold;
+            }
+            .inline-label-bold {
+              font-size: 10px;
+              font-weight: bold;
+            }
+            .border-box {
+              border: 1px solid #000;
+              border-radius: 6px;
+              padding: 3px 8px;
+              font-size: 10px;
+              min-height: 20px;
+              display: flex;
+              align-items: center;
+              box-sizing: border-box;
+            }
+
+            .veiculo-row {
+              display: flex;
+              align-items: center;
+              margin-top: 8px;
+              gap: 8px;
+              width: 100%;
+            }
+            .plate-box {
+              width: 100px;
+              font-family: monospace;
+              font-weight: bold;
+              text-align: center;
+              justify-content: center;
+              text-transform: uppercase;
+            }
+
+            .empresa-frota-row {
+              display: flex;
+              align-items: center;
+              margin-top: 6px;
+              gap: 8px;
+              width: 100%;
+            }
+            .empresa-box {
+              flex-grow: 1;
+              font-weight: bold;
+            }
+            .frota-box {
+              width: 130px;
+              font-weight: bold;
+            }
+
+            .modelo-row {
+              display: flex;
+              align-items: center;
+              margin-top: 8px;
+              gap: 10px;
+              width: 100%;
+            }
+            .checkbox-option {
+              display: flex;
+              align-items: center;
+              font-size: 9px;
+              white-space: nowrap;
+              font-weight: bold;
+            }
+            .check-parenthesis {
+              font-family: monospace;
+              font-size: 9px;
+              font-weight: bold;
+              margin-right: 4px;
+            }
+
+            .higienizacao-section {
+              margin-top: 10px;
+              width: 100%;
+            }
+            .higienizacao-title {
+              font-weight: bold;
+              font-size: 10px;
+              margin-bottom: 4px;
+            }
+            .higienizacao-row {
+              display: flex;
+              align-items: flex-start;
+              border-bottom: 1px solid #000;
+              padding-bottom: 5px;
+            }
+            .higienizacao-label {
+              font-weight: bold;
+              font-size: 10px;
+              width: 65px;
+              padding-top: 2px;
+            }
+            .higienizacao-group {
+              display: flex;
+              align-items: flex-start;
+              margin-right: 12px;
+            }
+            .main-check {
+              font-weight: bold;
+              margin-right: 6px;
+              white-space: nowrap;
+              padding-top: 2px;
+              font-size: 7.5px;
+            }
+            .sub-checks-grid-2x2 {
+              display: grid;
+              grid-template-columns: auto auto;
+              column-gap: 8px;
+              row-gap: 3px;
+              font-size: 7.5px;
+            }
+            .sub-checks-grid-2x2 div {
+              white-space: nowrap;
+            }
+            .sub-checks-stack {
+              display: flex;
+              flex-direction: column;
+              gap: 3px;
+              font-size: 7.5px;
+            }
+            .sub-checks-stack div {
+              white-space: nowrap;
+            }
+            .sub-checks-grid-2col {
+              display: grid;
+              grid-template-columns: auto auto;
+              column-gap: 8px;
+              row-gap: 3px;
+              font-size: 7.5px;
+            }
+            .sub-checks-grid-2col div {
+              white-space: nowrap;
+            }
+            .single-option {
+              font-weight: bold;
+              padding-top: 2px;
+              font-size: 7.5px;
+              white-space: nowrap;
+            }
+
+            .secagem-row {
+              display: flex;
+              align-items: center;
+              margin-top: 8px;
+              width: 100%;
+            }
+            .secagem-box {
+              flex-grow: 1;
+              margin-left: 8px;
+            }
+
+            .lacres-section {
+              margin-top: 10px;
+              width: 100%;
+            }
+            .section-title-bold {
+              font-weight: bold;
+              font-size: 10px;
+              margin-bottom: 4px;
+            }
+            .lacres-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .lacres-table td {
+              border: 1px solid #000;
+              height: 22px;
+              width: 20%;
+              text-align: center;
+              font-weight: bold;
+              font-size: 10px;
+            }
+
+            .cargas-section {
+              margin-top: 10px;
+              width: 100%;
+            }
+            .cargas-grid-layout {
+              display: flex;
+              gap: 10px;
+              width: 100%;
+            }
+            .carga-box-item {
+              flex: 1;
+              border: 1px solid #000;
+              border-radius: 6px;
+              height: 28px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: bold;
+              font-size: 10px;
+              box-sizing: border-box;
+            }
+            .cargas-footer-note {
+              font-size: 8px;
+              font-weight: bold;
+              margin-top: 3px;
+            }
+
+            .obs-section {
+              margin-top: 8px;
+              width: 100%;
+            }
+            .obs-header {
+              font-weight: bold;
+              font-size: 10px;
+            }
+            .obs-lines-container {
+              margin-top: 4px;
+              position: relative;
+              min-height: 48px;
+            }
+            .obs-line-text {
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              line-height: 16px;
+              font-size: 10px;
+              font-weight: bold;
+              z-index: 2;
+              white-space: pre-wrap;
+              padding: 0 4px;
+              box-sizing: border-box;
+            }
+            .obs-bg-line {
+              height: 16px;
+              border-bottom: 1px solid #000;
+              box-sizing: border-box;
+            }
+
+            .footer-section {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 12px;
+              gap: 12px;
+              width: 100%;
+            }
+            .footer-left {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              width: 55%;
+            }
+            .footer-right {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              width: 42%;
+            }
+            .footer-box-item {
+              border: 1px solid #000;
+              border-radius: 6px;
+              padding: 3px 6px;
+              display: flex;
+              box-sizing: border-box;
+            }
+            .box-label {
+              font-weight: bold;
+              margin-right: 5px;
+              white-space: nowrap;
+              font-size: 9px;
+            }
+            .box-val {
+              font-size: 10px;
+              font-weight: bold;
+            }
+
+            @media print {
+              body {
+                margin: 0;
+              }
+              .no-print {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body onload="startPrint()">
+          <script>
+            function startPrint() {
+              const img = document.querySelector('.header-right img');
+              if (img && !img.complete) {
+                img.onload = () => {
+                  setTimeout(() => {
+                    window.print();
+                    window.close();
+                  }, 150);
+                };
+              } else {
+                setTimeout(() => {
+                  window.print();
+                  window.close();
+                }, 150);
+              }
+            }
+          </script>
+
+          <!-- Cabeçalho -->
+          <div class="header-box">
+            <div class="header-left">
+              <div class="company-name">LAVA JATO BR-050</div>
+              <div class="company-info">CNPJ: 32.448.609/0001-14</div>
+              <div class="company-info">lavajato.estacionamento050@gmail.com</div>
+              <div class="company-info">Av. Teodoreto Veloso de Carvalho nº 7.333 - Sibipiruna - Patrocínio/MG</div>
+              <div class="company-info flex-center">
+                (34) 3246-0709
+                <svg style="width:10px;height:10px;fill:#25D366;vertical-align:middle;" viewBox="0 0 24 24">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.455L0 24zm6.59-4.846c1.6.95 3.498 1.45 5.419 1.451 5.828 0 10.57-4.746 10.574-10.576.002-2.823-1.096-5.479-3.098-7.483-2-2.004-4.66-3.106-7.487-3.107-5.83 0-10.57 4.747-10.575 10.577-.001 1.95.509 3.858 1.479 5.539l-.979 3.573 3.661-.96zm10.742-5.411c-.302-.151-1.787-.882-2.064-.983-.277-.101-.478-.151-.678.151-.2.302-.779.983-.956 1.184-.177.201-.353.226-.655.075-1.258-.63-2.112-1.116-2.922-2.518-.21-.362.21-.336.6-.113.35.2.779.882.855 1.033.076.151.076.277-.038.502-.113.226-.779 1.91-.956 2.312-.172.4-.352.347-.655.196-.302-.151-1.272-.469-2.423-1.496-.897-.8-1.502-1.788-1.678-2.09-.176-.302-.019-.465.132-.614.136-.134.302-.352.453-.528.151-.176.201-.302.302-.503.101-.201.05-.377-.025-.528-.075-.151-.678-1.634-.93-2.238-.244-.589-.493-.51-.678-.519-.176-.009-.377-.01-.578-.01-.201 0-.528.075-.804.377-.277.302-1.056 1.031-1.056 2.516 0 1.486 1.081 2.92 1.232 3.121.151.201 2.128 3.25 5.156 4.557.72.311 1.282.497 1.721.637.724.23 1.382.198 1.902.12.58-.088 1.788-.73 2.039-1.435.252-.704.252-1.308.176-1.435-.076-.127-.277-.201-.578-.352z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="header-right">
+              <img src="logos/LavajatoBR050_logo.png" alt="Logo">
+            </div>
+          </div>
+
+          <!-- Título -->
+          <div class="title-row">
+            <div class="laudo-num-box">
+              ${String(laudo.numero_laudo).padStart(6, '0')}
+            </div>
+            <div class="laudo-title">
+              LAUDO DE HIGIENIZAÇÃO
+            </div>
+          </div>
+
+          <!-- Data e Entrada -->
+          <div class="data-entrada-row">
+            <div class="data-box-container">
+              <span class="inline-label">DATA</span>
+              <div class="border-box font-bold" style="width: 110px; justify-content: center;">
+                ${laudo.data_laudo ? new Date(laudo.data_laudo + 'T00:00:00').toLocaleDateString('pt-BR') : ''}
+              </div>
+            </div>
+            <div class="entrada-box-container">
+              <span class="inline-label">ENTRADA:</span>
+              <div class="border-box font-bold" style="width: 150px; justify-content: center;">
+                ${laudo.entrada_data_hora ? new Date(laudo.entrada_data_hora).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+              </div>
+            </div>
+          </div>
+
+          <!-- Dados do Veículo -->
+          <div class="veiculo-row">
+            <span class="inline-label-bold">DADOS DO VEÍCULO: CAVALO</span>
+            <div class="border-box plate-box">
+              ${laudo.placa_cavalo || ''}
+            </div>
+            
+            <span class="inline-label-bold">CARRETA 1</span>
+            <div class="border-box plate-box">
+              ${laudo.placa_carreta_1 || ''}
+            </div>
+            
+            <span class="inline-label-bold">CARRETA 2</span>
+            <div class="border-box plate-box">
+              ${laudo.placa_carreta_2 || ''}
+            </div>
+          </div>
+
+          <div class="empresa-frota-row">
+            <span class="inline-label-bold">EMPRESA</span>
+            <div class="border-box empresa-box">
+              ${laudo.empresa || ''}
+            </div>
+            
+            <span class="inline-label-bold">FROTA</span>
+            <div class="border-box frota-box">
+              ${laudo.frota || ''}
+            </div>
+          </div>
+
+          <!-- Modelo -->
+          <div class="modelo-row">
+            <span class="inline-label-bold">MODELO:</span>
+            <div class="checkbox-option">
+              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'tanque' ? 'X' : '&nbsp;'}&nbsp;)</span> TANQUE
+            </div>
+            <div class="checkbox-option">
+              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'graneleiro' ? 'X' : '&nbsp;'}&nbsp;)</span> GRANELEIRO
+            </div>
+            <div class="checkbox-option">
+              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'boiadeiro' ? 'X' : '&nbsp;'}&nbsp;)</span> BOIADEIRO
+            </div>
+            <div class="checkbox-option">
+              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'bau' ? 'X' : '&nbsp;'}&nbsp;)</span> BAU
+            </div>
+            <div class="checkbox-option">
+              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'cacamba' ? 'X' : '&nbsp;'}&nbsp;)</span> CAÇAMBA
+            </div>
+            <div class="checkbox-option">
+              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'container' ? 'X' : '&nbsp;'}&nbsp;)</span> CONTAINER
+            </div>
+          </div>
+
+          <!-- Dados de Higienização -->
+          <div class="higienizacao-section">
+            <div class="higienizacao-title">DADOS DA HIGIENIZAÇÃO:</div>
+            
+            <!-- Cavalo -->
+            <div class="higienizacao-row">
+              <div class="higienizacao-label">CAVALO</div>
+              
+              <div class="higienizacao-group" style="width: 250px;">
+                <div class="main-check">
+                  <span class="check-parenthesis">(&nbsp;${laudo.cavalo_interno ? 'X' : '&nbsp;'}&nbsp;)</span> INTERNO
+                </div>
+                <div class="sub-checks-grid-2x2">
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_interno_soprar ? 'X' : '&nbsp;'}&nbsp;)</span> SOPRAR</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_interno_hidratacao ? 'X' : '&nbsp;'}&nbsp;)</span> HIDRATAÇÃO</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_interno_aspirar ? 'X' : '&nbsp;'}&nbsp;)</span> ASPIRAR</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_interno_motor ? 'X' : '&nbsp;'}&nbsp;)</span> MOTOR</div>
+                </div>
+              </div>
+              
+              <div class="higienizacao-group" style="width: 180px;">
+                <div class="main-check">
+                  <span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo ? 'X' : '&nbsp;'}&nbsp;)</span> EXTERNO
+                </div>
+                <div class="sub-checks-stack">
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo_agua_fria ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA FRIA</div>
+                </div>
+              </div>
+              
+              <div class="higienizacao-group single-option">
+                <span class="check-parenthesis">(&nbsp;${laudo.cavalo_cera ? 'X' : '&nbsp;'}&nbsp;)</span> CERA
+              </div>
+            </div>
+
+            <!-- Carreta -->
+            <div class="higienizacao-row" style="margin-top: 6px; border-bottom: none;">
+              <div class="higienizacao-label">CARRETA</div>
+              
+              <div class="higienizacao-group" style="width: 170px;">
+                <div class="main-check">
+                  <span class="check-parenthesis">(&nbsp;${laudo.carreta_interno ? 'X' : '&nbsp;'}&nbsp;)</span> INTERNO
+                </div>
+                <div class="sub-checks-stack">
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_interno_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_interno_agua_fria ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA FRIA</div>
+                </div>
+              </div>
+              
+              <div class="higienizacao-group" style="flex-grow: 1; margin-right: 0;">
+                <div class="main-check">
+                  <span class="check-parenthesis">(&nbsp;${laudo.carreta_externo ? 'X' : '&nbsp;'}&nbsp;)</span> EXTERNO
+                </div>
+                <div class="sub-checks-grid-2col" style="flex-grow: 1;">
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_boca_superior ? 'X' : '&nbsp;'}&nbsp;)</span> BOCA SUPERIOR</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_agua_fria ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA FRIA</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_boca_lateral ? 'X' : '&nbsp;'}&nbsp;)</span> BOCA LATERAL</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_jato_agua ? 'X' : '&nbsp;'}&nbsp;)</span> JATO D'ÁGUA</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_embaixo ? 'X' : '&nbsp;'}&nbsp;)</span> EMBAIXO</div>
+                  <div>&nbsp;</div>
+                  <div><span class="check-parenthesis">(&nbsp;${(laudo.carreta_externo_lona || laudo.carreta_externoLona) ? 'X' : '&nbsp;'}&nbsp;)</span> LONA</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Secagem Manual -->
+          <div class="secagem-row">
+            <span class="inline-label-bold">SECAGEM MANUAL</span>
+            <div class="border-box secagem-box">
+              <span style="font-weight: bold; color: #000; margin-right: 6px; font-size: 9px;">FUNC.:</span>
+              <strong style="text-transform: uppercase;">${laudo.secagem_manual_funcionario || ''}</strong>
+            </div>
+          </div>
+
+          <!-- Lacres -->
+          <div class="lacres-section">
+            <div class="section-title-bold">LACRES</div>
+            <table class="lacres-table">
+              <tr>
+                ${Array.from({ length: 5 }).map((_, idx) => {
+                  const val = lacres[idx] ? lacres[idx] : '';
+                  return `<td>${val}</td>`;
+                }).join('')}
+              </tr>
+              <tr>
+                ${Array.from({ length: 5 }).map((_, idx) => {
+                  const val = lacres[idx + 5] ? lacres[idx + 5] : '';
+                  return `<td>${val}</td>`;
+                }).join('')}
+              </tr>
+            </table>
+          </div>
+
+          <!-- Histórico 3 Últimas Cargas -->
+          <div class="cargas-section">
+            <div class="section-title-bold">HISTÓRICO 3 ÚLTIMAS CARGAS</div>
+            <div class="cargas-grid-layout">
+              <div class="carga-box-item">${ultimasCargas[0] || ''}</div>
+              <div class="carga-box-item">${ultimasCargas[1] || ''}</div>
+              <div class="carga-box-item">${ultimasCargas[2] || ''}</div>
+            </div>
+            <div class="cargas-footer-note">
+              * INFORMAÇÕES SOB RESPONSABILIDADE DA TRANSPORTADORA
+            </div>
+          </div>
+
+          <!-- Observações -->
+          <div class="obs-section">
+            <div class="obs-header">OBS.:</div>
+            <div class="obs-lines-container">
+              <div class="obs-line-text">${laudo.observacoes || ''}</div>
+              <div class="obs-bg-line"></div>
+              <div class="obs-bg-line"></div>
+              <div class="obs-bg-line"></div>
+            </div>
+          </div>
+
+          <!-- Rodapé e Assinaturas -->
+          <div class="footer-section">
+            <div class="footer-left">
+              <div class="footer-box-item" style="height: 44px; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+                <span class="box-label">ASS. MOT.:</span>
+                <div style="border-bottom: 1px dashed #000; width: 90%; margin: 0 auto 2px auto; height: 1px;"></div>
+              </div>
+              
+              <div class="footer-box-item" style="height: 24px; align-items: center;">
+                <span class="box-label">NOME MOT.:</span>
+                <strong class="box-val" style="text-transform: uppercase;">${laudo.nome_motorista || ''}</strong>
+              </div>
+              
+              <div class="footer-box-item" style="height: 24px; align-items: center;">
+                <span class="box-label">LAVADOR:</span>
+                <strong class="box-val" style="text-transform: uppercase;">${laudo.lavador_nome || ''}</strong>
+              </div>
+            </div>
+            
+            <div class="footer-right">
+              <div class="footer-box-item" style="height: 60px; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+                <span class="box-label">RESP. LAVA-JATO</span>
+                <div style="border-bottom: 1px dashed #000; width: 90%; margin: 0 auto 4px auto; height: 1px;"></div>
+              </div>
+              
+              <div class="footer-box-item" style="height: 32px; align-items: center; justify-content: flex-start;">
+                <span class="box-label" style="margin-top: 1px;">SAÍDA:</span>
+                <strong class="box-val">${laudo.saida_data_hora ? new Date(laudo.saida_data_hora).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</strong>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const getNextLaudoNumber = async (): Promise<number> => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/laudo_config?id=eq.config&select=ultimo_numero`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+      if (!res.ok) throw new Error('Erro ao obter sequência de laudos');
+      const json = await res.json();
+      const currentSeq = json && json[0] ? json[0].ultimo_numero : 0;
+      return currentSeq + 1;
+    } catch (error) {
+      console.error('Erro ao gerar sequenciamento automático de laudo:', error);
+      return Math.floor(10000 + Math.random() * 90000);
+    }
+  };
+
+  const handleOpenCreateLaudo = async () => {
+    const today = new Date();
+    const offset = today.getTimezoneOffset();
+    const localToday = new Date(today.getTime() - (offset * 60 * 1000));
+    const nowStr = localToday.toISOString().slice(0, 16); // format: "YYYY-MM-DDTHH:mm"
+    const dateStr = localToday.toISOString().slice(0, 10); // format: "YYYY-MM-DD"
+
+    setFormLaudoNumero('Gerando...');
+    getNextLaudoNumber().then(num => setFormLaudoNumero(num));
+
+    setFormLaudoData(dateStr);
+    setFormLaudoEntrada(nowStr);
+    setFormLaudoSaida(nowStr);
+    setFormLaudoPlacaCavalo('');
+    setFormLaudoPlacaCarreta1('');
+    setFormLaudoPlacaCarreta2('');
+    setFormLaudoEmpresa('');
+    setFormLaudoFrota('');
+    setFormLaudoModelo('');
+
+    setFormLaudoCavaloInterno(false);
+    setFormLaudoCavaloInternoSoprar(false);
+    setFormLaudoCavaloInternoAspirar(false);
+    setFormLaudoCavaloInternoHidratacao(false);
+    setFormLaudoCavaloInternoMotor(false);
+    setFormLaudoCavaloExterno(false);
+    setFormLaudoCavaloExternoAguaQuente(false);
+    setFormLaudoCavaloExternoAguaFria(false);
+    setFormLaudoCavaloCera(false);
+
+    setFormLaudoCarretaInterno(false);
+    setFormLaudoCarretaInternoAguaQuente(false);
+    setFormLaudoCarretaInternoAguaFria(false);
+    setFormLaudoCarretaExterno(false);
+    setFormLaudoCarretaExternoAguaQuente(false);
+    setFormLaudoCarretaExternoAguaFria(false);
+    setFormLaudoCarretaExternoJatoAgua(false);
+    setFormLaudoCarretaExternoBocaSuperior(false);
+    setFormLaudoCarretaExternoBocaLateral(false);
+    setFormLaudoCarretaExternoEmbaixo(false);
+    setFormLaudoCarretaExternoLona(false);
+
+    setFormLaudoSecagemManualFunc('');
+    setFormLaudoNomeMotorista('');
+    setFormLaudoLavadorNome('');
+    setFormLaudoLacres(Array(10).fill(''));
+    setFormLaudoUltimasCargas(Array(3).fill(''));
+    setFormLaudoObservacoes('');
+
+    setFormLaudoError(null);
+    setSelectedLaudo(null);
+    setLaudoFormMode('create');
+  };
+
+  const handleOpenEditLaudo = (laudo: LaudoHigienizacao) => {
+    setSelectedLaudo(laudo);
+    setFormLaudoNumero(laudo.numero_laudo);
+    setFormLaudoData(laudo.data_laudo ? laudo.data_laudo.slice(0, 10) : '');
+    setFormLaudoEntrada(laudo.entrada_data_hora ? laudo.entrada_data_hora.slice(0, 16) : '');
+    setFormLaudoSaida(laudo.saida_data_hora ? laudo.saida_data_hora.slice(0, 16) : '');
+    setFormLaudoPlacaCavalo(laudo.placa_cavalo || '');
+    setFormLaudoPlacaCarreta1(laudo.placa_carreta_1 || '');
+    setFormLaudoPlacaCarreta2(laudo.placa_carreta_2 || '');
+    setFormLaudoEmpresa(laudo.empresa || '');
+    setFormLaudoFrota(laudo.frota || '');
+    setFormLaudoModelo(laudo.modelo || '');
+
+    setFormLaudoCavaloInterno(!!laudo.cavalo_interno);
+    setFormLaudoCavaloInternoSoprar(!!laudo.cavalo_interno_soprar);
+    setFormLaudoCavaloInternoAspirar(!!laudo.cavalo_interno_aspirar);
+    setFormLaudoCavaloInternoHidratacao(!!laudo.cavalo_interno_hidratacao);
+    setFormLaudoCavaloInternoMotor(!!laudo.cavalo_interno_motor);
+    setFormLaudoCavaloExterno(!!laudo.cavalo_externo);
+    setFormLaudoCavaloExternoAguaQuente(!!laudo.cavalo_externo_agua_quente);
+    setFormLaudoCavaloExternoAguaFria(!!laudo.cavalo_externo_agua_fria);
+    setFormLaudoCavaloCera(!!laudo.cavalo_cera);
+
+    setFormLaudoCarretaInterno(!!laudo.carreta_interno);
+    setFormLaudoCarretaInternoAguaQuente(!!laudo.carreta_interno_agua_quente);
+    setFormLaudoCarretaInternoAguaFria(!!laudo.carreta_interno_agua_fria);
+    setFormLaudoCarretaExterno(!!laudo.carreta_externo);
+    setFormLaudoCarretaExternoAguaQuente(!!laudo.carreta_externo_agua_quente);
+    setFormLaudoCarretaExternoAguaFria(!!laudo.carreta_externo_agua_fria);
+    setFormLaudoCarretaExternoJatoAgua(!!laudo.carreta_externo_jato_agua);
+    setFormLaudoCarretaExternoBocaSuperior(!!laudo.carreta_externo_boca_superior);
+    setFormLaudoCarretaExternoBocaLateral(!!laudo.carreta_externo_boca_lateral);
+    setFormLaudoCarretaExternoEmbaixo(!!laudo.carreta_externo_embaixo);
+    setFormLaudoCarretaExternoLona(!!laudo.carreta_externo_lona);
+
+    setFormLaudoSecagemManualFunc(laudo.secagem_manual_funcionario || '');
+    setFormLaudoNomeMotorista(laudo.nome_motorista || '');
+    setFormLaudoLavadorNome(laudo.lavador_nome || '');
+
+    const lacresArray = Array(10).fill('');
+    if (laudo.lacres) {
+      laudo.lacres.forEach((l, idx) => { if (idx < 10) lacresArray[idx] = l; });
+    }
+    setFormLaudoLacres(lacresArray);
+
+    const cargasArray = Array(3).fill('');
+    if (laudo.ultimas_cargas) {
+      laudo.ultimas_cargas.forEach((c, idx) => { if (idx < 3) cargasArray[idx] = c; });
+    }
+    setFormLaudoUltimasCargas(cargasArray);
+
+    setFormLaudoObservacoes(laudo.observacoes || '');
+    setFormLaudoError(null);
+    setLaudoFormMode('edit');
+  };
+
+  const handleSaveLaudo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLaudoSubmitting(true);
+    setFormLaudoError(null);
+
+    try {
+      if (!formLaudoPlacaCavalo) {
+        throw new Error('A placa do cavalo é obrigatória.');
+      }
+
+      let numeroLaudoToSave: number;
+      if (laudoFormMode === 'create') {
+        numeroLaudoToSave = await getNextLaudoNumber();
+      } else {
+        numeroLaudoToSave = Number(formLaudoNumero);
+      }
+
+      if (isNaN(numeroLaudoToSave)) {
+        throw new Error('Número do laudo inválido.');
+      }
+
+      const cleanLacres = formLaudoLacres.map(x => x.trim()).filter(Boolean);
+      const cleanCargas = formLaudoUltimasCargas.map(x => x.trim()).filter(Boolean);
+
+      const payload: any = {
+        numero_laudo: numeroLaudoToSave,
+        data_laudo: formLaudoData,
+        entrada_data_hora: formLaudoEntrada ? new Date(formLaudoEntrada).toISOString() : null,
+        saida_data_hora: formLaudoSaida ? new Date(formLaudoSaida).toISOString() : null,
+        placa_cavalo: formLaudoPlacaCavalo.toUpperCase(),
+        placa_carreta_1: formLaudoPlacaCarreta1.toUpperCase() || null,
+        placa_carreta_2: formLaudoPlacaCarreta2.toUpperCase() || null,
+        empresa: formLaudoEmpresa || null,
+        frota: formLaudoFrota || null,
+        modelo: formLaudoModelo || null,
+
+        cavalo_interno: formLaudoCavaloInterno,
+        cavalo_interno_soprar: formLaudoCavaloInternoSoprar,
+        cavalo_interno_aspirar: formLaudoCavaloInternoAspirar,
+        cavalo_interno_hidratacao: formLaudoCavaloInternoHidratacao,
+        cavalo_interno_motor: formLaudoCavaloInternoMotor,
+        cavalo_externo: formLaudoCavaloExterno,
+        cavalo_externo_agua_quente: formLaudoCavaloExternoAguaQuente,
+        cavalo_externo_agua_fria: formLaudoCavaloExternoAguaFria,
+        cavalo_cera: formLaudoCavaloCera,
+
+        carreta_interno: formLaudoCarretaInterno,
+        carreta_interno_agua_quente: formLaudoCarretaInternoAguaQuente,
+        carreta_interno_agua_fria: formLaudoCarretaInternoAguaFria,
+        carreta_externo: formLaudoCarretaExterno,
+        carreta_externo_agua_quente: formLaudoCarretaExternoAguaQuente,
+        carreta_externo_agua_fria: formLaudoCarretaExternoAguaFria,
+        carreta_externo_jato_agua: formLaudoCarretaExternoJatoAgua,
+        carreta_externo_boca_superior: formLaudoCarretaExternoBocaSuperior,
+        carreta_externo_boca_lateral: formLaudoCarretaExternoBocaLateral,
+        carreta_externo_embaixo: formLaudoCarretaExternoEmbaixo,
+        carreta_externo_lona: formLaudoCarretaExternoLona,
+
+        secagem_manual_funcionario: formLaudoSecagemManualFunc || null,
+        nome_motorista: formLaudoNomeMotorista || null,
+        lavador_nome: formLaudoLavadorNome || null,
+        lacres: cleanLacres,
+        ultimas_cargas: cleanCargas,
+        observacoes: formLaudoObservacoes || null,
+        updated_at: new Date().toISOString()
+      };
+
+      if (laudoFormMode === 'create') {
+        payload.id = crypto.randomUUID();
+        payload.created_at = new Date().toISOString();
+        payload.created_by = session?.user?.email || 'anon';
+
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify([payload])
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Erro ao criar laudo.');
+        }
+
+        await fetch(`${SUPABASE_URL}/rest/v1/laudo_config?id=eq.config`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ultimo_numero: numeroLaudoToSave, updated_at: new Date().toISOString() })
+        });
+
+      } else if (laudoFormMode === 'edit' && selectedLaudo) {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${selectedLaudo.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || 'Erro ao atualizar laudo.');
+        }
+      }
+
+      await fetchSupabaseLaudos();
+      await fetchSupabaseLaudoConfig();
+      setLaudoFormMode('list');
+      setSelectedLaudo(null);
+    } catch (err: any) {
+      console.error(err);
+      setFormLaudoError(err.message || 'Erro ao salvar o laudo.');
+    } finally {
+      setFormLaudoSubmitting(false);
+    }
+  };
+
+  const handleDeleteLaudo = async () => {
+    if (!isDeletingLaudo) return;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${isDeletingLaudo.id}`, {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+
+      if (!res.ok) throw new Error('Erro ao excluir laudo do Supabase');
+
+      await fetchSupabaseLaudos();
+      setIsDeletingLaudo(null);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Erro ao excluir laudo.');
+    }
+  };
+
+  const handleSaveLaudoConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLaudoConfigSubmitting(true);
+    setFormLaudoConfigError(null);
+    setFormLaudoConfigSuccess(null);
+
+    try {
+      const ultimoNum = parseInt(formLaudoConfigUltimoNumero, 10);
+      if (isNaN(ultimoNum) || ultimoNum < 0) {
+        throw new Error('Por favor, informe um valor de sequência atual válido (igual ou maior que 0).');
+      }
+
+      const payload = {
+        id: 'config',
+        ultimo_numero: ultimoNum,
+        updated_at: new Date().toISOString()
+      };
+
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/laudo_config?on_conflict=id`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify([payload])
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Erro ao salvar configuração.');
+      }
+
+      await fetchSupabaseLaudoConfig();
+      setFormLaudoConfigSuccess('Configuração de sequência de laudos salva com sucesso!');
+    } catch (err: any) {
+      console.error(err);
+      setFormLaudoConfigError(err.message || 'Erro ao salvar configuração.');
+    } finally {
+      setFormLaudoConfigSubmitting(false);
     }
   };
 
@@ -11144,6 +13687,8 @@ const App: React.FC = () => {
       fetchSupabaseEntradas();
       fetchSupabaseOrdemServicos();
       fetchSupabaseOSSequencias();
+      fetchSupabaseLaudos();
+      fetchSupabaseLaudoConfig();
     }
   }, [session]);
 
@@ -11377,10 +13922,10 @@ const App: React.FC = () => {
         </div>
 
         {/* Info Alert Box */}
-        <div className="bg-violet-950/20 border border-violet-500/20 rounded-2xl p-4 flex gap-3 flex-shrink-0">
-          <Info className="h-5 w-5 text-violet-400 flex-shrink-0 mt-0.5" />
-          <div className="text-xs text-[#94a3b8] leading-relaxed">
-            <strong className="text-white">Como funciona:</strong> Ao criar uma nova OS com data em determinado ano (ex: 2026), o sistema busca a sequência daquele ano e atribui o número sequencial incrementado de 5 dígitos (ex: <code className="text-cyan-400 bg-cyan-400/10 px-1 py-0.5 rounded font-mono">OS-00001</code>). Bloqueamos a digitação manual para garantir que o sequenciamento ocorra sempre sem furos ou duplicidades.
+        <div className="bg-violet-950/20 light-theme:bg-violet-50 border border-violet-500/20 light-theme:border-violet-200/60 rounded-2xl p-4 flex gap-3 flex-shrink-0">
+          <Info className="h-5 w-5 text-violet-400 light-theme:text-violet-600 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-[#94a3b8] light-theme:text-slate-600 leading-relaxed">
+            <strong className="text-white light-theme:text-slate-800">Como funciona:</strong> Ao criar uma nova OS com data em determinado ano (ex: 2026), o sistema busca a sequência daquele ano e atribui o número sequencial incrementado de 5 dígitos (ex: <code className="text-cyan-400 bg-cyan-400/10 light-theme:text-cyan-700 light-theme:bg-cyan-50 px-1 py-0.5 rounded font-mono">OS-00001</code>). Bloqueamos a digitação manual para garantir que o sequenciamento ocorra sempre sem furos ou duplicidades.
           </div>
         </div>
 
@@ -11653,6 +14198,7 @@ const App: React.FC = () => {
           {currentTab === 'centrocusto' && renderCentroCusto()}
           {currentTab === 'ordemservico' && renderOrdemServico()}
           {currentTab === 'laudo' && renderLaudo()}
+          {currentTab === 'laudo_sequence' && renderLaudoSequence()}
           {currentTab === 'os_sequence' && renderOSSequence()}
 
           {currentTab === 'migracoes' && (
@@ -13473,6 +16019,335 @@ const App: React.FC = () => {
                     Fechar
                   </button>
                 )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. USER PROFILE MODAL */}
+      <AnimatePresence>
+        {isProfileModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsProfileModalOpen(false)}
+              className="absolute inset-0 bg-black/65 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 15 }}
+              className="relative w-full max-w-2xl bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl shadow-2xl p-6 md:p-8 overflow-hidden flex flex-col gap-6 max-h-[90vh]"
+            >
+              {/* Top gradient glow */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 via-cyan-400 to-indigo-600" />
+
+              {/* Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-[#1f2433] light-theme:border-slate-105">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-500 flex items-center justify-center text-white shadow-md shadow-violet-900/35">
+                    <User className="h-5.5 w-5.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white light-theme:text-slate-800 leading-none animate-pulse">Perfil do Usuário</h3>
+                    <p className="text-xxs text-[#64748b] mt-1.5 leading-none">Gerencie suas credenciais, foto e logs de segurança.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-450 transition-colors"
+                >
+                  <XCircle className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Content Row: Sidebar Tabs + Form Content */}
+              <div className="flex flex-col md:flex-row gap-6 overflow-hidden flex-1">
+                {/* Tabs Sidebar */}
+                <div className="flex md:flex-col gap-1 flex-shrink-0 md:w-48 overflow-x-auto pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-[#1f2433] light-theme:border-slate-105 md:pr-4">
+                  {[
+                    { id: 'dados', label: 'Meus Dados', icon: User },
+                    { id: 'foto', label: 'Alterar Foto', icon: Sparkles },
+                    { id: 'senha', label: 'Alterar Senha', icon: Lock },
+                    { id: 'logs', label: 'Segurança', icon: Activity },
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = profileTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setProfileTab(tab.id as any);
+                          setProfileMessage(null);
+                        }}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                          isActive
+                            ? 'bg-violet-600/10 text-violet-400 light-theme:bg-blue-50 light-theme:text-blue-600'
+                            : 'text-[#94a3b8] hover:text-white light-theme:text-slate-500 light-theme:hover:text-slate-800 hover:bg-white/5'
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Form fields pane */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0">
+                  {profileMessage && (
+                    <div className={`p-3 rounded-xl mb-4 text-xs flex items-start gap-2 animate-fadeIn ${
+                      profileMessage.type === 'success'
+                        ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 light-theme:text-emerald-700 light-theme:bg-emerald-50'
+                        : 'bg-red-500/10 border border-red-500/20 text-red-400 light-theme:text-red-700 light-theme:bg-red-50'
+                    }`}>
+                      {profileMessage.type === 'success' ? <CheckCircle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" />}
+                      <span>{profileMessage.text}</span>
+                    </div>
+                  )}
+
+                  {profileTab === 'dados' && (
+                    <form onSubmit={handleUpdateProfile} className="flex flex-col gap-4 text-left">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Nome Completo</label>
+                        <input
+                          type="text"
+                          required
+                          value={profileName}
+                          onChange={(e) => setProfileName(e.target.value)}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">WhatsApp Celular</label>
+                        <input
+                          type="text"
+                          placeholder="(00) 00000-0000"
+                          value={profileWhatsapp}
+                          onChange={(e) => setProfileWhatsapp(e.target.value)}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">E-mail de Login</label>
+                        <input
+                          type="email"
+                          required
+                          value={profileEmail}
+                          onChange={(e) => setProfileEmail(e.target.value)}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Nível de Permissão (Visualização)</label>
+                        <input
+                          type="text"
+                          disabled
+                          value={profileRole === 'admin' ? 'Administrador' : 'Operador'}
+                          className="w-full bg-[#090b11]/50 light-theme:bg-slate-100/80 border border-[#1f2433]/50 light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-[#64748b] cursor-not-allowed"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={updatingProfile}
+                        className="mt-2 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-xl py-2.5 font-bold text-xs uppercase tracking-wider shadow-lg shadow-violet-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {updatingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Salvar Dados</span>}
+                      </button>
+                    </form>
+                  )}
+
+                  {profileTab === 'foto' && (
+                    <div className="flex flex-col gap-5 text-left">
+                      {/* Current Photo Preview */}
+                      <div className="flex items-center gap-4">
+                        {profileAvatarUrl ? (
+                          profileAvatarUrl.startsWith('from-') ? (
+                            <div className={`h-16 w-16 rounded-2xl bg-gradient-to-tr ${profileAvatarUrl} flex items-center justify-center text-white text-2xl shadow-lg shadow-violet-900/10`} />
+                          ) : (
+                            <img src={profileAvatarUrl} className="h-16 w-16 rounded-2xl object-cover shadow-lg shadow-violet-900/10 border border-[#1f2433] light-theme:border-slate-200" alt="Preview" />
+                          )
+                        ) : (
+                          <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center text-white font-bold text-xl uppercase shadow-lg shadow-violet-900/10">
+                            {profileName ? profileName.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : 'US'}
+                          </div>
+                        )}
+                        <div>
+                          <h4 className="text-xs font-bold text-white light-theme:text-slate-800">Sua Foto de Perfil</h4>
+                          <p className="text-xxs text-[#64748b] mt-1">Selecione uma imagem local ou use os gradientes estilizados abaixo.</p>
+                        </div>
+                      </div>
+
+                      {/* Curated Gradients */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Escolha um Estilo Curado</label>
+                        <div className="grid grid-cols-6 gap-2">
+                          {[
+                            { bg: 'from-violet-600 to-indigo-600', text: '💜' },
+                            { bg: 'from-cyan-500 to-blue-500', text: '💎' },
+                            { bg: 'from-emerald-500 to-teal-500', text: '🌿' },
+                            { bg: 'from-rose-500 to-pink-500', text: '🌸' },
+                            { bg: 'from-amber-500 to-orange-500', text: '🔥' },
+                            { bg: 'from-fuchsia-600 to-pink-600', text: '✨' },
+                          ].map((av, index) => (
+                            <button
+                              key={index}
+                              onClick={() => {
+                                setProfileAvatarUrl(av.bg);
+                                setProfileMessage(null);
+                              }}
+                              className={`h-11 rounded-xl bg-gradient-to-tr ${av.bg} flex items-center justify-center text-base hover:scale-105 active:scale-95 transition-all cursor-pointer ${
+                                profileAvatarUrl === av.bg ? 'ring-2 ring-cyan-400 border border-white' : 'border border-transparent'
+                              }`}
+                              title="Selecionar estilo"
+                            >
+                              {av.text}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* URL input */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">URL de Imagem Externa</label>
+                        <input
+                          type="text"
+                          placeholder="https://exemplo.com/suafoto.png"
+                          value={profileAvatarUrl.startsWith('from-') ? '' : profileAvatarUrl}
+                          onChange={(e) => setProfileAvatarUrl(e.target.value)}
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      {/* File upload input */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Fazer Upload de Foto</label>
+                        <div className="relative h-9 bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl flex items-center px-3 text-xxs overflow-hidden hover:border-violet-500/55 transition-colors">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                            disabled={uploadingAvatar}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                          <span className="text-[#64748b] font-medium flex items-center gap-1.5">
+                            {uploadingAvatar ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-400" />
+                                Carregando arquivo...
+                              </>
+                            ) : (
+                              'Clique aqui para escolher um arquivo de imagem'
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Save profile updates */}
+                      <button
+                        onClick={handleUpdateProfile}
+                        disabled={updatingProfile}
+                        className="mt-2 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-xl py-2.5 font-bold text-xs uppercase tracking-wider shadow-lg shadow-violet-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {updatingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Confirmar e Salvar Foto</span>}
+                      </button>
+                    </div>
+                  )}
+
+                  {profileTab === 'senha' && (
+                    <form onSubmit={handleUpdatePassword} className="flex flex-col gap-4 text-left">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Nova Senha</label>
+                        <input
+                          type="password"
+                          required
+                          value={profilePassword}
+                          onChange={(e) => setProfilePassword(e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">Confirmar Nova Senha</label>
+                        <input
+                          type="password"
+                          required
+                          value={profileConfirmPassword}
+                          onChange={(e) => setProfileConfirmPassword(e.target.value)}
+                          placeholder="Digite a senha novamente"
+                          className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3 text-xs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={updatingPassword}
+                        className="mt-2 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-xl py-2.5 font-bold text-xs uppercase tracking-wider shadow-lg shadow-violet-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                      >
+                        {updatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>Redefinir Senha</span>}
+                      </button>
+                    </form>
+                  )}
+
+                  {profileTab === 'logs' && (
+                    <div className="flex flex-col gap-3 text-left">
+                      <h4 className="text-xs font-bold text-white light-theme:text-slate-800">Seu Histórico de Acesso</h4>
+                      <p className="text-xxs text-[#64748b]">Últimos logs de segurança associados ao seu e-mail.</p>
+
+                      <div className="flex flex-col gap-2 mt-2 max-h-[250px] overflow-y-auto custom-scrollbar">
+                        {loadingUserLogs ? (
+                          <div className="flex items-center gap-2 justify-center py-6">
+                            <Loader2 className="h-4.5 w-4.5 animate-spin text-cyan-400" />
+                            <span className="text-xxs text-[#64748b] font-semibold uppercase tracking-wider">Carregando auditoria...</span>
+                          </div>
+                        ) : userLogs.length === 0 ? (
+                          <span className="text-xxs text-[#64748b] py-6 text-center">Nenhum log de segurança registrado para sua conta.</span>
+                        ) : (
+                          userLogs.map((log) => (
+                            <div key={log.id} className="p-3 bg-[#090b11]/80 light-theme:bg-slate-50 border border-[#1f2433]/70 light-theme:border-slate-200 rounded-xl flex flex-col gap-1.5 text-xxs leading-relaxed">
+                              <div className="flex items-center justify-between font-bold">
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide ${
+                                  log.acao === 'EDITAR_PERFIL'
+                                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/25'
+                                    : log.acao === 'ALTERAR_SENHA'
+                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/25'
+                                    : 'bg-slate-500/10 text-[#94a3b8] border border-[#1f2433]'
+                                }`}>
+                                  {log.acao}
+                                </span>
+                                <span className="text-[#64748b] text-[9px]">
+                                  {new Date(log.created_at).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                              <span className="text-[#94a3b8] light-theme:text-slate-600 font-medium">
+                                {log.detalhes || 'Nenhum detalhe adicional fornecido.'}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1f2433] light-theme:border-slate-105">
+                <button
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="px-5 py-2 rounded-xl bg-[#1f2433] light-theme:bg-slate-100 hover:bg-[#2b3247] light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 font-bold text-xs hover:text-white transition-colors cursor-pointer"
+                >
+                  Fechar
+                </button>
               </div>
             </motion.div>
           </div>
