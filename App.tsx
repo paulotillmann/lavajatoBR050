@@ -63,7 +63,22 @@ import {
 } from 'lucide-react';
 
 // Env variables (read directly from import.meta.env or fall back to user credentials)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://funzoqxomyhhfvdtpmlw.supabase.co';
+const getSupabaseUrl = () => {
+  const isLocal = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname === '0.0.0.0' ||
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.hostname.endsWith('.gitpod.io')
+  );
+  if (isLocal) {
+    console.log("Ambiente local/desenvolvimento detectado. Redirecionando conexões Supabase através do proxy local /supabase-api para evitar bloqueios de CORS/Rede.");
+    return `${window.location.origin}/supabase-api`;
+  }
+  return import.meta.env.VITE_SUPABASE_URL || 'https://funzoqxomyhhfvdtpmlw.supabase.co';
+};
+
+const SUPABASE_URL = getSupabaseUrl();
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bnpvcXhvbXloaGZ2ZHRwbWx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTcyNzgsImV4cCI6MjA5NDM5MzI3OH0.8uhlJWO6BzQR8NoF8YrzeN8dWZ2DrXy-iTRoHwbcEjc';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUBBLE_TOKEN = '6066b185cb200592e09cfced5a33a4fd';

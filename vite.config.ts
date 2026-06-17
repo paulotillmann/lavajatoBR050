@@ -8,6 +8,18 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        proxy: {
+          '/supabase-api': {
+            target: env.VITE_SUPABASE_URL || 'https://funzoqxomyhhfvdtpmlw.supabase.co',
+            changeOrigin: true,
+            rewrite: (path) => path.replace(/^\/supabase-api/, ''),
+            configure: (proxy) => {
+              proxy.on('error', (err) => {
+                console.error('Vite Proxy Error:', err);
+              });
+            }
+          }
+        }
       },
       plugins: [react()],
       define: {
