@@ -622,30 +622,47 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateProfile = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (!session?.user) return;
     setUpdatingProfile(true);
-    // Validar se o avatar_url é um Base64 gigantesco antigo no estado do browser
-    if (profileAvatarUrl && profileAvatarUrl.startsWith('data:') && profileAvatarUrl.length > 100000) {
+    
+    // Robust detection and cleaning of legacy Base64 avatar strings to prevent network crashes
+    const isBase64 = profileAvatarUrl && (
+      profileAvatarUrl.startsWith('data:') || 
+      profileAvatarUrl.includes(';base64,') || 
+      (!profileAvatarUrl.startsWith('http') && !profileAvatarUrl.startsWith('from-') && profileAvatarUrl.length > 200)
+    );
+
+    if (isBase64) {
       setProfileMessage({ 
         type: 'error', 
-        text: 'A imagem atual está no formato antigo (Base64) e é muito grande. Por favor, recarregue a página (F5) e selecione o arquivo de imagem novamente para realizar o upload de forma correta.' 
+        text: 'A imagem inserida está no formato antigo (Base64) ou é inválida. Por favor, utilize uma URL de imagem válida ou faça o upload de um arquivo de foto (limite de 2MB).' 
       });
       setUpdatingProfile(false);
       return;
     }
 
     try {
-      // 1. Atualiza metadados no Auth do Supabase
-      const { error: authError } = await supabase.auth.updateUser({
-        email: profileEmail !== session?.user?.email ? profileEmail : undefined,
+      // 1. Atualiza metadados no Auth do Supabase (apenas se o email mudou de fato, comparando case-insensivelmente)
+      const emailChanged = profileEmail && session?.user?.email && 
+        profileEmail.trim().toLowerCase() !== session.user.email.trim().toLowerCase();
+
+      const updatePayload: any = {
         data: {
           nome_completo: profileName,
           celular_whatsapp: profileWhatsapp,
           avatar_url: profileAvatarUrl,
         }
-      });
+      };
+
+      if (emailChanged) {
+        updatePayload.email = profileEmail.trim();
+        console.log("Email de login alterado. Solicitando atualização no auth do Supabase...");
+      }
+
+      console.log("Executando supabase.auth.updateUser...");
+      const { error: authError } = await supabase.auth.updateUser(updatePayload);
       if (authError) throw authError;
 
       // Buscar a chave primária correta do perfil do usuário (id ou auth_user_id)
@@ -666,6 +683,7 @@ const App: React.FC = () => {
         updated_at: new Date().toISOString(),
       };
 
+      console.log("Atualizando tabela profiles para o id:", targetId);
       const { error: dbError } = await supabase
         .from('profiles')
         .update(updateData)
@@ -702,7 +720,12 @@ const App: React.FC = () => {
       await fetchUserProfile(session.user.id);
       setProfileMessage({ type: 'success', text: 'Dados atualizados com sucesso!' });
     } catch (err: any) {
-      setProfileMessage({ type: 'error', text: err.message || 'Erro ao atualizar dados.' });
+      console.error("Erro completo ao atualizar perfil:", err);
+      let errMsg = err.message || 'Erro ao atualizar dados.';
+      if (errMsg === 'Failed to fetch') {
+        errMsg = 'Falha na conexão com o servidor (Failed to fetch). Verifique sua internet ou se o banco de dados Supabase está online.';
+      }
+      setProfileMessage({ type: 'error', text: errMsg });
     } finally {
       setUpdatingProfile(false);
     }
@@ -748,6 +771,15 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !session?.user) return;
 
+    // Client-side file size verification (2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      setProfileMessage({ 
+        type: 'error', 
+        text: 'A imagem selecionada é muito grande. O limite máximo permitido é de 2MB.' 
+      });
+      return;
+    }
+
     setUploadingAvatar(true);
     setProfileMessage(null);
     try {
@@ -775,7 +807,12 @@ const App: React.FC = () => {
       setProfileAvatarUrl(publicUrl);
       setProfileMessage({ type: 'success', text: 'Foto carregada com sucesso! Clique em salvar para confirmar.' });
     } catch (err: any) {
-      setProfileMessage({ type: 'error', text: err.message || 'Erro ao carregar a foto.' });
+      console.error("Erro no upload do avatar:", err);
+      let errMsg = err.message || 'Erro ao carregar a foto.';
+      if (errMsg === 'Failed to fetch') {
+        errMsg = 'Falha de rede (Failed to fetch) ao enviar a foto para o storage. Verifique se o servidor está online.';
+      }
+      setProfileMessage({ type: 'error', text: errMsg });
     } finally {
       setUploadingAvatar(false);
     }
@@ -1990,7 +2027,13 @@ const App: React.FC = () => {
       }
     };
 
-    const avatarUrlToShow = userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '';
+    const rawAvatar = userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '';
+    // Prevent rendering of legacy Base64 strings in the header icon to save memory/crashes
+    const avatarUrlToShow = (rawAvatar && (
+      rawAvatar.startsWith('data:') || 
+      rawAvatar.includes(';base64,') || 
+      (!rawAvatar.startsWith('http') && !rawAvatar.startsWith('from-') && rawAvatar.length > 200)
+    )) ? 'from-violet-600 to-indigo-600' : rawAvatar;
 
     return (
       <header className="px-8 h-20 bg-[#090b11]/80 light-theme:bg-white/80 border-b border-[#1f2433] light-theme:border-slate-200 backdrop-blur-md flex items-center justify-between z-10">
@@ -2036,7 +2079,20 @@ const App: React.FC = () => {
               setProfileWhatsapp(userProfile?.celular_whatsapp || session?.user?.user_metadata?.celular_whatsapp || '');
               setProfileEmail(session?.user?.email || userProfile?.email || '');
               setProfileRole(userProfile?.role || 'operator');
-              setProfileAvatarUrl(userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '');
+              
+              const storedAvatar = userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '';
+              // Sanitiza o avatar temporariamente para evitar falhas ao abrir o modal
+              const isBase64 = storedAvatar && (
+                storedAvatar.startsWith('data:') || 
+                storedAvatar.includes(';base64,') || 
+                (!storedAvatar.startsWith('http') && !storedAvatar.startsWith('from-') && storedAvatar.length > 200)
+              );
+              if (isBase64) {
+                setProfileAvatarUrl('from-violet-600 to-indigo-600');
+              } else {
+                setProfileAvatarUrl(storedAvatar);
+              }
+              
               setProfilePassword('');
               setProfileConfirmPassword('');
               setProfileMessage(null);
@@ -16272,7 +16328,7 @@ const App: React.FC = () => {
 
                       {/* Save profile updates */}
                       <button
-                        onClick={handleUpdateProfile}
+                        onClick={() => handleUpdateProfile()}
                         disabled={updatingProfile}
                         className="mt-2 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-xl py-2.5 font-bold text-xs uppercase tracking-wider shadow-lg shadow-violet-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                       >
