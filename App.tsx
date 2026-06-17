@@ -63,22 +63,7 @@ import {
 } from 'lucide-react';
 
 // Env variables (read directly from import.meta.env or fall back to user credentials)
-const getSupabaseUrl = () => {
-  const isLocal = typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' || 
-    window.location.hostname === '127.0.0.1' || 
-    window.location.hostname === '0.0.0.0' ||
-    window.location.hostname.startsWith('192.168.') ||
-    window.location.hostname.endsWith('.gitpod.io')
-  );
-  if (isLocal) {
-    console.log("Ambiente local/desenvolvimento detectado. Redirecionando conexões Supabase através do proxy local /supabase-api para evitar bloqueios de CORS/Rede.");
-    return `${window.location.origin}/supabase-api`;
-  }
-  return import.meta.env.VITE_SUPABASE_URL || 'https://funzoqxomyhhfvdtpmlw.supabase.co';
-};
-
-const SUPABASE_URL = getSupabaseUrl();
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://funzoqxomyhhfvdtpmlw.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bnpvcXhvbXloaGZ2ZHRwbWx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTcyNzgsImV4cCI6MjA5NDM5MzI3OH0.8uhlJWO6BzQR8NoF8YrzeN8dWZ2DrXy-iTRoHwbcEjc';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUBBLE_TOKEN = '6066b185cb200592e09cfced5a33a4fd';
@@ -641,18 +626,18 @@ const App: React.FC = () => {
     if (e) e.preventDefault();
     if (!session?.user) return;
     setUpdatingProfile(true);
-    
+
     // Robust detection and cleaning of legacy Base64 avatar strings to prevent network crashes
     const isBase64 = profileAvatarUrl && (
-      profileAvatarUrl.startsWith('data:') || 
-      profileAvatarUrl.includes(';base64,') || 
+      profileAvatarUrl.startsWith('data:') ||
+      profileAvatarUrl.includes(';base64,') ||
       (!profileAvatarUrl.startsWith('http') && !profileAvatarUrl.startsWith('from-') && profileAvatarUrl.length > 200)
     );
 
     if (isBase64) {
-      setProfileMessage({ 
-        type: 'error', 
-        text: 'A imagem inserida está no formato antigo (Base64) ou é inválida. Por favor, utilize uma URL de imagem válida ou faça o upload de um arquivo de foto (limite de 2MB).' 
+      setProfileMessage({
+        type: 'error',
+        text: 'A imagem inserida está no formato antigo (Base64) ou é inválida. Por favor, utilize uma URL de imagem válida ou faça o upload de um arquivo de foto (limite de 2MB).'
       });
       setUpdatingProfile(false);
       return;
@@ -662,7 +647,7 @@ const App: React.FC = () => {
     try {
       // 1. Atualiza metadados no Auth do Supabase (apenas se o email mudou de fato, comparando case-insensivelmente)
       currentStep = 'verificar-email';
-      const emailChanged = profileEmail && session?.user?.email && 
+      const emailChanged = profileEmail && session?.user?.email &&
         profileEmail.trim().toLowerCase() !== session.user.email.trim().toLowerCase();
 
       const updatePayload: any = {
@@ -680,22 +665,8 @@ const App: React.FC = () => {
 
       currentStep = 'auth.updateUser';
       console.log(`Executando ${currentStep}...`);
-      try {
-        const { error: authError } = await supabase.auth.updateUser(updatePayload);
-        if (authError) {
-          if (emailChanged) {
-            throw authError;
-          }
-          console.warn("Soft failure no auth.updateUser:", authError);
-        } else {
-          console.log("Metadados Auth atualizados com sucesso!");
-        }
-      } catch (authErr: any) {
-        if (emailChanged) {
-          throw authErr;
-        }
-        console.warn("Falha de rede (Failed to fetch) soft no auth.updateUser, prosseguindo para o banco...", authErr);
-      }
+      const { error: authError } = await supabase.auth.updateUser(updatePayload);
+      if (authError) throw authError;
 
       // Buscar a chave primária correta do perfil do usuário (id ou auth_user_id)
       currentStep = 'buscar-perfil-db';
@@ -716,8 +687,6 @@ const App: React.FC = () => {
       currentStep = 'atualizar-perfil-db';
       console.log(`Executando ${currentStep} para o id: ${targetId}`);
       const updateData: any = {
-        id: targetId,
-        auth_user_id: session.user.id,
         nome_completo: profileName,
         email: profileEmail,
         celular_whatsapp: profileWhatsapp,
@@ -727,11 +696,23 @@ const App: React.FC = () => {
 
       const { error: dbError } = await supabase
         .from('profiles')
-        .upsert(updateData);
+        .update(updateData)
+        .eq('id', targetId);
 
       if (dbError) {
-        console.error("Erro ao atualizar profiles:", dbError);
-        throw dbError;
+        currentStep = 'atualizar-perfil-db-fallback';
+        console.warn("Falha ao atualizar avatar_url/celular na tabela, tentando apenas campos básicos...", dbError);
+        // Tenta apenas nome_completo e email caso as outras colunas não existam ou tenham restrições
+        const fallbackData = {
+          nome_completo: profileName,
+          email: profileEmail,
+          updated_at: new Date().toISOString(),
+        };
+        const { error: dbRetryError } = await supabase
+          .from('profiles')
+          .update(fallbackData)
+          .eq('id', targetId);
+        if (dbRetryError) throw dbRetryError;
       }
 
       // Regra de Auditoria: Inserir log manual
@@ -809,9 +790,9 @@ const App: React.FC = () => {
 
     // Client-side file size verification (2MB limit)
     if (file.size > 2 * 1024 * 1024) {
-      setProfileMessage({ 
-        type: 'error', 
-        text: 'A imagem selecionada é muito grande. O limite máximo permitido é de 2MB.' 
+      setProfileMessage({
+        type: 'error',
+        text: 'A imagem selecionada é muito grande. O limite máximo permitido é de 2MB.'
       });
       return;
     }
@@ -1258,6 +1239,7 @@ const App: React.FC = () => {
   const [supabaseData, setSupabaseData] = useState<Pessoa[]>([]);
   const [loadingBubble, setLoadingBubble] = useState(false);
   const [loadingSupabase, setLoadingSupabase] = useState(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
   // Pessoas Filter/Search states
   const [searchBubble, setSearchBubble] = useState('');
@@ -2066,8 +2048,8 @@ const App: React.FC = () => {
     const rawAvatar = userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '';
     // Prevent rendering of legacy Base64 strings in the header icon to save memory/crashes
     const avatarUrlToShow = (rawAvatar && (
-      rawAvatar.startsWith('data:') || 
-      rawAvatar.includes(';base64,') || 
+      rawAvatar.startsWith('data:') ||
+      rawAvatar.includes(';base64,') ||
       (!rawAvatar.startsWith('http') && !rawAvatar.startsWith('from-') && rawAvatar.length > 200)
     )) ? 'from-violet-600 to-indigo-600' : rawAvatar;
 
@@ -2115,12 +2097,12 @@ const App: React.FC = () => {
               setProfileWhatsapp(userProfile?.celular_whatsapp || session?.user?.user_metadata?.celular_whatsapp || '');
               setProfileEmail(session?.user?.email || userProfile?.email || '');
               setProfileRole(userProfile?.role || 'operator');
-              
+
               const storedAvatar = userProfile?.avatar_url || session?.user?.user_metadata?.avatar_url || '';
               // Sanitiza o avatar temporariamente para evitar falhas ao abrir o modal
               const isBase64 = storedAvatar && (
-                storedAvatar.startsWith('data:') || 
-                storedAvatar.includes(';base64,') || 
+                storedAvatar.startsWith('data:') ||
+                storedAvatar.includes(';base64,') ||
                 (!storedAvatar.startsWith('http') && !storedAvatar.startsWith('from-') && storedAvatar.length > 200)
               );
               if (isBase64) {
@@ -2128,7 +2110,7 @@ const App: React.FC = () => {
               } else {
                 setProfileAvatarUrl(storedAvatar);
               }
-              
+
               setProfilePassword('');
               setProfileConfirmPassword('');
               setProfileMessage(null);
@@ -3554,14 +3536,14 @@ const App: React.FC = () => {
         if (entDay >= 1 && entDay <= numDays) {
           const ccName = (ent.nome_centro_custo || '').trim().toUpperCase();
           const value = ent.valor || 0;
-          
+
           const isLavador = ['BOX 01', 'BOX 02', 'BOX 03', 'BOX 04'].includes(ccName);
           const isEstacionamento = ccName === 'ESTACIONAMENTO';
-          
+
           if (isLavador) {
             const fp = supabaseFormaPagamento.find(f => f.id === ent.forma_pagamento_id);
             const fpDesc = (ent.descricao_forma_pagamento || '').trim().toUpperCase();
-            
+
             let isAVista = false;
             if (fp && fp.tipo_transacao) {
               isAVista = fp.tipo_transacao.toUpperCase() === 'À VISTA' || fp.tipo_transacao.toUpperCase() === 'A VISTA';
@@ -3570,7 +3552,7 @@ const App: React.FC = () => {
                 term => fpDesc.includes(term)
               );
             }
-            
+
             if (isAVista) {
               dailyGridData[entDay - 1].lavadorAVista += value;
             } else {
@@ -9344,15 +9326,14 @@ const App: React.FC = () => {
       const limit = 1000;
 
       while (hasMore) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/pessoas?select=*&order=nome_pessoa.asc&limit=${limit}&offset=${offset}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-          }
-        });
-        if (!res.ok) throw new Error('Falha ao buscar do Supabase');
-        const json = await res.json();
-        const records = json || [];
+        const { data, error } = await supabase
+          .from('pessoas')
+          .select('*')
+          .order('nome_pessoa', { ascending: true })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        const records = data || [];
         allRecords = allRecords.concat(records);
 
         if (records.length < limit) {
@@ -9362,8 +9343,10 @@ const App: React.FC = () => {
         }
       }
       setSupabaseData(allRecords);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabase(false);
     }
@@ -9561,17 +9544,17 @@ const App: React.FC = () => {
   const fetchSupabaseVehicles = async () => {
     setLoadingSupabaseVehicles(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/veiculos?select=*&order=placa.asc`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar veículos do Supabase');
-      const json = await res.json();
-      setSupabaseVehicles(json);
+      const { data, error } = await supabase
+        .from('veiculos')
+        .select('*')
+        .order('placa', { ascending: true });
+
+      if (error) throw error;
+      setSupabaseVehicles(data || []);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseVehicles(false);
     }
@@ -9705,17 +9688,17 @@ const App: React.FC = () => {
   const fetchSupabaseCentroCusto = async () => {
     setLoadingSupabaseCentroCusto(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/centrocusto?select=*&order=nome_centro_custo.asc`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar centro de custos do Supabase');
-      const json = await res.json();
-      setSupabaseCentroCusto(json);
+      const { data, error } = await supabase
+        .from('centrocusto')
+        .select('*')
+        .order('nome_centro_custo', { ascending: true });
+
+      if (error) throw error;
+      setSupabaseCentroCusto(data || []);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseCentroCusto(false);
     }
@@ -9844,17 +9827,17 @@ const App: React.FC = () => {
   const fetchSupabaseFormaPagamento = async () => {
     setLoadingSupabaseFormaPagamento(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/formapagamento?select=*&order=descricao.asc`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar formas de pagamento do Supabase');
-      const json = await res.json();
-      setSupabaseFormaPagamento(json);
+      const { data, error } = await supabase
+        .from('formapagamento')
+        .select('*')
+        .order('descricao', { ascending: true });
+
+      if (error) throw error;
+      setSupabaseFormaPagamento(data || []);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseFormaPagamento(false);
     }
@@ -9987,17 +9970,17 @@ const App: React.FC = () => {
   const fetchSupabaseMensalistas = async () => {
     setLoadingSupabaseMensalistas(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/mensalistas?select=*&order=nome_pessoa.asc`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar mensalistas do Supabase');
-      const json = await res.json();
-      setSupabaseMensalistas(json || []);
+      const { data, error } = await supabase
+        .from('mensalistas')
+        .select('*')
+        .order('nome_pessoa', { ascending: true });
+
+      if (error) throw error;
+      setSupabaseMensalistas(data || []);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseMensalistas(false);
     }
@@ -10139,15 +10122,14 @@ const App: React.FC = () => {
       const limit = 1000;
 
       while (hasMore) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/mensalistaparcelas?select=*&order=data_vencimento.asc&limit=${limit}&offset=${offset}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-          }
-        });
-        if (!res.ok) throw new Error('Falha ao buscar parcelas de mensalistas do Supabase');
-        const json = await res.json();
-        const records = json || [];
+        const { data, error } = await supabase
+          .from('mensalistaparcelas')
+          .select('*')
+          .order('data_vencimento', { ascending: true })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        const records = data || [];
         allRecords = allRecords.concat(records);
 
         if (records.length < limit) {
@@ -10157,8 +10139,10 @@ const App: React.FC = () => {
         }
       }
       setSupabaseMensalistaParcelas(allRecords);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseMensalistaParcelas(false);
     }
@@ -10289,17 +10273,17 @@ const App: React.FC = () => {
   const fetchSupabaseMetas = async () => {
     setLoadingSupabaseMetas(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/metas?select=*&order=data_meta.asc`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar metas do Supabase');
-      const json = await res.json();
-      setSupabaseMetas(json || []);
+      const { data, error } = await supabase
+        .from('metas')
+        .select('*')
+        .order('data_meta', { ascending: true });
+
+      if (error) throw error;
+      setSupabaseMetas(data || []);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseMetas(false);
     }
@@ -10438,15 +10422,14 @@ const App: React.FC = () => {
       const limit = 1000;
 
       while (hasMore) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/despesas?select=*&order=data_despesa.asc&limit=${limit}&offset=${offset}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-          }
-        });
-        if (!res.ok) throw new Error('Falha ao buscar despesas do Supabase');
-        const json = await res.json();
-        const records = json || [];
+        const { data, error } = await supabase
+          .from('despesas')
+          .select('*')
+          .order('data_despesa', { ascending: true })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        const records = data || [];
         allRecords = allRecords.concat(records);
 
         if (records.length < limit) {
@@ -10456,8 +10439,10 @@ const App: React.FC = () => {
         }
       }
       setSupabaseDespesas(allRecords);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseDespesas(false);
     }
@@ -10604,15 +10589,14 @@ const App: React.FC = () => {
       const limit = 1000;
 
       while (hasMore) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/entradas?select=*&order=data_entrada.desc&limit=${limit}&offset=${offset}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-          }
-        });
-        if (!res.ok) throw new Error('Falha ao buscar entradas do Supabase');
-        const json = await res.json();
-        const records = json || [];
+        const { data, error } = await supabase
+          .from('entradas')
+          .select('*')
+          .order('data_entrada', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        const records = data || [];
         allRecords = allRecords.concat(records);
 
         if (records.length < limit) {
@@ -10622,8 +10606,10 @@ const App: React.FC = () => {
         }
       }
       setSupabaseEntradas(allRecords);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingSupabaseEntradas(false);
     }
@@ -10639,15 +10625,14 @@ const App: React.FC = () => {
       const limit = 1000;
 
       while (hasMore) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicos?select=*&order=data_os.desc&limit=${limit}&offset=${offset}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-          }
-        });
-        if (!res.ok) throw new Error('Falha ao buscar ordens de serviço do Supabase');
-        const json = await res.json();
-        const records = json || [];
+        const { data, error } = await supabase
+          .from('ordemservicos')
+          .select('*')
+          .order('data_os', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        const records = data || [];
         allRecords = allRecords.concat(records);
 
         if (records.length < limit) {
@@ -10657,8 +10642,10 @@ const App: React.FC = () => {
         }
       }
       setSupabaseOrdemServicos(allRecords);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingOS(false);
     }
@@ -10667,17 +10654,17 @@ const App: React.FC = () => {
   const fetchSupabaseOSSequencias = async () => {
     setLoadingOSSequencias(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicosequencia?select=*&order=ano.desc`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar sequências de O.S. do Supabase');
-      const json = await res.json();
-      setSupabaseOSSequencias(json || []);
+      const { data, error } = await supabase
+        .from('ordemservicosequencia')
+        .select('*')
+        .order('ano', { ascending: false });
+
+      if (error) throw error;
+      setSupabaseOSSequencias(data || []);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingOSSequencias(false);
     }
@@ -10692,15 +10679,14 @@ const App: React.FC = () => {
       const limit = 1000;
 
       while (hasMore) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?select=*&order=numero_laudo.desc&limit=${limit}&offset=${offset}`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-          }
-        });
-        if (!res.ok) throw new Error('Falha ao buscar laudos do Supabase');
-        const json = await res.json();
-        const records = json || [];
+        const { data, error } = await supabase
+          .from('laudos_higienizacao')
+          .select('*')
+          .order('numero_laudo', { ascending: false })
+          .range(offset, offset + limit - 1);
+
+        if (error) throw error;
+        const records = data || [];
         allRecords = allRecords.concat(records);
 
         if (records.length < limit) {
@@ -10710,8 +10696,10 @@ const App: React.FC = () => {
         }
       }
       setSupabaseLaudos(allRecords);
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingLaudos(false);
     }
@@ -10720,22 +10708,23 @@ const App: React.FC = () => {
   const fetchSupabaseLaudoConfig = async () => {
     setLoadingLaudoConfig(true);
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/laudo_config?select=*&id=eq.config`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
-        }
-      });
-      if (!res.ok) throw new Error('Falha ao buscar configuração de laudo do Supabase');
-      const json = await res.json();
-      if (json && json.length > 0) {
-        setLaudoConfig(json[0]);
-        setFormLaudoConfigUltimoNumero(String(json[0].ultimo_numero));
+      const { data, error } = await supabase
+        .from('laudo_config')
+        .select('*')
+        .eq('id', 'config')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        setLaudoConfig(data);
+        setFormLaudoConfigUltimoNumero(String(data.ultimo_numero));
       } else {
         setLaudoConfig(null);
       }
+      setSupabaseError(null);
     } catch (error: any) {
       console.error(error);
+      setSupabaseError(error.message || String(error));
     } finally {
       setLoadingLaudoConfig(false);
     }
@@ -11330,15 +11319,15 @@ const App: React.FC = () => {
             <table class="lacres-table">
               <tr>
                 ${Array.from({ length: 5 }).map((_, idx) => {
-                  const val = lacres[idx] ? lacres[idx] : '';
-                  return `<td>${val}</td>`;
-                }).join('')}
+      const val = lacres[idx] ? lacres[idx] : '';
+      return `<td>${val}</td>`;
+    }).join('')}
               </tr>
               <tr>
                 ${Array.from({ length: 5 }).map((_, idx) => {
-                  const val = lacres[idx + 5] ? lacres[idx + 5] : '';
-                  return `<td>${val}</td>`;
-                }).join('')}
+      const val = lacres[idx + 5] ? lacres[idx + 5] : '';
+      return `<td>${val}</td>`;
+    }).join('')}
               </tr>
             </table>
           </div>
@@ -14288,6 +14277,24 @@ const App: React.FC = () => {
         {/* Top Header */}
         {renderHeader()}
 
+        {supabaseError && (
+          <div className="mx-6 md:mx-8 mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center justify-between gap-3 shadow-md relative z-20">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <div>
+                <p className="font-bold text-sm">Falha de Conexão com o Banco de Dados (Supabase)</p>
+                <p className="text-[10px] text-red-400/80 mt-0.5">{supabaseError}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-[10px] uppercase tracking-wider transition-colors cursor-pointer flex-shrink-0"
+            >
+              Fazer Re-login
+            </button>
+          </div>
+        )}
+
         {/* Workspace Display Area */}
         <main className="flex-1 overflow-hidden p-6 md:p-8 flex flex-col min-h-0 relative">
 
@@ -16190,11 +16197,10 @@ const App: React.FC = () => {
                           setProfileTab(tab.id as any);
                           setProfileMessage(null);
                         }}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                          isActive
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${isActive
                             ? 'bg-violet-600/10 text-violet-400 light-theme:bg-blue-50 light-theme:text-blue-600'
                             : 'text-[#94a3b8] hover:text-white light-theme:text-slate-500 light-theme:hover:text-slate-800 hover:bg-white/5'
-                        }`}
+                          }`}
                       >
                         <Icon className="h-4 w-4" />
                         <span>{tab.label}</span>
@@ -16206,11 +16212,10 @@ const App: React.FC = () => {
                 {/* Form fields pane */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0">
                   {profileMessage && (
-                    <div className={`p-3 rounded-xl mb-4 text-xs flex items-start gap-2 animate-fadeIn ${
-                      profileMessage.type === 'success'
+                    <div className={`p-3 rounded-xl mb-4 text-xs flex items-start gap-2 animate-fadeIn ${profileMessage.type === 'success'
                         ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 light-theme:text-emerald-700 light-theme:bg-emerald-50'
                         : 'bg-red-500/10 border border-red-500/20 text-red-400 light-theme:text-red-700 light-theme:bg-red-50'
-                    }`}>
+                      }`}>
                       {profileMessage.type === 'success' ? <CheckCircle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" />}
                       <span>{profileMessage.text}</span>
                     </div>
@@ -16310,9 +16315,8 @@ const App: React.FC = () => {
                                 setProfileAvatarUrl(av.bg);
                                 setProfileMessage(null);
                               }}
-                              className={`h-11 rounded-xl bg-gradient-to-tr ${av.bg} flex items-center justify-center text-base hover:scale-105 active:scale-95 transition-all cursor-pointer ${
-                                profileAvatarUrl === av.bg ? 'ring-2 ring-cyan-400 border border-white' : 'border border-transparent'
-                              }`}
+                              className={`h-11 rounded-xl bg-gradient-to-tr ${av.bg} flex items-center justify-center text-base hover:scale-105 active:scale-95 transition-all cursor-pointer ${profileAvatarUrl === av.bg ? 'ring-2 ring-cyan-400 border border-white' : 'border border-transparent'
+                                }`}
                               title="Selecionar estilo"
                             >
                               {av.text}
@@ -16426,13 +16430,12 @@ const App: React.FC = () => {
                           userLogs.map((log) => (
                             <div key={log.id} className="p-3 bg-[#090b11]/80 light-theme:bg-slate-50 border border-[#1f2433]/70 light-theme:border-slate-200 rounded-xl flex flex-col gap-1.5 text-xxs leading-relaxed">
                               <div className="flex items-center justify-between font-bold">
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide ${
-                                  log.acao === 'EDITAR_PERFIL'
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide ${log.acao === 'EDITAR_PERFIL'
                                     ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/25'
                                     : log.acao === 'ALTERAR_SENHA'
-                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/25'
-                                    : 'bg-slate-500/10 text-[#94a3b8] border border-[#1f2433]'
-                                }`}>
+                                      ? 'bg-violet-500/10 text-violet-400 border border-violet-500/25'
+                                      : 'bg-slate-500/10 text-[#94a3b8] border border-[#1f2433]'
+                                  }`}>
                                   {log.acao}
                                 </span>
                                 <span className="text-[#64748b] text-[9px]">
