@@ -665,8 +665,22 @@ const App: React.FC = () => {
 
       currentStep = 'auth.updateUser';
       console.log(`Executando ${currentStep}...`);
-      const { error: authError } = await supabase.auth.updateUser(updatePayload);
-      if (authError) throw authError;
+      try {
+        const { error: authError } = await supabase.auth.updateUser(updatePayload);
+        if (authError) {
+          if (emailChanged) {
+            throw authError;
+          }
+          console.warn("Soft failure no auth.updateUser:", authError);
+        } else {
+          console.log("Metadados Auth atualizados com sucesso!");
+        }
+      } catch (authErr: any) {
+        if (emailChanged) {
+          throw authErr;
+        }
+        console.warn("Falha de rede (Failed to fetch) soft no auth.updateUser, prosseguindo para o banco...", authErr);
+      }
 
       // Buscar a chave primária correta do perfil do usuário (id ou auth_user_id)
       currentStep = 'buscar-perfil-db';
