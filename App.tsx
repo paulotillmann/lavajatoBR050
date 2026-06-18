@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Label, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import carretaImg from './logos/carreta.png';
 import {
   Database,
@@ -1888,13 +1891,13 @@ const App: React.FC = () => {
                   setIsCadastrosOpen(false);
                 }
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['migracoes', 'os_sequence'].includes(currentTab)
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['os_sequence', 'laudo_sequence'].includes(currentTab)
                 ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                 : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
                 }`}
             >
               <div className="flex items-center gap-3">
-                <Settings className={`h-4.5 w-4.5 ${['migracoes', 'os_sequence'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
+                <Settings className={`h-4.5 w-4.5 ${['os_sequence', 'laudo_sequence'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
                 <span>Configurações</span>
               </div>
               {isConfigOpen ? (
@@ -1905,23 +1908,13 @@ const App: React.FC = () => {
             </button>
 
             <AnimatePresence>
-              {(isConfigOpen || currentTab === 'migracoes' || currentTab === 'os_sequence' || currentTab === 'laudo_sequence') && (
+              {(isConfigOpen || currentTab === 'os_sequence' || currentTab === 'laudo_sequence') && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   className="pl-9 overflow-hidden flex flex-col gap-1 py-1"
                 >
-                  <button
-                    onClick={() => setCurrentTab('migracoes')}
-                    className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'migracoes'
-                      ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
-                      : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
-                      }`}
-                  >
-                    <Cloud className="h-4.5 w-4.5" />
-                    <span>Migrações Bubble.io</span>
-                  </button>
 
                   <button
                     onClick={() => setCurrentTab('os_sequence')}
@@ -3575,6 +3568,286 @@ const App: React.FC = () => {
     const totalEstacionamento = dailyGridData.reduce((sum, row) => sum + row.estacionamento, 0);
     const totalGeral = totalLavadorAVista + totalLavadorAPrazo + totalEstacionamento;
 
+    const exportDailyGridPDF = () => {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const monthNames = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+      ];
+      const monthLabel = monthNames[selectedMonth - 1] + ' de ' + selectedYear;
+      
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Relatório de Entradas por Centro de Custos', 12, 12);
+      
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text(`Período: ${monthLabel}`, 12, 17);
+      doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 12, 22);
+
+      const tableHeaders = [
+        [
+          { content: 'Data', rowSpan: 2, styles: { valign: 'middle', halign: 'left' } },
+          { content: 'Lavador', colSpan: 2, styles: { halign: 'center' } },
+          { content: 'Estacionamento', rowSpan: 2, styles: { valign: 'middle', halign: 'center' } },
+          { content: 'Total Diário', rowSpan: 2, styles: { valign: 'middle', halign: 'right' } }
+        ],
+        [
+          { content: 'À Vista', styles: { halign: 'center' } },
+          { content: 'À Prazo', styles: { halign: 'center' } }
+        ]
+      ];
+
+      const tableRows = dailyGridData.map(row => {
+        const isRowEmpty = row.lavadorAVista === 0 && row.lavadorAPrazo === 0 && row.estacionamento === 0;
+        return [
+          row.label,
+          row.lavadorAVista > 0 ? formatValue(row.lavadorAVista) : '',
+          row.lavadorAPrazo > 0 ? formatValue(row.lavadorAPrazo) : '',
+          row.estacionamento > 0 ? formatValue(row.estacionamento) : '',
+          !isRowEmpty ? formatValue(row.total) : ''
+        ];
+      });
+
+      tableRows.push([
+        'Total Geral',
+        formatValue(totalLavadorAVista),
+        formatValue(totalLavadorAPrazo),
+        formatValue(totalEstacionamento),
+        formatValue(totalGeral)
+      ]);
+
+      autoTable(doc, {
+        startY: 26,
+        margin: { top: 12, bottom: 12, left: 12, right: 12 },
+        head: tableHeaders,
+        body: tableRows,
+        theme: 'striped',
+        styles: {
+          cellPadding: 1.0,
+          fontSize: 7.5,
+        },
+        headStyles: {
+          fillColor: [14, 17, 26],
+          textColor: [255, 255, 255],
+          fontSize: 8,
+          fontStyle: 'bold',
+          cellPadding: 1.2
+        },
+        bodyStyles: {
+          textColor: [51, 65, 85]
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        columnStyles: {
+          0: { cellWidth: 26, halign: 'left', fontStyle: 'bold' },
+          1: { cellWidth: 40, halign: 'center' },
+          2: { cellWidth: 40, halign: 'center' },
+          3: { cellWidth: 40, halign: 'center' },
+          4: { cellWidth: 40, halign: 'right', fontStyle: 'bold' }
+        },
+        didParseCell: (data: any) => {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [226, 232, 240];
+            data.cell.styles.textColor = [15, 23, 42];
+          }
+        }
+      });
+
+      doc.save(`entradas-centro-custos-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`);
+    };
+
+    const exportChartPDF = async () => {
+      const element = document.getElementById('entradas-box-chart-container');
+      if (!element) return;
+
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+          scale: 2,
+          useCORS: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const monthNames = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthLabel = monthNames[selectedMonth - 1] + ' de ' + selectedYear;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('Gráfico de Entradas por Box', 15, 15);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Período: ${monthLabel} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 15, 21);
+
+        const imgWidth = 267; // Largura útil A4 Paisagem (297 - 30)
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        doc.addImage(imgData, 'PNG', 15, 28, imgWidth, imgHeight);
+
+        doc.save(`grafico-entradas-box-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar PDF do gráfico:', err);
+        alert('Erro ao gerar PDF do gráfico. Veja o console para detalhes.');
+      }
+    };
+
+    const exportFluxoOperacionalPDF = async () => {
+      const element = document.getElementById('fluxo-operacional-chart-container');
+      if (!element) return;
+
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+          scale: 2,
+          useCORS: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('Gráfico de Fluxo Operacional (Receitas vs Despesas)', 15, 15);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Ano: ${selectedYear} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 15, 21);
+
+        const imgWidth = 267; // Largura útil A4 Paisagem (297 - 30)
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        doc.addImage(imgData, 'PNG', 15, 28, imgWidth, imgHeight);
+
+        doc.save(`grafico-fluxo-operacional-${selectedYear}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar PDF do gráfico de fluxo operacional:', err);
+        alert('Erro ao gerar PDF do gráfico de fluxo operacional. Veja o console para detalhes.');
+      }
+    };
+
+    const exportFaturamentoPizzaPDF = async () => {
+      const element = document.getElementById('faturamento-pizza-chart-container');
+      if (!element) return;
+
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+          scale: 2,
+          useCORS: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const monthNames = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthLabel = monthNames[selectedMonth - 1] + ' de ' + selectedYear;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text('Relatório de Faturamento Estacionamento & Box', 12, 12);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Período: ${monthLabel} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 12, 17);
+
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(12, 20, 198, 20);
+
+        const imgWidth = 145; 
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const xPosition = (210 - imgWidth) / 2; 
+
+        doc.addImage(imgData, 'PNG', xPosition, 25, imgWidth, imgHeight);
+
+        doc.save(`relatorio-faturamento-setores-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar relatório de faturamento:', err);
+        alert('Erro ao gerar relatório de faturamento. Veja o console para detalhes.');
+      }
+    };
+
+    const exportDespesasCCPDF = async () => {
+      const element = document.getElementById('despesas-cc-chart-container');
+      if (!element) return;
+
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+          scale: 2,
+          useCORS: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const monthNames = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthLabel = monthNames[selectedMonth - 1] + ' de ' + selectedYear;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(15);
+        doc.text('Relatório de Despesas por Centro de Custos', 12, 12);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(`Período: ${monthLabel} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 12, 17);
+
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.line(12, 20, 198, 20);
+
+        const imgWidth = 145; 
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const xPosition = (210 - imgWidth) / 2; 
+
+        doc.addImage(imgData, 'PNG', xPosition, 25, imgWidth, imgHeight);
+
+        doc.save(`relatorio-despesas-centro-custos-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar relatório de despesas:', err);
+        alert('Erro ao gerar relatório de despesas. Veja o console para detalhes.');
+      }
+    };
+
     return (
       <div className="h-full overflow-y-auto pt-4 pr-2 pb-6 custom-scrollbar flex flex-col gap-6 w-full relative">
         {/* Filter Area at the Top */}
@@ -3758,6 +4031,14 @@ const App: React.FC = () => {
                   <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Entradas diárias</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <button
+                    onClick={exportChartPDF}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-white text-[10px] font-bold tracking-wide transition-all shadow-sm shadow-cyan-500/10 active:scale-95"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Imprimir Gráfico</span>
+                  </button>
+
                   {/* Detailed/Simplified buttons group */}
                   <div className="flex bg-[#090b11] light-theme:bg-slate-100 p-0.5 rounded-full border border-[#1f2433] light-theme:border-slate-200">
                     <button
@@ -3784,67 +4065,70 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Legends */}
-              <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-3 bg-[#2563eb] rounded-sm" style={{ backgroundColor: '#2563eb' }} />
-                  <span>BOX 01</span>
+              {/* CONTAINER QUE VAMOS CAPTURAR (Gráfico + Legendas) */}
+              <div id="entradas-box-chart-container" className="flex flex-col gap-4 bg-[#0e111a] light-theme:bg-white p-2 rounded-xl">
+                {/* Legends */}
+                <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#2563eb] rounded-sm" style={{ backgroundColor: '#2563eb' }} />
+                    <span>BOX 01</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#93c5fd] rounded-sm" style={{ backgroundColor: '#93c5fd' }} />
+                    <span>BOX 02</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#1e3a8a] rounded-sm" style={{ backgroundColor: '#1e3a8a' }} />
+                    <span>BOX 03</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#94a3b8] rounded-sm" style={{ backgroundColor: '#94a3b8' }} />
+                    <span>BOX 04</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-3 bg-[#93c5fd] rounded-sm" style={{ backgroundColor: '#93c5fd' }} />
-                  <span>BOX 02</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-3 bg-[#1e3a8a] rounded-sm" style={{ backgroundColor: '#1e3a8a' }} />
-                  <span>BOX 03</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-3 bg-[#94a3b8] rounded-sm" style={{ backgroundColor: '#94a3b8' }} />
-                  <span>BOX 04</span>
-                </div>
-              </div>
 
-              {/* Recharts Grouped or Stacked Bar Chart */}
-              <div className="w-full overflow-x-auto custom-scrollbar">
-                <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={displayBoxData} barCategoryGap="15%" barGap={1} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="day"
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 9, fontWeight: 'bold' }}
-                        tickMargin={10}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 9, fontWeight: 'bold' }}
-                        tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
-                        width={55}
-                      />
-                      <Tooltip
-                        formatter={(value: any, name: string) => [
-                          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                          name
-                        ]}
-                        contentStyle={{
-                          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
-                          borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
-                          borderRadius: '12px',
-                          color: theme === 'dark' ? '#fff' : '#1e293b',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Bar dataKey="BOX 01" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#2563eb" radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="BOX 02" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#93c5fd" radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="BOX 03" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#1e3a8a" radius={[2, 2, 0, 0]} />
-                      <Bar dataKey="BOX 04" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#94a3b8" radius={[2, 2, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                {/* Recharts Grouped or Stacked Bar Chart */}
+                <div className="w-full overflow-x-auto custom-scrollbar">
+                  <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={displayBoxData} barCategoryGap="15%" barGap={1} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="day"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 9, fontWeight: 'bold' }}
+                          tickMargin={10}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 9, fontWeight: 'bold' }}
+                          tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
+                          width={55}
+                        />
+                        <Tooltip
+                          formatter={(value: any, name: string) => [
+                            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                            name
+                          ]}
+                          contentStyle={{
+                            backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+                            borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
+                            borderRadius: '12px',
+                            color: theme === 'dark' ? '#fff' : '#1e293b',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          }}
+                        />
+                        <Bar dataKey="BOX 01" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#2563eb" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="BOX 02" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#93c5fd" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="BOX 03" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#1e3a8a" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="BOX 04" stackId={entradasBoxViewMode === 'simplificado' ? 'a' : undefined} fill="#94a3b8" radius={[2, 2, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3857,59 +4141,69 @@ const App: React.FC = () => {
                   <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Fluxo Operacional</h3>
                   <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Demonstrativo comparativo anual de Receitas vs Despesas em tempo real.</p>
                 </div>
+                <button
+                  onClick={exportFluxoOperacionalPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-white text-[10px] font-bold tracking-wide transition-all shadow-sm shadow-cyan-500/10 active:scale-95"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Imprimir Gráfico</span>
+                </button>
               </div>
 
-              {/* Legends */}
-              <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-3 bg-[#10b981] rounded-sm" style={{ backgroundColor: '#10b981' }} />
-                  <span>Entradas</span>
+              {/* CONTAINER QUE VAMOS CAPTURAR (Fluxo Operacional + Legendas) */}
+              <div id="fluxo-operacional-chart-container" className="flex flex-col gap-4 bg-[#0e111a] light-theme:bg-white p-2 rounded-xl">
+                {/* Legends */}
+                <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#10b981] rounded-sm" style={{ backgroundColor: '#10b981' }} />
+                    <span>Entradas</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#f43f5e] rounded-sm" style={{ backgroundColor: '#f43f5e' }} />
+                    <span>Despesas</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="h-2.5 w-3 bg-[#f43f5e] rounded-sm" style={{ backgroundColor: '#f43f5e' }} />
-                  <span>Despesas</span>
-                </div>
-              </div>
 
-              {/* Pure SVG Grouped Bar Chart */}
-              <div className="w-full overflow-x-auto custom-scrollbar">
-                <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={displayCashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="month"
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
-                        tickMargin={10}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
-                        tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
-                        width={55}
-                      />
-                      <Tooltip
-                        formatter={(value: any, name: string) => [
-                          new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                          name === 'entradas' ? 'Entradas' : 'Despesas'
-                        ]}
-                        contentStyle={{
-                          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
-                          borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
-                          borderRadius: '12px',
-                          color: theme === 'dark' ? '#fff' : '#1e293b',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Bar dataKey="entradas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="despesas" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                {/* Pure SVG Grouped Bar Chart */}
+                <div className="w-full overflow-x-auto custom-scrollbar">
+                  <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={displayCashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="month"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                          tickMargin={10}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                          tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
+                          width={55}
+                        />
+                        <Tooltip
+                          formatter={(value: any, name: string) => [
+                            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                            name === 'entradas' ? 'Entradas' : 'Despesas'
+                          ]}
+                          contentStyle={{
+                            backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+                            borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
+                            borderRadius: '12px',
+                            color: theme === 'dark' ? '#fff' : '#1e293b',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          }}
+                        />
+                        <Bar dataKey="entradas" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="despesas" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3921,6 +4215,13 @@ const App: React.FC = () => {
                   <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Entradas por Centro de Custos</h3>
                   <p className="text-[10px] text-[#64748b] mt-1.5 leading-none">Entradas diárias (Lavador e Estacionamento)</p>
                 </div>
+                <button
+                  onClick={exportDailyGridPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-white text-[10px] font-bold tracking-wide transition-all shadow-sm shadow-cyan-500/10 active:scale-95"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Gerar Relatório PDF</span>
+                </button>
               </div>
 
               <div className="overflow-y-auto max-h-[480px] pr-1 w-full border border-[#1f2433]/40 light-theme:border-slate-100 rounded-xl custom-scrollbar">
@@ -3979,12 +4280,21 @@ const App: React.FC = () => {
 
             {/* Apple Activity concentric rings breakdown */}
             <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-5">
-              <div>
-                <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Despesas por Centro de Custos</h3>
-                <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">Divisão proporcional das despesas no caixa agrupada por centro de custo.</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Despesas por Centro de Custos</h3>
+                  <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">Divisão proporcional das despesas no caixa agrupada por centro de custo.</p>
+                </div>
+                <button
+                  onClick={exportDespesasCCPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-white text-[10px] font-bold tracking-wide transition-all shadow-sm shadow-cyan-500/10 active:scale-95 flex-shrink-0"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Imprimir Relatório</span>
+                </button>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
+              <div id="despesas-cc-chart-container" className="w-full flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
                 <svg className="w-52 h-52 animate-fadeIn" viewBox="0 0 120 120">
                   {ccsFinalData.slice(0, 8).map((item, idx) => {
                     const r = 52 - idx * 5.5;
@@ -4027,14 +4337,14 @@ const App: React.FC = () => {
                   })}
                 </svg>
 
-                <div className="w-full mt-4 flex flex-col gap-2.5 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-xs font-medium text-[#94a3b8] light-theme:text-slate-600">
+                <div className="w-full mt-4 flex flex-col gap-2 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-[12px] font-semibold text-[#94a3b8] light-theme:text-slate-600">
                   {ccsFinalData.map((item, idx) => {
                     const color = getRedShadeByValue(item.total, maxCCVal);
                     return (
                       <div key={idx} className="flex items-center justify-between hover:bg-white/5 light-theme:hover:bg-slate-100/50 p-1.5 rounded transition-colors">
-                        <div className="flex items-center gap-2 truncate">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                          <span className="truncate uppercase font-bold text-white light-theme:text-slate-700">{item.ccName}</span>
+                          <span className="uppercase font-bold text-white light-theme:text-slate-700 text-[12px] leading-normal">{item.ccName}</span>
                         </div>
                         <div className="font-bold text-[#f43f5e] dark:text-[#fca5a5] flex-shrink-0 flex items-center gap-1.5">
                           <span>{item.percentage.toFixed(1)}%</span>
@@ -4057,6 +4367,13 @@ const App: React.FC = () => {
                   <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">Faturamento Estacionamento & Box</h3>
                   <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">Faturamento mensal consolidado dos setores de estacionamento e boxes.</p>
                 </div>
+                <button
+                  onClick={exportFaturamentoPizzaPDF}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-white text-[10px] font-bold tracking-wide transition-all shadow-sm shadow-cyan-500/10 active:scale-95 flex-shrink-0 mr-1"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Imprimir Relatório</span>
+                </button>
                 <div className="flex items-center gap-3">
                   <div className="flex bg-[#090b11] light-theme:bg-slate-100 p-0.5 rounded-full border border-[#1f2433] light-theme:border-slate-200">
                     <button
@@ -4083,7 +4400,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
+              <div id="faturamento-pizza-chart-container" className="w-full flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
                 <div className="relative w-[238px] h-[238px] flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -4164,14 +4481,14 @@ const App: React.FC = () => {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="w-full mt-4 flex flex-col gap-2.5 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-xs font-medium text-[#94a3b8] light-theme:text-slate-600">
+                <div className="w-full mt-4 flex flex-col gap-2 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-[12px] font-semibold text-[#94a3b8] light-theme:text-slate-600">
                   {pieDataList.map((item, idx) => {
                     const percentage = (item.value / totalPieValue) * 100;
                     return (
                       <div key={idx} className="flex items-center justify-between hover:bg-white/5 light-theme:hover:bg-slate-100/50 p-1.5 rounded transition-colors">
-                        <div className="flex items-center gap-2 truncate">
+                        <div className="flex items-center gap-2 min-w-0">
                           <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                          <span className="truncate uppercase font-bold text-white light-theme:text-slate-700">{item.name}</span>
+                          <span className="uppercase font-bold text-white light-theme:text-slate-700 text-[12px] leading-normal">{item.name}</span>
                         </div>
                         <div className="font-bold text-[#10b981] light-theme:text-[#10b981] flex-shrink-0 flex items-center gap-1.5">
                           <span>{percentage.toFixed(1)}%</span>
@@ -4330,14 +4647,14 @@ const App: React.FC = () => {
       return null;
     };
 
-    // 1. Cálculos dos Indicadores (com base no supabaseEntradas geral)
+    // 1. Cálculos dos Indicadores
     const todayObj = new Date();
     const todayYear = todayObj.getFullYear();
     const todayMonth = todayObj.getMonth();
     const todayDate = todayObj.getDate();
 
     // Entradas do Dia (Comparação local segura de data)
-    const entradasDoDia = supabaseEntradas
+    const entradasDoDia = filteredSupabaseEntradas
       .filter(item => {
         const itemDate = item.data_entrada ? parseLocalJSDate(item.data_entrada) : null;
         if (!itemDate) return false;
@@ -4357,7 +4674,7 @@ const App: React.FC = () => {
       return { start, end };
     };
     const { start: weekStart, end: weekEnd } = getWeekRange();
-    const entradasDaSemana = supabaseEntradas
+    const entradasDaSemana = filteredSupabaseEntradas
       .filter(item => {
         const itemDate = item.data_entrada ? parseLocalJSDate(item.data_entrada) : null;
         if (!itemDate) return false;
@@ -4366,7 +4683,7 @@ const App: React.FC = () => {
       .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
     // Entradas do Mês (Mês atual local)
-    const entradasDoMes = supabaseEntradas
+    const entradasDoMes = filteredSupabaseEntradas
       .filter(item => {
         const itemDate = item.data_entrada ? parseLocalJSDate(item.data_entrada) : null;
         if (!itemDate) return false;
@@ -4376,10 +4693,37 @@ const App: React.FC = () => {
       .reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
     // Média por Lançamento (Desconsidera lançamentos zerados/sem valor)
-    const validEntradas = supabaseEntradas.filter(item => item.valor && item.valor > 0);
+    const validEntradas = filteredSupabaseEntradas.filter(item => item.valor && item.valor > 0);
     const mediaPorLancamento = validEntradas.length > 0
       ? (validEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / validEntradas.length)
       : 0;
+
+    // Lógica para alternar cartões baseada no Filtro de Período
+    const isPeriodoFilterActive = !!(periodoInicioEntradas || periodoFimEntradas);
+    const totalSumEntradas = filteredSupabaseEntradas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    const uniqueDaysEntradas = new Set(
+      filteredSupabaseEntradas.map(item => item.data_entrada ? item.data_entrada.split('T')[0] : '')
+        .filter(Boolean)
+    ).size || 1;
+    const mediaDiariaEntradas = totalSumEntradas / uniqueDaysEntradas;
+    const countEntradas = filteredSupabaseEntradas.length;
+    const mediaPorLancamentoEntradas = countEntradas > 0 ? totalSumEntradas / countEntradas : 0;
+
+    const labelCard1 = isPeriodoFilterActive ? 'TOTAL DO PERÍODO' : 'ENTRADAS DO DIA';
+    const valCard1 = isPeriodoFilterActive ? totalSumEntradas : entradasDoDia;
+    const descCard1 = isPeriodoFilterActive ? 'Soma das receitas no período' : 'Receitas de hoje';
+
+    const labelCard2 = isPeriodoFilterActive ? 'MÉDIA DIÁRIA' : 'ENTRADAS DA SEMANA';
+    const valCard2 = isPeriodoFilterActive ? mediaDiariaEntradas : entradasDaSemana;
+    const descCard2 = isPeriodoFilterActive ? 'Média por dia com lançamentos' : 'Faturamento da semana';
+
+    const labelCard3 = isPeriodoFilterActive ? 'TOTAL DE LANÇAMENTOS' : 'ENTRADAS DO MÊS';
+    const valCard3 = isPeriodoFilterActive ? countEntradas : entradasDoMes;
+    const descCard3 = isPeriodoFilterActive ? 'Quantidade de receitas' : 'Acumulado mensal';
+
+    const labelCard4 = 'MÉDIA POR LANÇAMENTO';
+    const valCard4 = isPeriodoFilterActive ? mediaPorLancamentoEntradas : mediaPorLancamento;
+    const descCard4 = 'Valor médio recebido';
 
     // 2. Ordenação e Paginação dos Itens Filtrados
     const sortedSupabaseEntradas = [...filteredSupabaseEntradas].sort((a, b) => {
@@ -4395,58 +4739,235 @@ const App: React.FC = () => {
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = sortedSupabaseEntradas.slice(indexOfFirstItem, indexOfLastItem);
 
+    const exportEntradasGridPDF = () => {
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 297;
+      const pageHeight = 210;
+      const margin = 12;
+
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Relatório de Entradas (Receitas)', margin, 12);
+
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      const formatDateLocal = (dateStr?: string) => {
+        if (!dateStr) return 'N/A';
+        const cleanDate = dateStr.split('T')[0].split(' ')[0];
+        const parts = cleanDate.split('-');
+        if (parts.length === 3) {
+          return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+        return dateStr;
+      };
+
+      let filterText = '';
+      if (selectedCentroCustoEntradas) {
+        const ccName = supabaseCentroCusto.find(cc => cc.id === selectedCentroCustoEntradas)?.nome_centro_custo || 'N/A';
+        filterText += `Centro de Custo: ${ccName} | `;
+      }
+      if (periodoInicioEntradas || periodoFimEntradas) {
+        const start = periodoInicioEntradas ? formatDateLocal(periodoInicioEntradas) : 'Início';
+        const end = periodoFimEntradas ? formatDateLocal(periodoFimEntradas) : 'Fim';
+        filterText += `Período: ${start} até ${end} | `;
+      } else {
+        filterText += 'Período: Mês atual | ';
+      }
+      if (searchSupabaseEntradas) {
+        filterText += `Busca: "${searchSupabaseEntradas}" | `;
+      }
+      filterText += `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
+      
+      doc.text(filterText, margin, 17);
+
+      const formatCurrency = (val: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+      };
+
+      // 1. Mini-tabela de Indicadores
+      const indicatorsHeaders = [
+        [labelCard1, labelCard2, labelCard3, labelCard4]
+      ];
+      const indicatorsRows = [
+        [
+          formatCurrency(valCard1),
+          isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : formatCurrency(valCard2),
+          isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR').format(valCard3) : formatCurrency(valCard3),
+          formatCurrency(valCard4)
+        ]
+      ];
+
+      autoTable(doc, {
+        startY: 21,
+        margin: { top: margin, bottom: margin, left: margin, right: margin },
+        head: indicatorsHeaders,
+        body: indicatorsRows,
+        theme: 'grid',
+        styles: {
+          cellPadding: 1.8,
+          fontSize: 8.5,
+          halign: 'center',
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: [14, 17, 26],
+          textColor: [255, 255, 255],
+          fontSize: 7.5,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          textColor: [17, 24, 39],
+          fontStyle: 'bold',
+          fontSize: 9.5
+        },
+        columnStyles: {
+          0: { cellWidth: 68 },
+          1: { cellWidth: 68 },
+          2: { cellWidth: 68 },
+          3: { cellWidth: 69 }
+        }
+      });
+
+      const nextY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 6 : 42;
+
+      // 2. Tabela Principal do Grid
+      const tableHeaders = [
+        ['Data', 'Centro de Custo', 'Referente a', 'Forma de Pagamento', 'Valor', 'Placa', 'Pessoa Pagante']
+      ];
+
+      const tableRows = sortedSupabaseEntradas.map(item => {
+        const dateFormatted = formatDateLocal(item.data_entrada);
+        const ccName = item.nome_centro_custo || 'Operacional Geral';
+        const description = item.descricao_entrada || 'Serviço Lavatório';
+        const paymentMethod = item.descricao_forma_pagamento || 'N/A';
+        const plate = item.placa_veiculo || '';
+        const person = item.nome_pessoa || '';
+        const valueFormatted = formatCurrency(item.valor || 0);
+
+        return [dateFormatted, ccName, description, paymentMethod, valueFormatted, plate, person];
+      });
+
+      const totalSum = sortedSupabaseEntradas.reduce((sum, item) => sum + (item.valor || 0), 0);
+      tableRows.push([
+        'Total Geral',
+        '',
+        '',
+        '',
+        formatCurrency(totalSum),
+        '',
+        ''
+      ]);
+
+      autoTable(doc, {
+        startY: nextY,
+        margin: { top: margin, bottom: margin, left: margin, right: margin },
+        head: tableHeaders,
+        body: tableRows,
+        theme: 'striped',
+        styles: {
+          cellPadding: 1.5,
+          fontSize: 8,
+        },
+        headStyles: {
+          fillColor: [14, 17, 26],
+          textColor: [255, 255, 255],
+          fontSize: 8.5,
+          fontStyle: 'bold',
+          cellPadding: 1.8
+        },
+        bodyStyles: {
+          textColor: [51, 65, 85]
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        columnStyles: {
+          0: { cellWidth: 22, halign: 'left' }, // Data
+          1: { cellWidth: 40, halign: 'left' }, // Centro de Custo
+          2: { cellWidth: 65, halign: 'left' }, // Referente a
+          3: { cellWidth: 40, halign: 'left' }, // Forma de Pagamento
+          4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' }, // Valor
+          5: { cellWidth: 26, halign: 'center', fontStyle: 'bold' }, // Placa
+          6: { cellWidth: 50, halign: 'left' } // Pessoa Pagante
+        },
+        didParseCell: (data: any) => {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [226, 232, 240];
+            data.cell.styles.textColor = [15, 23, 42];
+          }
+        },
+        didDrawPage: (data: any) => {
+          const pageCount = (doc as any).internal.getNumberOfPages();
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 100, 100);
+          const str = `Página ${data.pageNumber} de ${pageCount}`;
+          doc.text(str, pageWidth / 2, pageHeight - 7, { align: 'center' });
+        }
+      });
+
+      doc.save(`relatorio-entradas-${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Aggregated Finance Stats header */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
           {/* Entradas do Dia */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DO DIA</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard1}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoDia) : 'R$ ••••••'}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard1) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <TrendingUp className="h-3.5 w-3.5" />
-              <span>Receitas de hoje</span>
+              <span>{descCard1}</span>
             </div>
             <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Entradas da Semana */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DA SEMANA</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard2}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDaSemana) : 'R$ ••••••'}
+              {isPeriodoFilterActive ? (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••') : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••')}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
               <Calendar className="h-3.5 w-3.5" />
-              <span>Faturamento da semana</span>
+              <span>{descCard2}</span>
             </div>
             <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Entradas do Mês */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ENTRADAS DO MÊS</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard3}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(entradasDoMes) : 'R$ ••••••'}
+              {isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR').format(valCard3) : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard3) : 'R$ ••••••')}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Wallet className="h-3.5 w-3.5" />
-              <span>Acumulado mensal</span>
+              <span>{descCard3}</span>
             </div>
             <Wallet className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Média por Lançamento */}
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MÉDIA POR LANÇAMENTO</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard4}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaPorLancamento) : 'R$ ••••••'}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard4) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
               <Activity className="h-3.5 w-3.5" />
-              <span>Valor médio recebido</span>
+              <span>{descCard4}</span>
             </div>
             <Activity className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
@@ -4662,6 +5183,17 @@ const App: React.FC = () => {
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Nova Entrada</span>
+                  </button>
+
+                  {/* Botão para Gerar Relatório PDF */}
+                  <button
+                    type="button"
+                    onClick={exportEntradasGridPDF}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-[#161924] hover:bg-[#1f2433] light-theme:bg-slate-100 light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 border border-[#1f2433] light-theme:border-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                    title="Exportar PDF do Grid"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Relatório PDF</span>
                   </button>
 
                   {/* Filtro por Centro de Custos */}
@@ -5035,7 +5567,7 @@ const App: React.FC = () => {
     const todayDate = todayObj.getDate();
 
     // Despesas do dia (soma das despesas do dia)
-    const despesasDia = supabaseDespesas.reduce((acc, curr) => {
+    const despesasDia = filteredSupabaseDespesas.reduce((acc, curr) => {
       const itemDate = curr.data_despesa ? parseLocalJSDate(curr.data_despesa) : null;
       if (!itemDate) return acc;
       if (itemDate.getFullYear() === todayYear &&
@@ -5058,7 +5590,7 @@ const App: React.FC = () => {
     const { start: weekStart, end: weekEnd } = getWeekRange();
 
     // Despesas da semana (soma das despesas da semana)
-    const despesasSemana = supabaseDespesas.reduce((acc, curr) => {
+    const despesasSemana = filteredSupabaseDespesas.reduce((acc, curr) => {
       const itemDate = curr.data_despesa ? parseLocalJSDate(curr.data_despesa) : null;
       if (!itemDate) return acc;
       if (itemDate >= weekStart && itemDate <= weekEnd) {
@@ -5068,7 +5600,7 @@ const App: React.FC = () => {
     }, 0);
 
     // Despesas do mês (soma das despesas do mês)
-    const despesasMes = supabaseDespesas.reduce((acc, curr) => {
+    const despesasMes = filteredSupabaseDespesas.reduce((acc, curr) => {
       const itemDate = curr.data_despesa ? parseLocalJSDate(curr.data_despesa) : null;
       if (!itemDate) return acc;
       if (itemDate.getFullYear() === todayYear && itemDate.getMonth() === todayMonth) {
@@ -5078,10 +5610,37 @@ const App: React.FC = () => {
     }, 0);
 
     // Média por lançamento (média real desconsiderando valores zerados)
-    const validDespesas = supabaseDespesas.filter(item => item.valor && item.valor > 0);
+    const validDespesas = filteredSupabaseDespesas.filter(item => item.valor && item.valor > 0);
     const mediaLancamento = validDespesas.length > 0
       ? (validDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0) / validDespesas.length)
       : 0;
+
+    // Lógica para alternar cartões baseada no Filtro de Período
+    const isPeriodoFilterActive = !!(periodoInicioDespesas || periodoFimDespesas);
+    const totalSumDespesas = filteredSupabaseDespesas.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    const uniqueDaysDespesas = new Set(
+      filteredSupabaseDespesas.map(item => item.data_despesa ? item.data_despesa.split('T')[0] : '')
+        .filter(Boolean)
+    ).size || 1;
+    const mediaDiariaDespesas = totalSumDespesas / uniqueDaysDespesas;
+    const countDespesas = filteredSupabaseDespesas.length;
+    const mediaPorLancamentoDespesas = countDespesas > 0 ? totalSumDespesas / countDespesas : 0;
+
+    const labelCard1 = isPeriodoFilterActive ? 'TOTAL DO PERÍODO' : 'DESPESAS DO DIA';
+    const valCard1 = isPeriodoFilterActive ? totalSumDespesas : despesasDia;
+    const descCard1 = isPeriodoFilterActive ? 'Soma das despesas no período' : 'Despesas de hoje';
+
+    const labelCard2 = isPeriodoFilterActive ? 'MÉDIA DIÁRIA' : 'DESPESAS DA SEMANA';
+    const valCard2 = isPeriodoFilterActive ? mediaDiariaDespesas : despesasSemana;
+    const descCard2 = isPeriodoFilterActive ? 'Média por dia com lançamentos' : 'Despesas da semana';
+
+    const labelCard3 = isPeriodoFilterActive ? 'TOTAL DE LANÇAMENTOS' : 'DESPESAS DO MÊS';
+    const valCard3 = isPeriodoFilterActive ? countDespesas : despesasMes;
+    const descCard3 = isPeriodoFilterActive ? 'Quantidade de despesas' : 'Acumulado mensal';
+
+    const labelCard4 = 'MÉDIA POR LANÇAMENTO';
+    const valCard4 = isPeriodoFilterActive ? mediaPorLancamentoDespesas : mediaLancamento;
+    const descCard4 = 'Valor médio das despesas';
 
     // Pagination calculations
     const indexOfLastItem = currentPageDespesas * 10;
@@ -5100,54 +5659,219 @@ const App: React.FC = () => {
       return new Date(dateStr).toLocaleDateString('pt-BR');
     };
 
+    const exportDespesasGridPDF = () => {
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 297;
+      const pageHeight = 210;
+      const margin = 12;
+
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text('Relatório de Despesas (Saídas)', margin, 12);
+
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      
+      let filterText = '';
+      if (selectedCentroCustoDespesas) {
+        const ccName = supabaseCentroCusto.find(cc => cc.id === selectedCentroCustoDespesas)?.nome_centro_custo || 'N/A';
+        filterText += `Centro de Custo: ${ccName} | `;
+      }
+      if (periodoInicioDespesas || periodoFimDespesas) {
+        const start = periodoInicioDespesas ? formatDate(periodoInicioDespesas) : 'Início';
+        const end = periodoFimDespesas ? formatDate(periodoFimDespesas) : 'Fim';
+        filterText += `Período: ${start} até ${end} | `;
+      } else {
+        filterText += 'Período: Mês atual | ';
+      }
+      if (searchSupabaseDespesas) {
+        filterText += `Busca: "${searchSupabaseDespesas}" | `;
+      }
+      filterText += `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
+      
+      doc.text(filterText, margin, 17);
+
+      const formatCurrency = (val: number) => {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+      };
+
+      // 1. Mini-tabela de Indicadores
+      const indicatorsHeaders = [
+        [labelCard1, labelCard2, labelCard3, labelCard4]
+      ];
+      const indicatorsRows = [
+        [
+          formatCurrency(valCard1),
+          isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : formatCurrency(valCard2),
+          isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR').format(valCard3) : formatCurrency(valCard3),
+          formatCurrency(valCard4)
+        ]
+      ];
+
+      autoTable(doc, {
+        startY: 21,
+        margin: { top: margin, bottom: margin, left: margin, right: margin },
+        head: indicatorsHeaders,
+        body: indicatorsRows,
+        theme: 'grid',
+        styles: {
+          cellPadding: 1.8,
+          fontSize: 8.5,
+          halign: 'center',
+          valign: 'middle'
+        },
+        headStyles: {
+          fillColor: [14, 17, 26],
+          textColor: [255, 255, 255],
+          fontSize: 7.5,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          textColor: [17, 24, 39],
+          fontStyle: 'bold',
+          fontSize: 9.5
+        },
+        columnStyles: {
+          0: { cellWidth: 68 },
+          1: { cellWidth: 68 },
+          2: { cellWidth: 68 },
+          3: { cellWidth: 69 }
+        }
+      });
+
+      const nextY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 6 : 42;
+
+      // 2. Tabela Principal do Grid
+      const tableHeaders = [
+        ['Data', 'Centro de Custo', 'Referente a', 'Forma de Pagamento', 'Valor', 'Valor Provisão']
+      ];
+
+      const tableRows = sortedSupabaseDespesas.map(item => {
+        const dateFormatted = formatDate(item.data_despesa);
+        const ccName = item.nome_centro_custos || 'Operacional Geral';
+        const description = item.descricao_despesa || 'N/A';
+        const paymentMethod = item.descricao_forma_pagamento || 'N/A';
+        const valueFormatted = formatCurrency(item.valor || 0);
+        const provisaoFormatted = formatCurrency(item.valor_provisao || 0);
+
+        return [dateFormatted, ccName, description, paymentMethod, valueFormatted, provisaoFormatted];
+      });
+
+      const totalSum = sortedSupabaseDespesas.reduce((sum, item) => sum + (item.valor || 0), 0);
+      const totalProvisao = sortedSupabaseDespesas.reduce((sum, item) => sum + (item.valor_provisao || 0), 0);
+      tableRows.push([
+        'Total Geral',
+        '',
+        '',
+        '',
+        formatCurrency(totalSum),
+        formatCurrency(totalProvisao)
+      ]);
+
+      autoTable(doc, {
+        startY: nextY,
+        margin: { top: margin, bottom: margin, left: margin, right: margin },
+        head: tableHeaders,
+        body: tableRows,
+        theme: 'striped',
+        styles: {
+          cellPadding: 1.5,
+          fontSize: 8,
+        },
+        headStyles: {
+          fillColor: [14, 17, 26],
+          textColor: [255, 255, 255],
+          fontSize: 8.5,
+          fontStyle: 'bold',
+          cellPadding: 1.8
+        },
+        bodyStyles: {
+          textColor: [51, 65, 85]
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        columnStyles: {
+          0: { cellWidth: 25, halign: 'left' }, // Data
+          1: { cellWidth: 45, halign: 'left' }, // Centro de Custo
+          2: { cellWidth: 83, halign: 'left' }, // Referente a
+          3: { cellWidth: 45, halign: 'left' }, // Forma de Pagamento
+          4: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }, // Valor
+          5: { cellWidth: 40, halign: 'right', fontStyle: 'bold' } // Valor provisão
+        },
+        didParseCell: (data: any) => {
+          if (data.row.index === tableRows.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [226, 232, 240];
+            data.cell.styles.textColor = [15, 23, 42];
+          }
+        },
+        didDrawPage: (data: any) => {
+          const pageCount = (doc as any).internal.getNumberOfPages();
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(100, 100, 100);
+          const str = `Página ${data.pageNumber} de ${pageCount}`;
+          doc.text(str, pageWidth / 2, pageHeight - 7, { align: 'center' });
+        }
+      });
+
+      doc.save(`relatorio-despesas-${new Date().toISOString().split('T')[0]}.pdf`);
+    };
+
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Finance Stats header */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DO DIA</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard1}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasDia) : 'R$ ••••••'}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard1) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
               <TrendingDown className="h-3.5 w-3.5" />
-              <span>Saídas registradas hoje</span>
+              <span>{descCard1}</span>
             </div>
             <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DA SEMANA</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard2}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasSemana) : 'R$ ••••••'}
+              {isPeriodoFilterActive ? (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••') : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••')}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
               <Layers className="h-3.5 w-3.5" />
-              <span>Custos da semana</span>
+              <span>{descCard2}</span>
             </div>
             <Layers className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">DESPESAS DO MÊS</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard3}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(despesasMes) : 'R$ ••••••'}
+              {isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR').format(valCard3) : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard3) : 'R$ ••••••')}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
               <Calendar className="h-3.5 w-3.5" />
-              <span>Acumulado mensal</span>
+              <span>{descCard3}</span>
             </div>
             <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MÉDIA POR LANÇAMENTO</span>
+            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard4}</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
-              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(mediaLancamento) : 'R$ ••••••'}
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard4) : 'R$ ••••••'}
             </h3>
             <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
               <Target className="h-3.5 w-3.5" />
-              <span>Custo médio por item</span>
+              <span>{descCard4}</span>
             </div>
             <Target className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
@@ -5325,6 +6049,17 @@ const App: React.FC = () => {
                   >
                     <Plus className="h-3.5 w-3.5" />
                     <span>Nova Despesa</span>
+                  </button>
+
+                  {/* Botão para Gerar Relatório PDF */}
+                  <button
+                    type="button"
+                    onClick={exportDespesasGridPDF}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold bg-[#161924] hover:bg-[#1f2433] light-theme:bg-slate-100 light-theme:hover:bg-slate-200 text-[#94a3b8] light-theme:text-slate-600 border border-[#1f2433] light-theme:border-slate-200 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer mr-2"
+                    title="Exportar PDF do Grid de Despesas"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span>Relatório PDF</span>
                   </button>
 
                   {/* Filtro por Centro de Custos */}
@@ -13762,23 +14497,14 @@ const App: React.FC = () => {
   // On mount, load all data only if session is active
   useEffect(() => {
     if (session) {
-      fetchBubbleData();
       fetchSupabaseData();
-      fetchBubbleVehicles();
       fetchSupabaseVehicles();
-      fetchBubbleCentroCusto();
       fetchSupabaseCentroCusto();
-      fetchBubbleFormaPagamento();
       fetchSupabaseFormaPagamento();
-      fetchBubbleMensalistas();
       fetchSupabaseMensalistas();
-      fetchBubbleMensalistaParcelas();
       fetchSupabaseMensalistaParcelas();
-      fetchBubbleMetas();
       fetchSupabaseMetas();
-      fetchBubbleDespesas();
       fetchSupabaseDespesas();
-      fetchBubbleEntradas();
       fetchSupabaseEntradas();
       fetchSupabaseOrdemServicos();
       fetchSupabaseOSSequencias();
