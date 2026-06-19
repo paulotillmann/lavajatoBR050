@@ -365,8 +365,15 @@ const App: React.FC = () => {
   const [userLogs, setUserLogs] = useState<any[]>([]);
   const [loadingUserLogs, setLoadingUserLogs] = useState(false);
 
+  // User Approval / Management States
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profilesList, setProfilesList] = useState<any[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [searchProfiles, setSearchProfiles] = useState('');
+  const [updatingUserAccessId, setUpdatingUserAccessId] = useState<string | null>(null);
+
   // Navigation View State
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'entradas' | 'despesas' | 'mensalistas' | 'pessoas' | 'veiculos' | 'formapagamento' | 'centrocusto' | 'ordemservico' | 'migracoes' | 'laudo' | 'os_sequence' | 'laudo_sequence'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'entradas' | 'despesas' | 'mensalistas' | 'pessoas' | 'veiculos' | 'formapagamento' | 'centrocusto' | 'ordemservico' | 'migracoes' | 'laudo' | 'os_sequence' | 'laudo_sequence' | 'usuarios'>('dashboard');
 
   // Dashboard Filters State
   const [dashboardFilterMonth, setDashboardFilterMonth] = useState(getDefaultDashboardMonth());
@@ -439,7 +446,7 @@ const App: React.FC = () => {
       setIsLancamentosOpen(false);
       setIsConfigOpen(false);
     }
-    if (['migracoes', 'os_sequence', 'laudo_sequence'].includes(currentTab)) {
+    if (['migracoes', 'os_sequence', 'laudo_sequence', 'usuarios'].includes(currentTab)) {
       setIsConfigOpen(true);
       setIsLancamentosOpen(false);
       setIsCadastrosOpen(false);
@@ -453,6 +460,7 @@ const App: React.FC = () => {
 
   // Fetch user profile from public.profiles
   const fetchUserProfile = async (userId: string) => {
+    setLoadingProfile(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -463,20 +471,40 @@ const App: React.FC = () => {
       if (error || !data) {
         console.warn('Perfil não encontrado de imediato, tentando novamente...');
         setTimeout(async () => {
-          const { data: retryData, error: retryError } = await supabase
-            .from('profiles')
-            .select('*')
-            .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
-            .maybeSingle();
-          if (!retryError && retryData) {
-            setUserProfile(retryData);
+          try {
+            const { data: retryData, error: retryError } = await supabase
+              .from('profiles')
+              .select('*')
+              .or(`id.eq.${userId},auth_user_id.eq.${userId}`)
+              .maybeSingle();
+            if (!retryError && retryData) {
+              setUserProfile(retryData);
+            } else {
+              // Perfil básico temporário se não encontrado no banco
+              setUserProfile({
+                id: userId,
+                full_name: 'Usuário Novo',
+                email: session?.user?.email || '',
+                role: 'operator',
+                approved: false
+              });
+            }
+          } catch (retryErr) {
+            console.error('Erro no retry do perfil:', retryErr);
+          } finally {
+            setLoadingProfile(false);
+            setLoadingAuth(false);
           }
         }, 1000);
       } else {
         setUserProfile(data);
+        setLoadingProfile(false);
+        setLoadingAuth(false);
       }
     } catch (err) {
       console.error('Erro ao buscar perfil:', err);
+      setLoadingProfile(false);
+      setLoadingAuth(false);
     }
   };
 
@@ -487,8 +515,9 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
         fetchUserProfile(session.user.id);
+      } else {
+        setLoadingAuth(false);
       }
-      setLoadingAuth(false);
     });
 
     // 2. Escutar mudanças de autenticação
@@ -498,8 +527,9 @@ const App: React.FC = () => {
         fetchUserProfile(newSession.user.id);
       } else {
         setUserProfile(null);
+        setLoadingProfile(false);
+        setLoadingAuth(false);
       }
-      setLoadingAuth(false);
     });
 
     return () => subscription.unsubscribe();
@@ -843,6 +873,350 @@ const App: React.FC = () => {
       fetchUserLogs(session.user.id);
     }
   }, [isProfileModalOpen, profileTab, session?.user?.id]);
+
+  // Effect to load users list when admin enters the page
+  useEffect(() => {
+    if (session && currentTab === 'usuarios' && userProfile?.role === 'admin') {
+      fetchProfilesList();
+    }
+  }, [session, currentTab, userProfile]);
+
+  // Fetch profiles list for administrative user approval screen
+  const fetchProfilesList = async () => {
+    setLoadingProfiles(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setProfilesList(data || []);
+    } catch (err: any) {
+      console.error('Erro ao carregar perfis:', err);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
+  // Toggle user approval status
+  const handleToggleApproval = async (profileId: string, currentStatus: boolean, userEmail: string) => {
+    setUpdatingUserAccessId(profileId);
+    try {
+      const newStatus = !currentStatus;
+      const { error } = await supabase
+        .from('profiles')
+        .update({ approved: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', profileId);
+
+      if (error) throw error;
+
+      // Log de Auditoria
+      try {
+        await supabase.from('logs').insert({
+          auth_user_id: session?.user?.id,
+          usuario_email: session?.user?.email,
+          acao: newStatus ? 'APROVAR_USUARIO' : 'BLOQUEAR_USUARIO',
+          detalhes: `Administrador ${newStatus ? 'aprovou' : 'bloqueou'} o acesso do usuário: ${userEmail}.`
+        });
+      } catch (logErr) {
+        console.warn('Erro ao criar log de auditoria:', logErr);
+      }
+
+      // Atualizar lista localmente
+      setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, approved: newStatus } : p));
+      
+      // Se o usuário logado se bloqueou por engano (improvável), atualiza perfil local
+      if (profileId === session?.user?.id) {
+        setUserProfile(prev => prev ? { ...prev, approved: newStatus } : null);
+      }
+    } catch (err: any) {
+      alert('Erro ao alterar status de aprovação: ' + (err.message || String(err)));
+    } finally {
+      setUpdatingUserAccessId(null);
+    }
+  };
+
+  // Alterar papel/role de um usuário
+  const handleRoleChange = async (profileId: string, newRole: string, userEmail: string) => {
+    setUpdatingUserAccessId(profileId);
+    try {
+      // Mapear role para o correspondente role_id
+      const roleMap: Record<string, string> = {
+        'admin': '81c70e74-4ed4-4926-8f43-66ed2f493236',
+        'colaborador': '2ca3d7e4-dfad-4807-a293-8f50d2b6970b',
+        'visitante': 'afabe242-0144-48ae-a3ce-ebc16709ddd2',
+        'assessor-paralelo': 'aad7f113-b114-458c-80e3-4f386da4defb'
+      };
+      
+      const roleId = roleMap[newRole] || null;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ 
+          role: newRole, 
+          role_id: roleId,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', profileId);
+
+      if (error) throw error;
+
+      // Log de Auditoria
+      try {
+        await supabase.from('logs').insert({
+          auth_user_id: session?.user?.id,
+          usuario_email: session?.user?.email,
+          acao: 'ALTERAR_PAPEL_USUARIO',
+          detalhes: `Administrador alterou papel do usuário: ${userEmail} para: ${newRole}.`
+        });
+      } catch (logErr) {
+        console.warn('Erro ao criar log de auditoria:', logErr);
+      }
+
+      // Atualizar lista localmente
+      setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, role: newRole, role_id: roleId } : p));
+      
+      // Se alterou a própria role, atualiza
+      if (profileId === session?.user?.id) {
+        setUserProfile(prev => prev ? { ...prev, role: newRole, role_id: roleId } : null);
+      }
+    } catch (err: any) {
+      alert('Erro ao alterar papel do usuário: ' + (err.message || String(err)));
+    } finally {
+      setUpdatingUserAccessId(null);
+    }
+  };
+
+  const renderBlockedScreen = () => {
+    return (
+      <div className="min-h-screen w-screen bg-[#090b11] light-theme:bg-slate-50 relative overflow-hidden flex items-center justify-center p-4 sm:p-6 font-sans">
+        {/* Animated Background blobs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-violet-600/20 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-cyan-500/15 rounded-full blur-[120px] pointer-events-none animate-pulse" style={{ animationDuration: '12s' }} />
+
+        {/* Center Card */}
+        <div className="w-full max-w-md bg-[#0e111a]/60 light-theme:bg-white/90 backdrop-blur-xl border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-8 sm:p-10 shadow-2xl flex flex-col items-center text-center relative z-10">
+          
+          {/* Glowing Icon */}
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center shadow-lg shadow-orange-900/30 mb-6 relative">
+            <Lock className="h-8 w-8 text-white animate-pulse" />
+          </div>
+
+          <h2 className="text-xl sm:text-2xl font-extrabold text-white light-theme:text-slate-800 tracking-tight leading-snug">
+            Acesso Pendente de Liberação
+          </h2>
+          
+          <p className="text-sm text-[#64748b] mt-4 leading-relaxed">
+            Olá, <span className="font-bold text-slate-200 light-theme:text-slate-800">{userProfile?.full_name || 'Usuário'}</span>.
+          </p>
+          
+          <p className="text-xs text-[#64748b] mt-2 leading-relaxed">
+            Seu cadastro foi realizado com sucesso sob o e-mail <span className="font-semibold text-slate-300 light-theme:text-slate-700">{session?.user?.email}</span>. 
+            No entanto, por medidas de segurança, o seu acesso precisa ser liberado manualmente por um administrador do sistema.
+          </p>
+
+          <div className="mt-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-start gap-2.5">
+            <Info className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            <span className="text-left leading-relaxed">
+              Por favor, entre em contato com o administrador do LavajatoBR050 e informe o seu e-mail para liberação rápida do seu acesso.
+            </span>
+          </div>
+
+          <button
+            onClick={handleSignOut}
+            className="mt-8 w-full bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600 text-white rounded-xl py-3 font-bold text-xs uppercase tracking-wider shadow-lg shadow-red-900/20 transition-transform active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <LogOut className="h-4.5 w-4.5" />
+            <span>Sair da Conta</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUsuarios = () => {
+    const filteredProfiles = profilesList.filter(p =>
+      (p.full_name || '').toLowerCase().includes(searchProfiles.toLowerCase()) ||
+      (p.email || '').toLowerCase().includes(searchProfiles.toLowerCase()) ||
+      (p.telefone || '').includes(searchProfiles)
+    );
+
+    return (
+      <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-shrink-0">
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-white light-theme:text-slate-800 tracking-tight flex items-center gap-2">
+              <Users className="h-6 w-6 text-violet-500" />
+              Gerenciamento de Usuários
+            </h2>
+            <p className="text-xxs md:text-xs text-[#64748b] light-theme:text-slate-500 mt-1">
+              Aprove novos cadastros, bloqueie acessos e gerencie papéis e permissões de usuários.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchProfilesList}
+              disabled={loadingProfiles}
+              className="px-4 py-2 bg-[#0e111a] hover:bg-white/5 light-theme:bg-slate-200 light-theme:hover:bg-slate-300 text-white light-theme:text-slate-800 border border-[#1f2433] light-theme:border-slate-300 rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loadingProfiles ? 'animate-spin' : ''}`} />
+              <span>Atualizar</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Filters and Search */}
+        <div className="flex flex-col md:flex-row gap-4 p-5 bg-[#0e111a]/40 light-theme:bg-white/80 border border-[#1f2433] light-theme:border-slate-200 rounded-2xl flex-shrink-0 backdrop-blur-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-3 h-4.5 w-4.5 text-[#64748b] pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Pesquisar por nome, e-mail ou WhatsApp..."
+              value={searchProfiles}
+              onChange={e => setSearchProfiles(e.target.value)}
+              className="w-full bg-[#090b11]/80 light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-xs text-white light-theme:text-slate-800 placeholder-[#64748b] focus:outline-none focus:border-violet-500 transition-colors"
+            />
+          </div>
+        </div>
+
+        {/* Data Grid / Table */}
+        <div className="flex-1 bg-[#0e111a]/40 light-theme:bg-white/80 border border-[#1f2433] light-theme:border-slate-200 rounded-2xl overflow-hidden flex flex-col min-h-0 backdrop-blur-md">
+          <div className="flex-1 overflow-auto custom-scrollbar">
+            {loadingProfiles ? (
+              <div className="h-full flex items-center justify-center text-slate-400">
+                <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+                <span className="ml-2 text-xs font-medium uppercase tracking-widest text-[#64748b]">Carregando perfis...</span>
+              </div>
+            ) : filteredProfiles.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-[#64748b] py-12 px-4">
+                <Users className="h-12 w-12 text-slate-700 mb-3 animate-pulse" />
+                <p className="font-bold text-sm text-slate-300 light-theme:text-slate-700">Nenhum usuário cadastrado</p>
+                <p className="text-xxs text-center mt-1 max-w-xs">Não encontramos nenhum usuário correspondente aos filtros aplicados.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-[#1f2433] light-theme:border-slate-200 text-[#64748b] text-[10px] uppercase font-bold tracking-wider bg-black/20">
+                    <th className="py-4 px-6">Usuário</th>
+                    <th className="py-4 px-6">WhatsApp / Celular</th>
+                    <th className="py-4 px-6">Papel / Função</th>
+                    <th className="py-4 px-6">Acesso</th>
+                    <th className="py-4 px-6 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1f2433] light-theme:divide-slate-200 text-xs">
+                  {filteredProfiles.map(p => {
+                    const isSelf = p.id === session?.user?.id;
+                    const isUpdating = updatingUserAccessId === p.id;
+
+                    return (
+                      <tr key={p.id} className="hover:bg-white/2.5 light-theme:hover:bg-slate-50 transition-colors">
+                        {/* User identity cell */}
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl overflow-hidden bg-violet-600/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                              {p.avatar_url ? (
+                                <img src={p.avatar_url} alt={p.full_name} className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="font-bold text-violet-400 uppercase">
+                                  {p.full_name ? p.full_name.charAt(0) : '?'}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-white light-theme:text-slate-800 truncate flex items-center gap-1.5">
+                                {p.full_name}
+                                {isSelf && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase bg-violet-500/20 text-violet-400 border border-violet-500/30">
+                                    Você
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-xxs text-[#64748b] truncate mt-0.5">{p.email}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Telefone cell */}
+                        <td className="py-4 px-6 text-[#94a3b8] light-theme:text-slate-600 font-medium">
+                          {p.telefone ? (
+                            <span className="flex items-center gap-1">
+                              <Phone className="h-3.5 w-3.5 text-[#64748b]" />
+                              {p.telefone}
+                            </span>
+                          ) : (
+                            <span className="text-slate-600 italic">Não informado</span>
+                          )}
+                        </td>
+
+                        {/* Role cell */}
+                        <td className="py-4 px-6">
+                          <select
+                            value={p.role || 'colaborador'}
+                            onChange={e => handleRoleChange(p.id, e.target.value, p.email)}
+                            disabled={isUpdating || isSelf}
+                            className="bg-[#090b11]/80 light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-lg px-2 py-1 text-xxs text-white light-theme:text-slate-800 focus:outline-none focus:border-violet-500 transition-colors disabled:opacity-50"
+                          >
+                            <option value="admin">Administrador</option>
+                            <option value="colaborador">Colaborador</option>
+                            <option value="visitante">Visitante</option>
+                            <option value="assessor-paralelo">Assessor paralelo</option>
+                          </select>
+                        </td>
+
+                        {/* Access Status cell */}
+                        <td className="py-4 px-6">
+                          {p.approved ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                              <CheckCircle className="h-3 w-3" />
+                              Aprovado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                              <Lock className="h-3 w-3" />
+                              Pendente
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Actions cell */}
+                        <td className="py-4 px-6 text-right">
+                          <button
+                            onClick={() => handleToggleApproval(p.id, p.approved, p.email)}
+                            disabled={isUpdating || isSelf}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all active:scale-95 cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5 ${p.approved
+                              ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20'
+                              : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
+                              }`}
+                          >
+                            {isUpdating ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : p.approved ? (
+                              <>
+                                <XCircle className="h-3.5 w-3.5" />
+                                <span>Bloquear</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-3.5 w-3.5" />
+                                <span>Aprovar</span>
+                              </>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderLoginScreen = () => {
     return (
@@ -1891,13 +2265,13 @@ const App: React.FC = () => {
                   setIsCadastrosOpen(false);
                 }
               }}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['os_sequence', 'laudo_sequence'].includes(currentTab)
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all ${['os_sequence', 'laudo_sequence', 'usuarios'].includes(currentTab)
                 ? 'text-white light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/10 light-theme:border-transparent'
                 : 'text-[#94a3b8] hover:text-white light-theme:text-[#8fa0dd] light-theme:hover:text-white hover:bg-white/5 light-theme:hover:bg-white/5 border border-transparent'
                 }`}
             >
               <div className="flex items-center gap-3">
-                <Settings className={`h-4.5 w-4.5 ${['os_sequence', 'laudo_sequence'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
+                <Settings className={`h-4.5 w-4.5 ${['os_sequence', 'laudo_sequence', 'usuarios'].includes(currentTab) ? 'text-cyan-400 light-theme:text-white' : 'text-[#64748b] light-theme:text-[#7a8bb8]'}`} />
                 <span>Configurações</span>
               </div>
               {isConfigOpen ? (
@@ -1908,7 +2282,7 @@ const App: React.FC = () => {
             </button>
 
             <AnimatePresence>
-              {(isConfigOpen || currentTab === 'os_sequence' || currentTab === 'laudo_sequence') && (
+              {(isConfigOpen || currentTab === 'os_sequence' || currentTab === 'laudo_sequence' || currentTab === 'usuarios') && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -1937,6 +2311,19 @@ const App: React.FC = () => {
                     <ListOrdered className="h-4.5 w-4.5" />
                     <span>Sequência de Laudos</span>
                   </button>
+
+                  {userProfile?.role === 'admin' && (
+                    <button
+                      onClick={() => setCurrentTab('usuarios')}
+                      className={`w-full flex items-center justify-start text-left gap-2 px-3 py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors ${currentTab === 'usuarios'
+                        ? 'text-cyan-400 light-theme:text-white bg-white/5 light-theme:bg-white/10 border border-white/5 light-theme:border-transparent'
+                        : 'text-[#94a3b8] hover:text-white hover:bg-white/5 light-theme:text-[#8fa0dd] light-theme:hover:text-white'
+                        }`}
+                    >
+                      <Users className="h-4.5 w-4.5" />
+                      <span>Gerenciar Usuários</span>
+                    </button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
@@ -14973,7 +15360,7 @@ const App: React.FC = () => {
     );
   };
 
-  if (loadingAuth) {
+  if (loadingAuth || loadingProfile) {
     return (
       <div className="min-h-screen w-screen bg-[#090b11] light-theme:bg-slate-50 flex flex-col items-center justify-center gap-4 text-white font-sans relative">
         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-violet-600/15 rounded-full blur-[120px] pointer-events-none" />
@@ -14991,6 +15378,10 @@ const App: React.FC = () => {
 
   if (!session) {
     return renderLoginScreen();
+  }
+
+  if (userProfile && userProfile.approved === false) {
+    return renderBlockedScreen();
   }
 
   return (
@@ -15039,6 +15430,7 @@ const App: React.FC = () => {
           {currentTab === 'laudo' && renderLaudo()}
           {currentTab === 'laudo_sequence' && renderLaudoSequence()}
           {currentTab === 'os_sequence' && renderOSSequence()}
+          {currentTab === 'usuarios' && renderUsuarios()}
 
           {currentTab === 'migracoes' && (
             <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0">
