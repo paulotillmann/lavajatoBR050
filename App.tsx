@@ -6,6 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import carretaImg from './logos/carreta.png';
+import companyLogoImg from './logos/LavajatoBR050_logo.png';
 import {
   Database,
   Cloud,
@@ -12276,7 +12277,7 @@ const App: React.FC = () => {
               </div>
             </div>
             <div class="header-right">
-              <img src="logos/LavajatoBR050_logo.png" alt="Logo">
+              <img src="${companyLogoImg}" alt="Logo">
             </div>
           </div>
 
@@ -13334,7 +13335,7 @@ const App: React.FC = () => {
         <!-- Row 1: Header -->
         <div class="row header-row">
           <div class="col logo-col">
-            <img src="logos/LavajatoBR050_logo.png" alt="Logo">
+            <img src="${companyLogoImg}" alt="Logo">
           </div>
           <div class="col company-col">
             <h2>LAVA-JATO E ESTACIONAMENTO DE CAMINHÕES BR050</h2>
