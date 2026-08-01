@@ -17,6 +17,7 @@ import {
   Search,
   CheckCircle,
   XCircle,
+  X,
   Loader2,
   User,
   Phone,
@@ -63,7 +64,9 @@ import {
   Pencil,
   Hash,
   ListOrdered,
-  Printer
+  Printer,
+  UserX,
+  UserCheck
 } from 'lucide-react';
 
 // Env variables (read directly from import.meta.env or fall back to user credentials)
@@ -297,6 +300,7 @@ interface LaudoHigienizacao {
   carreta_externo_boca_superior?: boolean;
   carreta_externo_boca_lateral?: boolean;
   carreta_externo_embaixo?: boolean;
+  carreta_externo_mangote?: boolean;
   carreta_externo_lona?: boolean;
 
   secagem_manual_funcionario?: string;
@@ -1803,6 +1807,7 @@ const App: React.FC = () => {
   const [activeMensalistaFinanceiro, setActiveMensalistaFinanceiro] = useState<Mensalista | null>(null);
   const [isGeneratingParcelas, setIsGeneratingParcelas] = useState(false);
   const [isPayingParcela, setIsPayingParcela] = useState<MensalistaParcela | null>(null);
+  const [showModalOverdueParcelas, setShowModalOverdueParcelas] = useState(false);
 
   // Inputs para Geração de Parcelas
   const [genQtyParcelas, setGenQtyParcelas] = useState(12);
@@ -1931,6 +1936,10 @@ const App: React.FC = () => {
   const [formOSStatus, setFormOSStatus] = useState<'aberta' | 'fechada'>('aberta');
   const [formOSObservacao, setFormOSObservacao] = useState('');
   const [showOSClosedPopup, setShowOSClosedPopup] = useState(false);
+  const [showPrintOSModal, setShowPrintOSModal] = useState(false);
+  const [selectedPrintVia, setSelectedPrintVia] = useState<'cliente' | 'empresa' | 'ambas'>('ambas');
+  const [activePrintOSData, setActivePrintOSData] = useState<any | null>(null);
+  const [loadingPrintOSData, setLoadingPrintOSData] = useState(false);
 
   // Itens da OS no formulário
   const [formOSItems, setFormOSItems] = useState<Partial<OrdemServicoItem>[]>([
@@ -1995,6 +2004,7 @@ const App: React.FC = () => {
   const [formLaudoCarretaExternoBocaSuperior, setFormLaudoCarretaExternoBocaSuperior] = useState(false);
   const [formLaudoCarretaExternoBocaLateral, setFormLaudoCarretaExternoBocaLateral] = useState(false);
   const [formLaudoCarretaExternoEmbaixo, setFormLaudoCarretaExternoEmbaixo] = useState(false);
+  const [formLaudoCarretaExternoMangote, setFormLaudoCarretaExternoMangote] = useState(false);
   const [formLaudoCarretaExternoLona, setFormLaudoCarretaExternoLona] = useState(false);
 
   // Responsaveis & Outros
@@ -3181,6 +3191,7 @@ const App: React.FC = () => {
                         setFormLaudoCarretaExternoBocaSuperior(false);
                         setFormLaudoCarretaExternoBocaLateral(false);
                         setFormLaudoCarretaExternoEmbaixo(false);
+                        setFormLaudoCarretaExternoMangote(false);
                         setFormLaudoCarretaExternoLona(false);
                       }
                     }}
@@ -3244,6 +3255,15 @@ const App: React.FC = () => {
                         className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
                       />
                       <span>Embaixo</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formLaudoCarretaExternoMangote}
+                        onChange={(e) => setFormLaudoCarretaExternoMangote(e.target.checked)}
+                        className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
+                      />
+                      <span>Mangote</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
                       <input
@@ -5704,6 +5724,19 @@ const App: React.FC = () => {
                           <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.nome_pessoa || ''}</td>
                           <td className="py-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenPrintEntrada(item)}
+                                disabled={loadingPrintOSData}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-cyan-600/15 light-theme:hover:bg-cyan-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-cyan-500/30 light-theme:hover:border-cyan-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-cyan-400 light-theme:hover:text-cyan-600 transition-colors cursor-pointer"
+                                title="Imprimir OS"
+                              >
+                                {loadingPrintOSData && activePrintOSData?.id === item.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin text-cyan-400" />
+                                ) : (
+                                  <Printer className="h-3 w-3" />
+                                )}
+                              </button>
                               {item.ordem_servico_id ? (
                                 <button
                                   type="button"
@@ -6711,6 +6744,24 @@ const App: React.FC = () => {
   const renderMensalistas = () => {
     const totalVipRevenue = supabaseMensalistas.reduce((acc, curr) => acc + (curr.valor_original || 0), 0);
 
+    const isParcelaVencida = (dataVencimento?: string) => {
+      if (!dataVencimento) return false;
+      const cleanDate = dataVencimento.split('T')[0];
+      const todayStr = new Date().toLocaleDateString('en-CA');
+      return cleanDate < todayStr;
+    };
+
+    const activeMensalistaIds = new Set(
+      supabaseMensalistas.filter(m => m.ativo !== false).map(m => m.id)
+    );
+
+    const overdueParcelasGlobal = supabaseMensalistaParcelas.filter(
+      p => p.mensalista_id && activeMensalistaIds.has(p.mensalista_id) && !p.data_pagamento && isParcelaVencida(p.data_vencimento)
+    );
+    const totalValorOverdueGlobal = overdueParcelasGlobal.reduce(
+      (acc, curr) => acc + (curr.valor_original || 0), 0
+    );
+
     // Helpers para data
     const formatDate = (dateStr?: string) => {
       if (!dateStr) return 'N/D';
@@ -7263,7 +7314,7 @@ const App: React.FC = () => {
     return (
       <div className="h-full flex flex-col gap-4 w-full">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
           <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS ATIVOS</span>
             <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
@@ -7298,6 +7349,27 @@ const App: React.FC = () => {
               <span>Média mensal por plano</span>
             </div>
             <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+          </div>
+
+          <div
+            onClick={() => setShowModalOverdueParcelas(true)}
+            className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/50 light-theme:hover:border-rose-400 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all cursor-pointer"
+            title="Clique para ver o relatório detalhado de mensalistas com parcelas vencidas"
+          >
+            <span className="text-[10px] font-bold text-rose-400 dark:text-rose-400 light-theme:text-rose-600 uppercase tracking-widest block leading-none">
+              PARCELAS ABERTAS VENCIDAS
+            </span>
+            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+              {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValorOverdueGlobal) : 'R$ ••••••'}
+            </h3>
+            <div className="flex items-center justify-between text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
+              <div className="flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <span>{overdueParcelasGlobal.length} parcela(s) em atraso</span>
+              </div>
+              <span className="text-[9px] underline opacity-80 group-hover:opacity-100 transition-opacity">Detalhar</span>
+            </div>
+            <AlertTriangle className="absolute -right-3 -bottom-3 h-20 w-20 text-rose-500/10 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -7617,43 +7689,63 @@ const App: React.FC = () => {
                         <th className="pb-3 text-center pr-6">Dia Vencimento</th>
                         <th className="pb-3 text-right pr-6">Valor Mensalidade</th>
                         <th className="pb-3 text-center pr-6">Data Cadastro</th>
+                        <th className="pb-3 text-center pr-6">Status Pagamento</th>
                         <th className="pb-3 text-center pr-6">Status</th>
                         <th className="pb-3 text-center w-28">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
-                      {filteredSupabaseMensalistas.map(item => (
-                        <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
-                          <td className="py-3.5 pr-6 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
-                            <div className="h-7 w-7 rounded-full bg-violet-600/10 text-violet-400 flex items-center justify-center font-bold text-xxs flex-shrink-0">
-                              {item.nome_pessoa ? item.nome_pessoa.slice(0, 2).toUpperCase() : 'ME'}
-                            </div>
-                            <span>{item.nome_pessoa}</span>
-                          </td>
-                          <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.plano || 'Mensal VIP'}</td>
-                          <td className="py-3.5 pr-6 font-medium">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-white/5 light-theme:bg-slate-100 border border-white/10 light-theme:border-slate-200 text-cyan-400 light-theme:text-blue-500 uppercase tracking-wide text-[10px]">
-                                {item.placa || 'N/A'}
+                      {filteredSupabaseMensalistas.map(item => {
+                        const itemOverdueParcelas = supabaseMensalistaParcelas.filter(
+                          p => p.mensalista_id === item.id && !p.data_pagamento && isParcelaVencida(p.data_vencimento)
+                        );
+                        const overdueCount = itemOverdueParcelas.length;
+
+                        return (
+                          <tr key={item.id} className="text-xs text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 transition-colors">
+                            <td className="py-3.5 pr-6 font-semibold text-white light-theme:text-slate-800 flex items-center gap-2">
+                              <div className="h-7 w-7 rounded-full bg-violet-600/10 text-violet-400 flex items-center justify-center font-bold text-xxs flex-shrink-0">
+                                {item.nome_pessoa ? item.nome_pessoa.slice(0, 2).toUpperCase() : 'ME'}
+                              </div>
+                              <span>{item.nome_pessoa}</span>
+                            </td>
+                            <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.plano || 'Mensal VIP'}</td>
+                            <td className="py-3.5 pr-6 font-medium">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-white/5 light-theme:bg-slate-100 border border-white/10 light-theme:border-slate-200 text-cyan-400 light-theme:text-blue-500 uppercase tracking-wide text-[10px]">
+                                  {item.placa || 'N/A'}
+                                </span>
+                                <span className="text-[10px] text-[#64748b] truncate max-w-[120px]">{item.marca_modelo}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 text-center font-bold pr-6">Dia {item.dia_vencimento || 'N/A'}</td>
+                            <td className="py-3.5 text-right font-bold text-white light-theme:text-slate-800 pr-6">
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original || 0)}
+                            </td>
+                            <td className="py-3.5 text-center font-medium text-[#64748b] pr-6">
+                              {item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : 'N/A'}
+                            </td>
+                            <td className="py-3.5 text-center pr-6">
+                              {overdueCount > 0 ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-rose-500/10 border-rose-500/20 text-rose-400 inline-flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  <span>Parcela Vencida(s) ({overdueCount})</span>
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 inline-flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" />
+                                  <span>Em dia</span>
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 text-center pr-6">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                }`}>
+                                {item.ativo ? 'Ativo' : 'Inativo'}
                               </span>
-                              <span className="text-[10px] text-[#64748b] truncate max-w-[120px]">{item.marca_modelo}</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 text-center font-bold pr-6">Dia {item.dia_vencimento || 'N/A'}</td>
-                          <td className="py-3.5 text-right font-bold text-white light-theme:text-slate-800 pr-6">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_original || 0)}
-                          </td>
-                          <td className="py-3.5 text-center font-medium text-[#64748b] pr-6">
-                            {item.created_at ? new Date(item.created_at).toLocaleDateString('pt-BR') : 'N/A'}
-                          </td>
-                          <td className="py-3.5 text-center pr-6">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${item.ativo
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                              }`}>
-                              {item.ativo ? 'Ativo' : 'Inativo'}
-                            </span>
-                          </td>
+                            </td>
                           <td className="py-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <button
@@ -7675,15 +7767,20 @@ const App: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => setIsExcluindoMensalista(item)}
-                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Excluir Mensalista"
+                                className={`p-1 rounded bg-[#161924] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 transition-colors cursor-pointer ${
+                                  item.ativo === false
+                                    ? 'hover:bg-emerald-600/15 light-theme:hover:bg-emerald-600/10 hover:border-emerald-500/30 light-theme:hover:border-emerald-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-emerald-400 light-theme:hover:text-emerald-600'
+                                    : 'hover:bg-amber-600/15 light-theme:hover:bg-amber-600/10 hover:border-amber-500/30 light-theme:hover:border-amber-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-amber-400 light-theme:hover:text-amber-600'
+                                }`}
+                                title={item.ativo === false ? 'Ativar Mensalista' : 'Inativar Mensalista'}
                               >
-                                <Trash2 className="h-3 w-3" />
+                                {item.ativo === false ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}
                               </button>
                             </div>
                           </td>
                         </tr>
-                      ))}
+                      );
+                    })}
                     </tbody>
                   </table>
                 )}
@@ -7692,7 +7789,7 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* Modal de Confirmação de Exclusão de Mensalista */}
+        {/* Modal de Confirmação de Inativação/Ativação de Mensalista */}
         <AnimatePresence>
           {isExcluindoMensalista && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -7710,16 +7807,26 @@ const App: React.FC = () => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
               >
-                <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500" />
+                <div className={`absolute top-0 left-0 right-0 h-1 ${isExcluindoMensalista.ativo === false ? 'bg-emerald-500' : 'bg-amber-500'}`} />
 
                 <div className="flex items-start gap-3.5">
-                  <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
-                    <Trash2 className="h-5 w-5" />
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${
+                    isExcluindoMensalista.ativo === false
+                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                      : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                  }`}>
+                    {isExcluindoMensalista.ativo === false ? <UserCheck className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
                   </div>
                   <div>
-                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Mensalista?</h3>
+                    <h3 className="font-bold text-white light-theme:text-slate-800 text-base">
+                      {isExcluindoMensalista.ativo === false ? 'Ativar Mensalista?' : 'Inativar Mensalista?'}
+                    </h3>
                     <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
-                      Você tem certeza que deseja excluir o cadastro do mensalista <strong>"{isExcluindoMensalista.nome_pessoa}"</strong>? Suas parcelas financeiras cadastradas serão excluídas permanentemente do Supabase em cascata.
+                      {isExcluindoMensalista.ativo === false ? (
+                        <>Você tem certeza que deseja ativar o cadastro do mensalista <strong>"{isExcluindoMensalista.nome_pessoa}"</strong>? O mensalista voltará a ficar ativo no sistema.</>
+                      ) : (
+                        <>Você tem certeza que deseja inativar o cadastro do mensalista <strong>"{isExcluindoMensalista.nome_pessoa}"</strong>? O mensalista será marcado como inativo no sistema.</>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -7735,10 +7842,200 @@ const App: React.FC = () => {
                   <button
                     onClick={handleDeleteMensalista}
                     disabled={isDeletingMensalista}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/10 transition-colors"
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-bold text-xs shadow-lg transition-colors ${
+                      isExcluindoMensalista.ativo === false
+                        ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10'
+                        : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/10'
+                    }`}
                   >
-                    {isDeletingMensalista ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                    <span>Confirmar Exclusão</span>
+                    {isDeletingMensalista ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : isExcluindoMensalista.ativo === false ? (
+                      <UserCheck className="h-3.5 w-3.5" />
+                    ) : (
+                      <UserX className="h-3.5 w-3.5" />
+                    )}
+                    <span>{isExcluindoMensalista.ativo === false ? 'Confirmar Ativação' : 'Confirmar Inativação'}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Modal de Parcelas Abertas Vencidas */}
+        <AnimatePresence>
+          {showModalOverdueParcelas && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowModalOverdueParcelas(false)}
+                className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="relative w-full max-w-3xl max-h-[85vh] bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+              >
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-600 to-amber-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+
+                <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                      <AlertTriangle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white light-theme:text-slate-800 text-base">
+                        Parcelas Abertas Vencidas
+                      </h3>
+                      <p className="text-xxs text-[#64748b] mt-0.5">
+                        Relatório detalhado de mensalistas com débitos pendentes em atraso.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowModalOverdueParcelas(false)}
+                    className="p-1.5 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {/* Resumo do modal */}
+                <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200">
+                  <div>
+                    <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Total em Atraso</span>
+                    <span className="text-lg font-bold text-rose-400">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValorOverdueGlobal)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Mensalistas Afetados</span>
+                    <span className="text-lg font-bold text-white light-theme:text-slate-800">
+                      {supabaseMensalistas.filter(m => m.ativo !== false && supabaseMensalistaParcelas.some(p => p.mensalista_id === m.id && !p.data_pagamento && isParcelaVencida(p.data_vencimento))).length} mensalista(s)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Lista de Mensalistas Inadimplentes */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
+                  {overdueParcelasGlobal.length === 0 ? (
+                    <div className="h-48 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                      <CheckCircle className="h-8 w-8 text-emerald-500/40" />
+                      <span className="text-xs font-semibold text-emerald-400">Nenhuma parcela vencida aberta no momento!</span>
+                      <span className="text-xxs">Todos os mensalistas estão com os pagamentos em dia.</span>
+                    </div>
+                  ) : (
+                    supabaseMensalistas
+                      .filter(m => m.ativo !== false)
+                      .map(m => {
+                        const mOverdue = supabaseMensalistaParcelas
+                          .filter(p => p.mensalista_id === m.id && !p.data_pagamento && isParcelaVencida(p.data_vencimento))
+                          .sort((a, b) => new Date(a.data_vencimento || 0).getTime() - new Date(b.data_vencimento || 0).getTime());
+                        return { mensalista: m, parcelas: mOverdue };
+                      })
+                      .filter(group => group.parcelas.length > 0)
+                      .map(({ mensalista, parcelas }) => {
+                        const totalDevido = parcelas.reduce((sum, p) => sum + (p.valor_original || 0), 0);
+                        const todayTs = new Date().getTime();
+
+                        return (
+                          <div
+                            key={mensalista.id}
+                            className="bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl p-4 flex flex-col gap-3"
+                          >
+                            <div className="flex items-center justify-between flex-wrap gap-2 pb-2.5 border-b border-[#1f2433]/60 light-theme:border-slate-200">
+                              <div>
+                                <h4 className="text-sm font-bold text-white light-theme:text-slate-800 flex items-center gap-2">
+                                  <span>{mensalista.nome_pessoa}</span>
+                                  {mensalista.placa && (
+                                    <span className="px-1.5 py-0.5 rounded font-mono font-bold bg-white/5 light-theme:bg-slate-200 border border-white/10 text-cyan-400 light-theme:text-blue-600 text-[10px] uppercase">
+                                      {mensalista.placa}
+                                    </span>
+                                  )}
+                                </h4>
+                                <p className="text-xxs text-[#64748b] mt-0.5">
+                                  {mensalista.marca_modelo ? `${mensalista.marca_modelo} • ` : ''}Plano: {mensalista.plano || 'Mensal VIP'}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-3">
+                                <div className="text-right">
+                                  <span className="text-[10px] font-bold text-[#64748b] block uppercase">Total Vencido</span>
+                                  <span className="text-xs font-bold text-rose-400">
+                                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDevido)}
+                                  </span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowModalOverdueParcelas(false);
+                                    setActiveMensalistaFinanceiro(mensalista);
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 border border-violet-500/30 text-violet-300 font-bold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <CreditCard className="h-3.5 w-3.5" />
+                                  <span>Gerenciar Financeiro</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Tabela de parcelas vencidas do mensalista */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="text-[9px] text-[#64748b] uppercase tracking-wider font-bold border-b border-[#1f2433]/40">
+                                    <th className="pb-1.5">Vencimento</th>
+                                    <th className="pb-1.5 text-center">Atraso</th>
+                                    <th className="pb-1.5 text-right">Valor Original</th>
+                                    <th className="pb-1.5 text-center">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#1f2433]/30">
+                                  {parcelas.map(p => {
+                                    const vencTs = p.data_vencimento ? new Date(p.data_vencimento).getTime() : todayTs;
+                                    const diasAtraso = Math.max(1, Math.floor((todayTs - vencTs) / (1000 * 60 * 60 * 24)));
+                                    return (
+                                      <tr key={p.id} className="text-xs text-[#94a3b8]">
+                                        <td className="py-2 font-bold text-slate-300">
+                                          {formatDate(p.data_vencimento)}
+                                        </td>
+                                        <td className="py-2 text-center font-bold text-amber-400 text-xxs">
+                                          {diasAtraso} dia(s)
+                                        </td>
+                                        <td className="py-2 text-right font-bold text-white">
+                                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.valor_original || 0)}
+                                        </td>
+                                        <td className="py-2 text-center">
+                                          <span className="px-2 py-0.5 rounded text-[9px] font-bold border bg-rose-500/10 border-rose-500/20 text-rose-400">
+                                            Vencida
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })
+                  )}
+                </div>
+
+                <div className="flex items-center justify-end pt-3 border-t border-[#1f2433] light-theme:border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowModalOverdueParcelas(false)}
+                    className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all cursor-pointer"
+                  >
+                    Fechar
                   </button>
                 </div>
               </motion.div>
@@ -9587,6 +9884,18 @@ const App: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center gap-2.5">
                             <button
+                              onClick={() => handleOpenPrintOSFromList(os)}
+                              disabled={loadingPrintOSData}
+                              className="h-9 w-9 rounded-xl bg-[#090b11] border border-[#1f2433] text-[#94a3b8] hover:border-cyan-500 hover:text-cyan-400 light-theme:bg-slate-50 light-theme:border-slate-200/80 light-theme:text-slate-500 light-theme:hover:bg-cyan-50 light-theme:hover:text-cyan-600 transition-all duration-200 flex items-center justify-center cursor-pointer shadow-sm disabled:opacity-40"
+                              title="Imprimir OS"
+                            >
+                              {loadingPrintOSData && activePrintOSData?.id === os.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                              ) : (
+                                <Printer className="h-4 w-4 stroke-[1.5]" />
+                              )}
+                            </button>
+                            <button
                               onClick={() => handleOpenEditOS(os)}
                               className="h-9 w-9 rounded-xl bg-[#090b11] border border-[#1f2433] text-[#94a3b8] hover:border-violet-500 hover:text-white light-theme:bg-slate-50 light-theme:border-slate-200/80 light-theme:text-slate-500 light-theme:hover:bg-slate-100 light-theme:hover:text-slate-800 transition-all duration-200 flex items-center justify-center cursor-pointer shadow-sm"
                               title="Editar OS"
@@ -10234,7 +10543,10 @@ const App: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={handlePrintOS}
+                      onClick={() => {
+                        setActivePrintOSData(null);
+                        setShowPrintOSModal(true);
+                      }}
                       disabled={formOSStatus !== 'fechada'}
                       className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
                     >
@@ -10275,6 +10587,128 @@ const App: React.FC = () => {
                   className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-violet-900/20 active:scale-95 transition-all cursor-pointer"
                 >
                   Ok
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {showPrintOSModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPrintOSModal(false)} />
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-6 max-w-md w-full relative z-10 shadow-2xl animate-scaleUp text-white light-theme:text-slate-800">
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center">
+                    <Printer className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white light-theme:text-slate-800 text-sm">Imprimir Ordem de Serviço</h3>
+                    <p className="text-[11px] text-[#64748b] mt-0.5">Selecione quais vias deseja imprimir</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintOSModal(false)}
+                  className="h-8 w-8 rounded-lg hover:bg-white/10 text-[#94a3b8] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 my-5">
+                {/* Option 1: Via Cliente */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrintVia('cliente')}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                    selectedPrintVia === 'cliente'
+                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
+                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'cliente' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Primeira Via - Cliente</div>
+                      <div className="text-[10px] text-[#64748b]">Imprime apenas a via do cliente</div>
+                    </div>
+                  </div>
+                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'cliente' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
+                    {selectedPrintVia === 'cliente' && <CheckCircle className="h-3 w-3 text-violet-400" />}
+                  </div>
+                </button>
+
+                {/* Option 2: Via Empresa */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrintVia('empresa')}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                    selectedPrintVia === 'empresa'
+                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
+                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'empresa' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Segunda Via - Empresa</div>
+                      <div className="text-[10px] text-[#64748b]">Imprime apenas a via da empresa</div>
+                    </div>
+                  </div>
+                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'empresa' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
+                    {selectedPrintVia === 'empresa' && <CheckCircle className="h-3 w-3 text-violet-400" />}
+                  </div>
+                </button>
+
+                {/* Option 3: Ambas as Vias */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrintVia('ambas')}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                    selectedPrintVia === 'ambas'
+                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
+                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'ambas' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Ambas as Vias (Cliente e Empresa)</div>
+                      <div className="text-[10px] text-[#64748b]">Imprime as duas vias em folha A4 com serrilha</div>
+                    </div>
+                  </div>
+                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'ambas' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
+                    {selectedPrintVia === 'ambas' && <CheckCircle className="h-3 w-3 text-violet-400" />}
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1f2433] light-theme:border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowPrintOSModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#1f2433] light-theme:border-slate-200 text-xs font-bold text-[#94a3b8] light-theme:text-slate-600 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printDataToUse = activePrintOSData;
+                    setShowPrintOSModal(false);
+                    handlePrintOS(selectedPrintVia, printDataToUse);
+                    setActivePrintOSData(null);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-violet-900/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Imprimir</span>
                 </button>
               </div>
             </div>
@@ -11857,6 +12291,14 @@ const App: React.FC = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const isMangoteChecked = !!(
+      laudo.carreta_externo_mangote ||
+      (laudo as any).carreta_externoMangote ||
+      (laudo as any).carreta_mangote ||
+      (laudo.observacoes && laudo.observacoes.includes('[MANGOTE:SIM]'))
+    );
+    const cleanObservacoes = (laudo.observacoes || '').replace(/\[MANGOTE:SIM\]/g, '').trim();
+
     const lacres = laudo.lacres || Array(10).fill('');
     const ultimasCargas = laudo.ultimas_cargas || Array(3).fill('');
 
@@ -11963,165 +12405,140 @@ const App: React.FC = () => {
               gap: 6px;
             }
             .inline-label {
-              font-size: 10px;
+              color: #000;
               font-weight: bold;
+              font-size: 10px;
             }
             .inline-label-bold {
-              font-size: 10px;
+              color: #000;
               font-weight: bold;
+              font-size: 10px;
+              white-space: nowrap;
             }
             .border-box {
               border: 1px solid #000;
               border-radius: 6px;
               padding: 3px 8px;
               font-size: 10px;
-              min-height: 20px;
               display: flex;
               align-items: center;
               box-sizing: border-box;
+              height: 24px;
+            }
+            .font-bold {
+              font-weight: bold;
             }
 
             .veiculo-row {
               display: flex;
               align-items: center;
+              gap: 12px;
               margin-top: 8px;
-              gap: 8px;
               width: 100%;
             }
             .plate-box {
-              width: 100px;
-              font-family: monospace;
-              font-weight: bold;
-              text-align: center;
+              width: 95px;
               justify-content: center;
-              text-transform: uppercase;
+              font-family: monospace;
+              font-size: 11px;
+              font-weight: bold;
             }
 
             .empresa-frota-row {
               display: flex;
               align-items: center;
+              gap: 12px;
               margin-top: 6px;
-              gap: 8px;
               width: 100%;
             }
             .empresa-box {
               flex-grow: 1;
               font-weight: bold;
+              text-transform: uppercase;
             }
             .frota-box {
               width: 130px;
               font-weight: bold;
-            }
-
-            .modelo-row {
-              display: flex;
-              align-items: center;
-              margin-top: 8px;
-              gap: 10px;
-              width: 100%;
-            }
-            .checkbox-option {
-              display: flex;
-              align-items: center;
-              font-size: 9px;
-              white-space: nowrap;
-              font-weight: bold;
-            }
-            .check-parenthesis {
               font-family: monospace;
-              font-size: 9px;
-              font-weight: bold;
-              margin-right: 4px;
             }
 
-            .higienizacao-section {
+            .higienizacao-container {
+              border: 1px solid #000;
+              border-radius: 8px;
+              padding: 8px 10px;
               margin-top: 10px;
               width: 100%;
-            }
-            .higienizacao-title {
-              font-weight: bold;
-              font-size: 10px;
-              margin-bottom: 4px;
+              box-sizing: border-box;
             }
             .higienizacao-row {
               display: flex;
-              align-items: flex-start;
+              align-items: stretch;
               border-bottom: 1px solid #000;
-              padding-bottom: 5px;
+              padding-bottom: 6px;
+              margin-bottom: 6px;
             }
             .higienizacao-label {
               font-weight: bold;
               font-size: 10px;
               width: 65px;
-              padding-top: 2px;
+              display: flex;
+              align-items: center;
             }
             .higienizacao-group {
               display: flex;
-              align-items: flex-start;
-              margin-right: 12px;
+              flex-direction: column;
+              margin-right: 15px;
             }
             .main-check {
               font-weight: bold;
-              margin-right: 6px;
-              white-space: nowrap;
-              padding-top: 2px;
-              font-size: 7.5px;
-            }
-            .sub-checks-grid-2x2 {
-              display: grid;
-              grid-template-columns: auto auto;
-              column-gap: 8px;
-              row-gap: 3px;
-              font-size: 7.5px;
-            }
-            .sub-checks-grid-2x2 div {
-              white-space: nowrap;
+              font-size: 10px;
+              margin-bottom: 3px;
             }
             .sub-checks-stack {
               display: flex;
               flex-direction: column;
-              gap: 3px;
-              font-size: 7.5px;
-            }
-            .sub-checks-stack div {
-              white-space: nowrap;
+              gap: 2px;
+              padding-left: 12px;
+              font-size: 9px;
             }
             .sub-checks-grid-2col {
               display: grid;
-              grid-template-columns: auto auto;
-              column-gap: 8px;
-              row-gap: 3px;
-              font-size: 7.5px;
-            }
-            .sub-checks-grid-2col div {
-              white-space: nowrap;
+              grid-template-columns: 1fr 1fr;
+              column-gap: 15px;
+              row-gap: 2px;
+              padding-left: 12px;
+              font-size: 9px;
             }
             .single-option {
+              display: flex;
+              align-items: center;
               font-weight: bold;
-              padding-top: 2px;
-              font-size: 7.5px;
-              white-space: nowrap;
+              font-size: 10px;
+            }
+            .check-parenthesis {
+              font-family: monospace;
+              font-weight: bold;
             }
 
             .secagem-row {
               display: flex;
               align-items: center;
+              gap: 10px;
               margin-top: 8px;
               width: 100%;
             }
             .secagem-box {
               flex-grow: 1;
-              margin-left: 8px;
             }
 
             .lacres-section {
-              margin-top: 10px;
+              margin-top: 8px;
               width: 100%;
             }
             .section-title-bold {
               font-weight: bold;
               font-size: 10px;
-              margin-bottom: 4px;
+              margin-bottom: 3px;
             }
             .lacres-table {
               width: 100%;
@@ -12130,11 +12547,16 @@ const App: React.FC = () => {
             .lacres-table td {
               border: 1px solid #000;
               height: 22px;
-              width: 20%;
               text-align: center;
               font-weight: bold;
               font-size: 10px;
+              font-family: monospace;
+              width: 20%;
             }
+            .lacres-table tr:first-child td:first-child { border-top-left-radius: 6px; }
+            .lacres-table tr:first-child td:last-child { border-top-right-radius: 6px; }
+            .lacres-table tr:last-child td:first-child { border-bottom-left-radius: 6px; }
+            .lacres-table tr:last-child td:last-child { border-bottom-right-radius: 6px; }
 
             .cargas-section {
               margin-top: 10px;
@@ -12420,7 +12842,7 @@ const App: React.FC = () => {
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_boca_lateral ? 'X' : '&nbsp;'}&nbsp;)</span> BOCA LATERAL</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_jato_agua ? 'X' : '&nbsp;'}&nbsp;)</span> JATO D'ÁGUA</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_embaixo ? 'X' : '&nbsp;'}&nbsp;)</span> EMBAIXO</div>
-                  <div>&nbsp;</div>
+                  <div><span class="check-parenthesis">(&nbsp;${isMangoteChecked ? 'X' : '&nbsp;'}&nbsp;)</span> MANGOTE</div>
                   <div><span class="check-parenthesis">(&nbsp;${(laudo.carreta_externo_lona || laudo.carreta_externoLona) ? 'X' : '&nbsp;'}&nbsp;)</span> LONA</div>
                 </div>
               </div>
@@ -12574,6 +12996,7 @@ const App: React.FC = () => {
     setFormLaudoCarretaExternoBocaSuperior(false);
     setFormLaudoCarretaExternoBocaLateral(false);
     setFormLaudoCarretaExternoEmbaixo(false);
+    setFormLaudoCarretaExternoMangote(false);
     setFormLaudoCarretaExternoLona(false);
 
     setFormLaudoSecagemManualFunc('');
@@ -12621,6 +13044,13 @@ const App: React.FC = () => {
     setFormLaudoCarretaExternoBocaSuperior(!!laudo.carreta_externo_boca_superior);
     setFormLaudoCarretaExternoBocaLateral(!!laudo.carreta_externo_boca_lateral);
     setFormLaudoCarretaExternoEmbaixo(!!laudo.carreta_externo_embaixo);
+    const isMangote = !!(
+      laudo.carreta_externo_mangote ||
+      (laudo as any).carreta_externoMangote ||
+      (laudo as any).carreta_mangote ||
+      (laudo.observacoes && laudo.observacoes.includes('[MANGOTE:SIM]'))
+    );
+    setFormLaudoCarretaExternoMangote(isMangote);
     setFormLaudoCarretaExternoLona(!!laudo.carreta_externo_lona);
 
     setFormLaudoSecagemManualFunc(laudo.secagem_manual_funcionario || '');
@@ -12639,7 +13069,8 @@ const App: React.FC = () => {
     }
     setFormLaudoUltimasCargas(cargasArray);
 
-    setFormLaudoObservacoes(laudo.observacoes || '');
+    const cleanObs = (laudo.observacoes || '').replace(/\[MANGOTE:SIM\]/g, '').trim();
+    setFormLaudoObservacoes(cleanObs);
     setFormLaudoError(null);
     setLaudoFormMode('edit');
   };
@@ -12667,6 +13098,11 @@ const App: React.FC = () => {
 
       const cleanLacres = formLaudoLacres.map(x => x.trim()).filter(Boolean);
       const cleanCargas = formLaudoUltimasCargas.map(x => x.trim()).filter(Boolean);
+
+      const cleanUserObs = (formLaudoObservacoes || '').replace(/\[MANGOTE:SIM\]/g, '').trim();
+      const finalObs = formLaudoCarretaExternoMangote
+        ? (cleanUserObs ? `${cleanUserObs}\n[MANGOTE:SIM]` : '[MANGOTE:SIM]')
+        : (cleanUserObs || null);
 
       const payload: any = {
         numero_laudo: numeroLaudoToSave,
@@ -12700,6 +13136,7 @@ const App: React.FC = () => {
         carreta_externo_boca_superior: formLaudoCarretaExternoBocaSuperior,
         carreta_externo_boca_lateral: formLaudoCarretaExternoBocaLateral,
         carreta_externo_embaixo: formLaudoCarretaExternoEmbaixo,
+        carreta_externo_mangote: formLaudoCarretaExternoMangote,
         carreta_externo_lona: formLaudoCarretaExternoLona,
 
         secagem_manual_funcionario: formLaudoSecagemManualFunc || null,
@@ -12707,7 +13144,7 @@ const App: React.FC = () => {
         lavador_nome: formLaudoLavadorNome || null,
         lacres: cleanLacres,
         ultimas_cargas: cleanCargas,
-        observacoes: formLaudoObservacoes || null,
+        observacoes: finalObs,
         updated_at: new Date().toISOString()
       };
 
@@ -12716,7 +13153,7 @@ const App: React.FC = () => {
         payload.created_at = new Date().toISOString();
         payload.created_by = session?.user?.email || 'anon';
 
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao`, {
+        let res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao`, {
           method: 'POST',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
@@ -12729,7 +13166,26 @@ const App: React.FC = () => {
 
         if (!res.ok) {
           const errData = await res.json();
-          throw new Error(errData.message || 'Erro ao criar laudo.');
+          if (errData.message && errData.message.includes('carreta_externo_mangote')) {
+            const fallbackPayload = { ...payload };
+            delete (fallbackPayload as any).carreta_externo_mangote;
+            res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify([fallbackPayload])
+            });
+            if (!res.ok) {
+              const errData2 = await res.json();
+              throw new Error(errData2.message || 'Erro ao criar laudo.');
+            }
+          } else {
+            throw new Error(errData.message || 'Erro ao criar laudo.');
+          }
         }
 
         await fetch(`${SUPABASE_URL}/rest/v1/laudo_config?id=eq.config`, {
@@ -12743,7 +13199,7 @@ const App: React.FC = () => {
         });
 
       } else if (laudoFormMode === 'edit' && selectedLaudo) {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${selectedLaudo.id}`, {
+        let res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${selectedLaudo.id}`, {
           method: 'PATCH',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
@@ -12755,7 +13211,25 @@ const App: React.FC = () => {
 
         if (!res.ok) {
           const errData = await res.json();
-          throw new Error(errData.message || 'Erro ao atualizar laudo.');
+          if (errData.message && errData.message.includes('carreta_externo_mangote')) {
+            const fallbackPayload = { ...payload };
+            delete (fallbackPayload as any).carreta_externo_mangote;
+            res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${selectedLaudo.id}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(fallbackPayload)
+            });
+            if (!res.ok) {
+              const errData2 = await res.json();
+              throw new Error(errData2.message || 'Erro ao atualizar laudo.');
+            }
+          } else {
+            throw new Error(errData.message || 'Erro ao atualizar laudo.');
+          }
         }
       }
 
@@ -13273,25 +13747,222 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePrintOS = () => {
-    if (!formOSNumero) {
-      alert("Nenhuma ordem de serviço carregada para impressão.");
+  const handleOpenPrintOSFromList = async (os: OrdemServico) => {
+    setLoadingPrintOSData(true);
+    try {
+      let items: any[] = [];
+      const resItems = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicoitem?ordem_servico_id=eq.${os.id}&select=*`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+        }
+      });
+      if (resItems.ok) {
+        const jsonItems = await resItems.json();
+        if (jsonItems && jsonItems.length > 0) {
+          items = jsonItems;
+        }
+      }
+
+      if (items.length === 0) {
+        items = [{
+          qtde: 1,
+          descricao: 'Serviço',
+          valor: os.valor_total || 0,
+          valor_total: os.valor_total || 0
+        }];
+      }
+
+      const printData = {
+        id: os.id,
+        numero_os: os.numero_os || `OS-${os.id.slice(0, 6).toUpperCase()}`,
+        pessoa_nome: os.pessoa_nome || '',
+        pessoa_id: (os as any).pessoa_id || '',
+        placa: os.placa || '',
+        placa_carreta_1: os.placa_carreta_1 || '',
+        placa_carreta_2: os.placa_carreta_2 || '',
+        placa_carreta_3: os.placa_carreta_3 || '',
+        motorista: os.motorista || '',
+        frota: os.frota || '',
+        forma_pagamento_id: os.forma_pagamento_id || '',
+        forma_pagamento_desc: '',
+        observacao: os.observacao || '',
+        items
+      };
+
+      setActivePrintOSData(printData);
+      setShowPrintOSModal(true);
+    } catch (err) {
+      console.error('Erro ao preparar impressão de OS:', err);
+      alert('Erro ao carregar os dados da Ordem de Serviço para impressão.');
+    } finally {
+      setLoadingPrintOSData(false);
+    }
+  };
+
+  const handleOpenPrintEntrada = async (entrada: Entrada) => {
+    setLoadingPrintOSData(true);
+    try {
+      if (entrada.ordem_servico_id) {
+        let os = supabaseOrdemServicos.find(o => o.id === entrada.ordem_servico_id);
+
+        if (!os) {
+          const resOS = await fetch(`${SUPABASE_URL}/rest/v1/ordemservico?id=eq.${entrada.ordem_servico_id}&select=*`, {
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+            }
+          });
+          if (resOS.ok) {
+            const osList = await resOS.json();
+            if (osList && osList.length > 0) {
+              os = osList[0];
+            }
+          }
+        }
+
+        let items: any[] = [];
+        const resItems = await fetch(`${SUPABASE_URL}/rest/v1/ordemservicoitem?ordem_servico_id=eq.${entrada.ordem_servico_id}&select=*`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`
+          }
+        });
+        if (resItems.ok) {
+          const jsonItems = await resItems.json();
+          if (jsonItems && jsonItems.length > 0) {
+            items = jsonItems;
+          }
+        }
+
+        if (items.length === 0) {
+          items = [{
+            qtde: 1,
+            descricao: entrada.descricao_entrada || 'Serviço Lavatório',
+            valor: entrada.valor || 0,
+            valor_total: entrada.valor || 0
+          }];
+        }
+
+        const printData = {
+          id: entrada.id,
+          numero_os: os?.numero_os || `OS-${entrada.ordem_servico_id.slice(0, 6).toUpperCase()}`,
+          pessoa_nome: os?.pessoa_nome || entrada.nome_pessoa || '',
+          pessoa_id: os?.pessoa_id || entrada.pessoa_id || '',
+          placa: os?.placa || entrada.placa_veiculo || '',
+          placa_carreta_1: os?.placa_carreta_1 || '',
+          placa_carreta_2: os?.placa_carreta_2 || '',
+          placa_carreta_3: os?.placa_carreta_3 || '',
+          motorista: os?.motorista || '',
+          frota: os?.frota || '',
+          forma_pagamento_id: os?.forma_pagamento_id || entrada.forma_pagamento_id || '',
+          forma_pagamento_desc: entrada.descricao_forma_pagamento || '',
+          observacao: os?.observacao || '',
+          items
+        };
+
+        setActivePrintOSData(printData);
+      } else {
+        const printData = {
+          id: entrada.id,
+          numero_os: `REC-${entrada.id.slice(0, 6).toUpperCase()}`,
+          pessoa_nome: entrada.nome_pessoa || 'Cliente Não Informado',
+          pessoa_id: entrada.pessoa_id || '',
+          placa: entrada.placa_veiculo || '',
+          placa_carreta_1: '',
+          placa_carreta_2: '',
+          placa_carreta_3: '',
+          motorista: '',
+          frota: '',
+          forma_pagamento_id: entrada.forma_pagamento_id || '',
+          forma_pagamento_desc: entrada.descricao_forma_pagamento || 'Não Informada',
+          observacao: 'Lançamento de Entrada / Receita',
+          items: [{
+            qtde: 1,
+            descricao: entrada.descricao_entrada || 'Serviço Lavatório',
+            valor: entrada.valor || 0,
+            valor_total: entrada.valor || 0
+          }]
+        };
+
+        setActivePrintOSData(printData);
+      }
+      setShowPrintOSModal(true);
+    } catch (err) {
+      console.error('Erro ao preparar impressão de OS da entrada:', err);
+      alert('Erro ao carregar os dados para impressão da Ordem de Serviço.');
+    } finally {
+      setLoadingPrintOSData(false);
+    }
+  };
+
+  const printHTMLContent = (htmlContent: string) => {
+    let iframe = document.getElementById('lavajato-print-iframe') as HTMLIFrameElement;
+    if (iframe) {
+      try {
+        document.body.removeChild(iframe);
+      } catch (e) {}
+    }
+
+    iframe = document.createElement('iframe');
+    iframe.id = 'lavajato-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    iframe.style.width = '1000px';
+    iframe.style.height = '1000px';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0.01';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) {
+      alert("Erro ao inicializar documento de impressão.");
       return;
     }
 
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert("Por favor, permita pop-ups para imprimir o recibo.");
-      return;
-    }
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
 
-    const customer = supabaseData.find(x => x.id === formOSPessoaId || (x.nome_pessoa && x.nome_pessoa === formOSPessoaNome));
+    const doPrint = () => {
+      try {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        }
+      } catch (err) {
+        console.error("Erro ao chamar print via iframe:", err);
+        const printWin = window.open('', '_blank');
+        if (printWin) {
+          printWin.document.write(htmlContent);
+          printWin.document.close();
+          printWin.focus();
+          printWin.print();
+        }
+      }
+    };
+
+    setTimeout(doPrint, 300);
+  };
+
+  const handlePrintOS = (viaParam?: 'cliente' | 'empresa' | 'ambas', customPrintData?: any) => {
+    const printData = customPrintData || activePrintOSData;
+    const via = viaParam || selectedPrintVia || 'ambas';
+    const osNumero = printData ? printData.numero_os : (formOSNumero || 'OS-N/A');
+
+    const pessoaId = printData ? printData.pessoa_id : formOSPessoaId;
+    const pessoaNome = printData ? printData.pessoa_nome : formOSPessoaNome;
+
+    const customer = supabaseData.find(x => x.id === pessoaId || (x.nome_pessoa && x.nome_pessoa === pessoaNome));
     const customerCpfCnpj = customer ? (customer.cpf || customer.cnpj || '') : '';
     const customerPhone = customer ? (customer.celular_whatsapp || customer.telefone || '') : '';
     const customerUf = customer ? (customer.uf || '') : '';
     const customerCep = customer ? (customer.cep || '') : '';
 
-    const totalOSValue = formOSItems.reduce((acc, curr) => acc + ((curr.qtde || 1) * (curr.valor || 0)), 0);
+    const itemsList = printData ? printData.items : formOSItems;
+    const totalOSValue = itemsList.reduce((acc: number, curr: any) => acc + ((curr.qtde || 1) * (curr.valor || 0)), 0);
 
     const formatCurrency = (val: number) => {
       return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -13301,7 +13972,7 @@ const App: React.FC = () => {
     const totalOSFormatted = formatCurrency(totalOSValue);
 
     const minRows = 3;
-    const items = [...formOSItems];
+    const items = [...itemsList];
     let itemsHtml = '';
 
     for (let i = 0; i < Math.max(items.length, minRows); i++) {
@@ -13327,8 +13998,17 @@ const App: React.FC = () => {
       }
     }
 
-    const fp = supabaseFormaPagamento.find(f => f.id === formOSFormaPagamentoId);
-    const paymentMethod = fp ? fp.descricao : 'Não Informada';
+    const formaPagamentoId = printData ? printData.forma_pagamento_id : formOSFormaPagamentoId;
+    const fp = supabaseFormaPagamento.find(f => f.id === formaPagamentoId);
+    const paymentMethod = printData?.forma_pagamento_desc || (fp ? fp.descricao : 'Não Informada');
+
+    const osPlaca = printData ? printData.placa : formOSPlaca;
+    const osPlaca1 = printData ? printData.placa_carreta_1 : formOSPlacaCarreta1;
+    const osPlaca2 = printData ? printData.placa_carreta_2 : formOSPlacaCarreta2;
+    const osPlaca3 = printData ? printData.placa_carreta_3 : formOSPlacaCarreta3;
+    const osFrota = printData ? printData.frota : formOSFrota;
+    const osMotorista = printData ? printData.motorista : formOSMotorista;
+    const osObservacao = printData ? printData.observacao : formOSObservacao;
 
     const getCardHtml = (viaLabel: string) => `
       <div class="os-card">
@@ -13344,7 +14024,7 @@ const App: React.FC = () => {
             <p>CNPJ: 32.448.609/0001-14</p>
           </div>
           <div class="col os-col">
-            <h3>Ordem de Serviço: ${formOSNumero}</h3>
+            <h3>Ordem de Serviço: ${osNumero}</h3>
             <p class="fiscal-warning">Não possui valor fiscal</p>
             <p>${viaLabel}</p>
           </div>
@@ -13363,15 +14043,15 @@ const App: React.FC = () => {
         <!-- Row 3: Cliente Details -->
         <div class="row customer-row">
           <div class="col customer-main-col">
-            <div><strong>Cliente:</strong> ${formOSPessoaNome || 'Cliente'}</div>
+            <div><strong>Cliente:</strong> ${pessoaNome || 'Cliente'}</div>
             <div><strong>CNPJ/CPF:</strong> ${customerCpfCnpj || '&nbsp;'}</div>
             <div class="plates-line">
-              <span><strong>Placa 1:</strong> ${formOSPlaca || ''}</span>
-              <span><strong>Placa 2:</strong> ${formOSPlacaCarreta1 || ''}</span>
-              <span><strong>Placa 3:</strong> ${formOSPlacaCarreta2 || ''}</span>
-              <span><strong>Frota:</strong> ${formOSFrota || ''}</span>
+              <span><strong>Placa 1:</strong> ${osPlaca || ''}</span>
+              <span><strong>Placa 2:</strong> ${osPlaca1 || ''}</span>
+              <span><strong>Placa 3:</strong> ${osPlaca2 || ''}</span>
+              <span><strong>Frota:</strong> ${osFrota || ''}</span>
             </div>
-            <div><strong>Motorista:</strong> ${formOSMotorista || ''}</div>
+            <div><strong>Motorista:</strong> ${osMotorista || ''}</div>
           </div>
           <div class="col customer-right-col">
             <span><strong>UF:</strong> ${customerUf || '&nbsp;'}</span>
@@ -13415,47 +14095,52 @@ const App: React.FC = () => {
         <div class="row observation-row">
           <div class="col" style="width: 100%;">
             <strong>[Observação]</strong>
-            <div style="margin-top: 4px; white-space: pre-wrap; font-family: inherit;">${formOSObservacao || ''}</div>
+            <div style="margin-top: 4px; white-space: pre-wrap; font-family: inherit;">${osObservacao || ''}</div>
           </div>
         </div>
       </div>
     `;
 
-    printWindow.document.write(`
+    const fullHtml = `<!DOCTYPE html>
       <html>
         <head>
-          <title>Ordem de Serviço - ${formOSNumero}</title>
+          <meta charset="utf-8" />
+          <title>Ordem de Serviço - ${osNumero}</title>
           <style>
             @page {
               size: A4 portrait;
-              margin: 20px;
+              margin: 15px;
             }
             html, body {
-              height: 100%;
               margin: 0;
               padding: 0;
-              box-sizing: border-box;
+              background: #fff;
+              color: #000;
+              font-family: Arial, sans-serif;
             }
             body {
-              font-family: Arial, sans-serif;
-              color: #000;
-              background-color: #fff;
               display: flex;
               flex-direction: column;
-              padding: 20px;
+              padding: 10px;
+              box-sizing: border-box;
             }
             .via-section {
-              height: 50%;
               box-sizing: border-box;
               display: flex;
               flex-direction: column;
               justify-content: flex-start;
               page-break-inside: avoid;
             }
+            .via-section.single-via {
+              height: auto;
+              padding: 10px 0;
+            }
             .first-via {
+              height: 50%;
               padding-bottom: 10px;
             }
             .second-via {
+              height: 50%;
               padding-top: 10px;
             }
             .divider-container {
@@ -13640,38 +14325,32 @@ const App: React.FC = () => {
               min-height: 60px;
               font-size: 11px;
             }
-            @media print {
-              body {
-                padding: 0;
-              }
-              .os-card {
-                border: 1px solid #000;
-              }
-            }
           </style>
         </head>
         <body>
-          <div class="via-section first-via">
-            ${getCardHtml('VIA CLIENTE')}
-            <div class="divider-container">
-              <div class="divider-line">
-                <span>corte aqui</span>
-              </div>
-            </div>
-          </div>
-          <div class="via-section second-via">
-            ${getCardHtml('VIA EMPRESA')}
-          </div>
-
-          <script>
-            window.onload = function() {
-              window.print();
-            }
-          </script>
+          ${
+            via === 'cliente'
+              ? `<div class="via-section single-via">${getCardHtml('VIA CLIENTE')}</div>`
+              : via === 'empresa'
+              ? `<div class="via-section single-via">${getCardHtml('VIA EMPRESA')}</div>`
+              : `
+                <div class="via-section first-via">
+                  ${getCardHtml('VIA CLIENTE')}
+                  <div class="divider-container">
+                    <div class="divider-line">
+                      <span>corte aqui</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="via-section second-via">
+                  ${getCardHtml('VIA EMPRESA')}
+                </div>
+              `
+          }
         </body>
-      </html>
-    `);
-    printWindow.document.close();
+      </html>`;
+
+    printHTMLContent(fullHtml);
   };
 
   const handleDeleteOS = async () => {
@@ -13933,10 +14612,13 @@ const App: React.FC = () => {
     if (!isExcluindoMensalista) return;
     setIsDeletingMensalista(true);
 
+    const isAtualmenteInativo = isExcluindoMensalista.ativo === false;
+    const novoStatusAtivo = isAtualmenteInativo; // Se inativo, ativa (true); se ativo, inativa (false)
+
     try {
       const { error } = await supabase
         .from('mensalistas')
-        .delete()
+        .update({ ativo: novoStatusAtivo, updated_at: new Date().toISOString() })
         .eq('id', isExcluindoMensalista.id);
 
       if (error) throw error;
@@ -13945,7 +14627,7 @@ const App: React.FC = () => {
       setIsExcluindoMensalista(null);
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Erro ao excluir o mensalista.');
+      alert(err.message || `Erro ao ${isExcluindoMensalista.ativo === false ? 'ativar' : 'inativar'} o mensalista.`);
     } finally {
       setIsDeletingMensalista(false);
     }
