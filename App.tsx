@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ResponsiveContainer, PieChart, Pie, Cell, Label, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Label, LabelList, Tooltip, BarChart, Bar, CartesianGrid, XAxis, YAxis } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import jsPDF from 'jspdf';
@@ -70,8 +70,8 @@ import {
 } from 'lucide-react';
 
 // Env variables (read directly from import.meta.env or fall back to user credentials)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://funzoqxomyhhfvdtpmlw.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bnpvcXhvbXloaGZ2ZHRwbWx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTcyNzgsImV4cCI6MjA5NDM5MzI3OH0.8uhlJWO6BzQR8NoF8YrzeN8dWZ2DrXy-iTRoHwbcEjc';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://tdoyuqiwfvibnqudeems.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkb3l1cWl3ZnZpYm5xdWRlZW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0OTE5ODEsImV4cCI6MjA5NzA2Nzk4MX0.3axNH7ZkxwHpZmG85WJIb6asLsCsJL-3MyZv0BheMp8';
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUBBLE_TOKEN = '6066b185cb200592e09cfced5a33a4fd';
 const BUBBLE_URL = 'https://lavajatobr050.com/version-test/api/1.1/obj/Pessoas';
@@ -410,7 +410,11 @@ const App: React.FC = () => {
         if (!itemDateStr.startsWith(dashboardFilterMonth)) return false;
       }
       if (dashboardFilterCentroCusto) {
-        if (item.centro_custo_id !== dashboardFilterCentroCusto) return false;
+        const selectedCC = supabaseCentroCusto.find(c => c.id === dashboardFilterCentroCusto);
+        const selectedName = (selectedCC?.nome_centro_custo || selectedCC?.descricao || '').trim().toLowerCase();
+        const matchId = item.centro_custo_id === dashboardFilterCentroCusto;
+        const matchName = selectedName ? (item.nome_centro_custo || '').trim().toLowerCase() === selectedName : false;
+        if (!matchId && !matchName) return false;
       }
       if (dashboardFilterFormaPagamento) {
         if (item.forma_pagamento_id !== dashboardFilterFormaPagamento) return false;
@@ -426,7 +430,11 @@ const App: React.FC = () => {
         if (!itemDateStr.startsWith(dashboardFilterMonth)) return false;
       }
       if (dashboardFilterCentroCusto) {
-        if (item.centro_custo_id !== dashboardFilterCentroCusto) return false;
+        const selectedCC = supabaseCentroCusto.find(c => c.id === dashboardFilterCentroCusto);
+        const selectedName = (selectedCC?.nome_centro_custo || selectedCC?.descricao || '').trim().toLowerCase();
+        const matchId = item.centro_custo_id === dashboardFilterCentroCusto;
+        const matchName = selectedName ? (item.nome_centro_custos || '').trim().toLowerCase() === selectedName : false;
+        if (!matchId && !matchName) return false;
       }
       if (dashboardFilterFormaPagamento) {
         if (item.forma_pagamento_id !== dashboardFilterFormaPagamento) return false;
@@ -929,7 +937,7 @@ const App: React.FC = () => {
 
       // Atualizar lista localmente
       setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, approved: newStatus } : p));
-      
+
       // Se o usuário logado se bloqueou por engano (improvável), atualiza perfil local
       if (profileId === session?.user?.id) {
         setUserProfile(prev => prev ? { ...prev, approved: newStatus } : null);
@@ -952,15 +960,15 @@ const App: React.FC = () => {
         'visitante': 'afabe242-0144-48ae-a3ce-ebc16709ddd2',
         'assessor-paralelo': 'aad7f113-b114-458c-80e3-4f386da4defb'
       };
-      
+
       const roleId = roleMap[newRole] || null;
 
       const { error } = await supabase
         .from('profiles')
-        .update({ 
-          role: newRole, 
+        .update({
+          role: newRole,
           role_id: roleId,
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         })
         .eq('id', profileId);
 
@@ -980,7 +988,7 @@ const App: React.FC = () => {
 
       // Atualizar lista localmente
       setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, role: newRole, role_id: roleId } : p));
-      
+
       // Se alterou a própria role, atualiza
       if (profileId === session?.user?.id) {
         setUserProfile(prev => prev ? { ...prev, role: newRole, role_id: roleId } : null);
@@ -1001,7 +1009,7 @@ const App: React.FC = () => {
 
         {/* Center Card */}
         <div className="w-full max-w-md bg-[#0e111a]/60 light-theme:bg-white/90 backdrop-blur-xl border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-8 sm:p-10 shadow-2xl flex flex-col items-center text-center relative z-10">
-          
+
           {/* Glowing Icon */}
           <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center shadow-lg shadow-orange-900/30 mb-6 relative">
             <Lock className="h-8 w-8 text-white animate-pulse" />
@@ -1010,13 +1018,13 @@ const App: React.FC = () => {
           <h2 className="text-xl sm:text-2xl font-extrabold text-white light-theme:text-slate-800 tracking-tight leading-snug">
             Acesso Pendente de Liberação
           </h2>
-          
+
           <p className="text-sm text-[#64748b] mt-4 leading-relaxed">
             Olá, <span className="font-bold text-slate-200 light-theme:text-slate-800">{userProfile?.full_name || 'Usuário'}</span>.
           </p>
-          
+
           <p className="text-xs text-[#64748b] mt-2 leading-relaxed">
-            Seu cadastro foi realizado com sucesso sob o e-mail <span className="font-semibold text-slate-300 light-theme:text-slate-700">{session?.user?.email}</span>. 
+            Seu cadastro foi realizado com sucesso sob o e-mail <span className="font-semibold text-slate-300 light-theme:text-slate-700">{session?.user?.email}</span>.
             No entanto, por medidas de segurança, o seu acesso precisa ser liberado manualmente por um administrador do sistema.
           </p>
 
@@ -1059,7 +1067,7 @@ const App: React.FC = () => {
               Aprove novos cadastros, bloqueie acessos e gerencie papéis e permissões de usuários.
             </p>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <button
               onClick={fetchProfilesList}
@@ -3593,26 +3601,27 @@ const App: React.FC = () => {
 
     const cashflowMonths = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const displayCashflowData = useMockCashflow ? [
-      { month: 'Jan', entradas: 35000, despesas: 22000 },
-      { month: 'Fev', entradas: 31000, despesas: 19500 },
-      { month: 'Mar', entradas: 42000, despesas: 24000 },
-      { month: 'Abr', entradas: 39000, despesas: 21000 },
-      { month: 'Mai', entradas: 48250, despesas: 26400 },
-      { month: 'Jun', entradas: 52000, despesas: 28000 },
-      { month: 'Jul', entradas: 46000, despesas: 25000 },
-      { month: 'Ago', entradas: 49000, despesas: 27000 },
-      { month: 'Set', entradas: 55000, despesas: 30000 },
-      { month: 'Out', entradas: 58000, despesas: 32000 },
-      { month: 'Nov', entradas: 61000, despesas: 33000 },
-      { month: 'Dez', entradas: 65000, despesas: 35000 },
+      { month: 'Jan', entradas: 35000, liquido: 13000, despesas: 22000 },
+      { month: 'Fev', entradas: 31000, liquido: 11500, despesas: 19500 },
+      { month: 'Mar', entradas: 42000, liquido: 18000, despesas: 24000 },
+      { month: 'Abr', entradas: 39000, liquido: 18000, despesas: 21000 },
+      { month: 'Mai', entradas: 48250, liquido: 21850, despesas: 26400 },
+      { month: 'Jun', entradas: 52000, liquido: 24000, despesas: 28000 },
+      { month: 'Jul', entradas: 46000, liquido: 21000, despesas: 25000 },
+      { month: 'Ago', entradas: 49000, liquido: 22000, despesas: 27000 },
+      { month: 'Set', entradas: 55000, liquido: 25000, despesas: 30000 },
+      { month: 'Out', entradas: 58000, liquido: 26000, despesas: 32000 },
+      { month: 'Nov', entradas: 61000, liquido: 28000, despesas: 33000 },
+      { month: 'Dez', entradas: 65000, liquido: 30000, despesas: 35000 },
     ] : monthlyCashflowData.map(d => ({
       month: cashflowMonths[d.monthIdx],
       entradas: d.entradas,
+      liquido: d.entradas - d.despesas,
       despesas: d.despesas,
     }));
 
     const rawMaxCashflowVal = Math.max(
-      ...displayCashflowData.map(d => Math.max(d.entradas, d.despesas)),
+      ...displayCashflowData.map(d => Math.max(d.entradas, d.liquido, d.despesas)),
       10000
     );
 
@@ -3637,12 +3646,14 @@ const App: React.FC = () => {
     // Computations for Despesas por Centro de Custos (used by the lateral rings chart)
     const despesasByCCMap: { [key: string]: number } = {};
     filteredDespesas.forEach(des => {
-      const ccName = (des.nome_centro_custos || 'OUTROS').trim().toUpperCase();
+      const ccObj = des.centro_custo_id ? supabaseCentroCusto.find(c => c.id === des.centro_custo_id) : null;
+      const rawCcName = des.nome_centro_custos || ccObj?.nome_centro_custo || ccObj?.descricao || 'OUTROS';
+      const ccName = rawCcName.trim().toUpperCase();
       despesasByCCMap[ccName] = (despesasByCCMap[ccName] || 0) + (des.valor || 0);
     });
 
     const totalDespesasCCSum = Object.values(despesasByCCMap).reduce((acc, val) => acc + val, 0);
-    const useMockDespesasCC = totalDespesasCCSum === 0;
+    const useMockDespesasCC = supabaseDespesas.length === 0 && !hasActiveDashboardFilters;
 
     let ccsDataList: { ccName: string; total: number }[] = [];
     if (useMockDespesasCC) {
@@ -3699,6 +3710,86 @@ const App: React.FC = () => {
       const lightness = maxLightness - ratio * (maxLightness - minLightness);
       return `hsl(354, 85%, ${lightness}%)`;
     };
+
+    // Computations for Comparative Bar Chart (Despesas Realizadas vs Valor Provisionado por Centro de Custo)
+    const comparativoCCMap: { [key: string]: { realizado: number; provisionado: number } } = {};
+
+    // 1. Populate registered Centro de Custo in Supabase (ONLY Expense / Despesa Cost Centers)
+    supabaseCentroCusto.forEach(cc => {
+      const mov = String(cc.tipo_movimentacao || '').toUpperCase();
+      const ccName = (cc.nome_centro_custo || cc.descricao || '').trim().toUpperCase();
+
+      // Exclude Revenue / Entrada cost centers
+      const isEntrada = ['ENTRADAS', 'ENTRADA', 'RECEITAS', 'RECEITA'].includes(mov) ||
+                        ['BOX 01', 'BOX 02', 'BOX 03', 'BOX 04', 'ESTACIONAMENTO'].includes(ccName);
+
+      if (ccName && !isEntrada) {
+        if (!comparativoCCMap[ccName]) {
+          comparativoCCMap[ccName] = { realizado: 0, provisionado: cc.valor_provisao || 0 };
+        } else {
+          comparativoCCMap[ccName].provisionado = Math.max(comparativoCCMap[ccName].provisionado, cc.valor_provisao || 0);
+        }
+      }
+    });
+
+    // 2. Accumulate despesas realizadas and specific provision values from filteredDespesas
+    filteredDespesas.forEach(des => {
+      const ccObj = des.centro_custo_id ? supabaseCentroCusto.find(c => c.id === des.centro_custo_id) : null;
+      const rawCcName = des.nome_centro_custos || ccObj?.nome_centro_custo || ccObj?.descricao || 'OUTROS';
+      const ccName = rawCcName.trim().toUpperCase();
+
+      const mov = String(ccObj?.tipo_movimentacao || '').toUpperCase();
+      const isEntrada = ['ENTRADAS', 'ENTRADA', 'RECEITAS', 'RECEITA'].includes(mov) ||
+                        ['BOX 01', 'BOX 02', 'BOX 03', 'BOX 04', 'ESTACIONAMENTO'].includes(ccName);
+
+      if (!isEntrada) {
+        if (!comparativoCCMap[ccName]) {
+          comparativoCCMap[ccName] = {
+            realizado: 0,
+            provisionado: des.valor_provisao || ccObj?.valor_provisao || 0
+          };
+        }
+        comparativoCCMap[ccName].realizado += (des.valor || 0);
+        if (des.valor_provisao && des.valor_provisao > 0) {
+          comparativoCCMap[ccName].provisionado = Math.max(comparativoCCMap[ccName].provisionado, des.valor_provisao);
+        }
+      }
+    });
+
+    const hasAnyDespesasOrProvisoes = Object.values(comparativoCCMap).some(item => item.realizado > 0 || item.provisionado > 0);
+    const useMockComparativoCC = !hasAnyDespesasOrProvisoes && !hasActiveDashboardFilters;
+
+    let displayComparativoData: { centroCusto: string; realizado: number; provisionado: number }[] = [];
+
+    if (useMockComparativoCC) {
+      displayComparativoData = [
+        { centroCusto: 'SALÁRIOS FUNCIONÁRIOS', realizado: 12500, provisionado: 13000 },
+        { centroCusto: 'PRODUTOS LAVAJATO', realizado: 6800, provisionado: 6000 },
+        { centroCusto: 'ALUGUEL', realizado: 4500, provisionado: 4500 },
+        { centroCusto: 'DIARIAS/COMISSÃO', realizado: 3200, provisionado: 3000 },
+        { centroCusto: 'IMPOSTOS NF-E', realizado: 2400, provisionado: 2500 },
+        { centroCusto: 'ÁGUA', realizado: 1800, provisionado: 2000 },
+        { centroCusto: 'ENERGIA', realizado: 1500, provisionado: 1600 },
+        { centroCusto: 'TELEFONE/INTERNET', realizado: 450, provisionado: 500 },
+      ];
+    } else {
+      displayComparativoData = Object.entries(comparativoCCMap)
+        .map(([centroCusto, values]) => ({
+          centroCusto,
+          realizado: values.realizado,
+          provisionado: values.provisionado,
+        }))
+        .filter(item => item.realizado > 0 || item.provisionado > 0)
+        .sort((a, b) => Math.max(b.realizado, b.provisionado) - Math.max(a.realizado, a.provisionado));
+
+      if (dashboardFilterCentroCusto) {
+        const selectedCC = supabaseCentroCusto.find(c => c.id === dashboardFilterCentroCusto);
+        const selectedName = (selectedCC?.nome_centro_custo || selectedCC?.descricao || '').trim().toUpperCase();
+        if (selectedName) {
+          displayComparativoData = displayComparativoData.filter(item => item.centroCusto === selectedName);
+        }
+      }
+    }
 
     // Computations for Faturamento Estacionamento e Box (Pie/Donut Chart)
     const pieCCMap: { [key: string]: number } = {};
@@ -3988,11 +4079,11 @@ const App: React.FC = () => {
         'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
       ];
       const monthLabel = monthNames[selectedMonth - 1] + ' de ' + selectedYear;
-      
+
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(14);
       doc.text('Relatório de Entradas por Centro de Custos', 12, 12);
-      
+
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(9);
       doc.text(`Período: ${monthLabel}`, 12, 17);
@@ -4033,7 +4124,7 @@ const App: React.FC = () => {
       autoTable(doc, {
         startY: 26,
         margin: { top: 12, bottom: 12, left: 12, right: 12 },
-        head: tableHeaders,
+        head: tableHeaders as any,
         body: tableRows,
         theme: 'striped',
         styles: {
@@ -4193,9 +4284,9 @@ const App: React.FC = () => {
         doc.setLineWidth(0.3);
         doc.line(12, 20, 198, 20);
 
-        const imgWidth = 145; 
+        const imgWidth = 145;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const xPosition = (210 - imgWidth) / 2; 
+        const xPosition = (210 - imgWidth) / 2;
 
         doc.addImage(imgData, 'PNG', xPosition, 25, imgWidth, imgHeight);
 
@@ -4243,9 +4334,9 @@ const App: React.FC = () => {
         doc.setLineWidth(0.3);
         doc.line(12, 20, 198, 20);
 
-        const imgWidth = 145; 
+        const imgWidth = 145;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const xPosition = (210 - imgWidth) / 2; 
+        const xPosition = (210 - imgWidth) / 2;
 
         doc.addImage(imgData, 'PNG', xPosition, 25, imgWidth, imgHeight);
 
@@ -4253,6 +4344,51 @@ const App: React.FC = () => {
       } catch (err) {
         console.error('Erro ao gerar relatório de despesas:', err);
         alert('Erro ao gerar relatório de despesas. Veja o console para detalhes.');
+      }
+    };
+
+    const exportComparativoCCPDF = async () => {
+      const element = document.getElementById('comparativo-cc-chart-container');
+      if (!element) return;
+
+      try {
+        const canvas = await html2canvas(element, {
+          backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+          scale: 2,
+          useCORS: true
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+
+        const doc = new jsPDF({
+          orientation: 'landscape',
+          unit: 'mm',
+          format: 'a4'
+        });
+
+        const monthNames = [
+          'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+        const monthLabel = monthNames[selectedMonth - 1] + ' de ' + selectedYear;
+
+        doc.setFont('Helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.text('Gráfico Comparativo: Despesas Realizadas vs Provisionadas por Centro de Custo', 15, 15);
+
+        doc.setFont('Helvetica', 'normal');
+        doc.setFontSize(10);
+        doc.text(`Período: ${monthLabel} | Gerado em: ${new Date().toLocaleString('pt-BR')}`, 15, 21);
+
+        const imgWidth = 267;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        doc.addImage(imgData, 'PNG', 15, 28, imgWidth, imgHeight);
+
+        doc.save(`grafico-comparativo-despesas-provisao-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.pdf`);
+      } catch (err) {
+        console.error('Erro ao gerar PDF do gráfico comparativo:', err);
+        alert('Erro ao gerar PDF do gráfico comparativo. Veja o console para detalhes.');
       }
     };
 
@@ -4570,13 +4706,17 @@ const App: React.FC = () => {
                     <span className="h-2.5 w-3 bg-[#f43f5e] rounded-sm" style={{ backgroundColor: '#f43f5e' }} />
                     <span>Despesas</span>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2.5 w-3 bg-[#3b82f6] rounded-sm" style={{ backgroundColor: '#3b82f6' }} />
+                    <span>Faturamento Líquido</span>
+                  </div>
                 </div>
 
                 {/* Pure SVG Grouped Bar Chart */}
                 <div className="w-full overflow-x-auto custom-scrollbar">
                   <div className="min-w-[760px] h-60 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={displayCashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <BarChart data={displayCashflowData} margin={{ top: 25, right: 10, left: 0, bottom: 0 }}>
                         <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
                         <XAxis
                           dataKey="month"
@@ -4595,7 +4735,11 @@ const App: React.FC = () => {
                         <Tooltip
                           formatter={(value: any, name: string) => [
                             new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
-                            name === 'entradas' ? 'Entradas' : 'Despesas'
+                            name === 'entradas' || name === 'Entradas'
+                              ? 'Entradas'
+                              : name === 'liquido' || name === 'Faturamento Líquido'
+                              ? 'Faturamento Líquido'
+                              : 'Despesas'
                           ]}
                           contentStyle={{
                             backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
@@ -4607,8 +4751,57 @@ const App: React.FC = () => {
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                           }}
                         />
-                        <Bar dataKey="entradas" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="despesas" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="entradas" name="Entradas" fill="#10b981" radius={[4, 4, 0, 0]}>
+                          <LabelList
+                            dataKey="entradas"
+                            position="top"
+                            formatter={(val: any) => {
+                              const num = typeof val === 'number' ? val : Number(val) || 0;
+                              if (num <= 0) return '';
+                              if (num >= 1000) {
+                                return `R$ ${(num / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
+                              }
+                              return `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                            }}
+                            fill={theme === 'dark' ? '#a7f3d0' : '#059669'}
+                            fontSize={9}
+                            fontWeight="bold"
+                          />
+                        </Bar>
+                        <Bar dataKey="despesas" name="Despesas" fill="#f43f5e" radius={[4, 4, 0, 0]}>
+                          <LabelList
+                            dataKey="despesas"
+                            position="top"
+                            formatter={(val: any) => {
+                              const num = typeof val === 'number' ? val : Number(val) || 0;
+                              if (num <= 0) return '';
+                              if (num >= 1000) {
+                                return `R$ ${(num / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
+                              }
+                              return `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                            }}
+                            fill={theme === 'dark' ? '#fca5a5' : '#e11d48'}
+                            fontSize={9}
+                            fontWeight="bold"
+                          />
+                        </Bar>
+                        <Bar dataKey="liquido" name="Faturamento Líquido" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                          <LabelList
+                            dataKey="liquido"
+                            position="top"
+                            formatter={(val: any) => {
+                              const num = typeof val === 'number' ? val : Number(val) || 0;
+                              if (num <= 0) return '';
+                              if (num >= 1000) {
+                                return `R$ ${(num / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
+                              }
+                              return `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                            }}
+                            fill={theme === 'dark' ? '#93c5fd' : '#2563eb'}
+                            fontSize={9}
+                            fontWeight="bold"
+                          />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -4703,68 +4896,78 @@ const App: React.FC = () => {
               </div>
 
               <div id="despesas-cc-chart-container" className="w-full flex flex-col items-center justify-center p-3 relative bg-[#090b11]/30 light-theme:bg-slate-50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100">
-                <svg className="w-52 h-52 animate-fadeIn" viewBox="0 0 120 120">
-                  {ccsFinalData.slice(0, 8).map((item, idx) => {
-                    const r = 52 - idx * 5.5;
-                    const circ = 2 * Math.PI * r;
-                    const strokeLength = (item.percentage / 100) * circ;
-                    const spaceLength = circ - strokeLength;
-                    const color = getRedShadeByValue(item.total, maxCCVal);
-                    return (
-                      <g key={`cc-ring-group-${idx}`}>
-                        {/* Background Track Circle */}
-                        <circle
-                          cx="60"
-                          cy="60"
-                          r={r}
-                          fill="none"
-                          stroke="#334155"
-                          strokeOpacity="0.45"
-                          className="light-theme:stroke-slate-300 light-theme:stroke-opacity-100"
-                          strokeWidth="4"
-                        />
-                        {/* Active Value Arc */}
-                        {item.total > 0 && (
-                          <circle
-                            cx="60"
-                            cy="60"
-                            r={r}
-                            fill="none"
-                            stroke={color}
-                            strokeWidth="4"
-                            strokeDasharray={`${strokeLength} ${spaceLength}`}
-                            strokeLinecap="round"
-                            transform="rotate(-90 60 60)"
-                            className="transition-all duration-500 ease-out"
-                          >
-                            <title>{item.ccName} | {item.percentage.toFixed(1)}% ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)})</title>
-                          </circle>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
+                {ccsFinalData.length === 0 ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-[#64748b] text-center">
+                    <TrendingDown className="h-8 w-8 text-slate-600 animate-pulse" />
+                    <span className="text-xs font-bold text-slate-400">Nenhuma despesa para o filtro selecionado</span>
+                    <span className="text-[10px] text-slate-500">Ajuste os filtros do painel para visualizar outros registros.</span>
+                  </div>
+                ) : (
+                  <>
+                    <svg className="w-52 h-52 animate-fadeIn" viewBox="0 0 120 120">
+                      {ccsFinalData.slice(0, 8).map((item, idx) => {
+                        const r = 52 - idx * 5.5;
+                        const circ = 2 * Math.PI * r;
+                        const strokeLength = (item.percentage / 100) * circ;
+                        const spaceLength = circ - strokeLength;
+                        const color = getRedShadeByValue(item.total, maxCCVal);
+                        return (
+                          <g key={`cc-ring-group-${idx}`}>
+                            {/* Background Track Circle */}
+                            <circle
+                              cx="60"
+                              cy="60"
+                              r={r}
+                              fill="none"
+                              stroke="#334155"
+                              strokeOpacity="0.45"
+                              className="light-theme:stroke-slate-300 light-theme:stroke-opacity-100"
+                              strokeWidth="4"
+                            />
+                            {/* Active Value Arc */}
+                            {item.total > 0 && (
+                              <circle
+                                cx="60"
+                                cy="60"
+                                r={r}
+                                fill="none"
+                                stroke={color}
+                                strokeWidth="4"
+                                strokeDasharray={`${strokeLength} ${spaceLength}`}
+                                strokeLinecap="round"
+                                transform="rotate(-90 60 60)"
+                                className="transition-all duration-500 ease-out"
+                              >
+                                <title>{item.ccName} | {item.percentage.toFixed(1)}% ({new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)})</title>
+                              </circle>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
 
-                <div className="w-full mt-4 flex flex-col gap-2 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-[12px] font-semibold text-[#94a3b8] light-theme:text-slate-600">
-                  {ccsFinalData.map((item, idx) => {
-                    const color = getRedShadeByValue(item.total, maxCCVal);
-                    return (
-                      <div key={idx} className="flex items-center justify-between hover:bg-white/5 light-theme:hover:bg-slate-100/50 p-1.5 rounded transition-colors">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
-                          <span className="uppercase font-bold text-white light-theme:text-slate-700 text-[12px] leading-normal">{item.ccName}</span>
-                        </div>
-                        <div className="font-bold text-[#f43f5e] dark:text-[#fca5a5] flex-shrink-0 flex items-center gap-1.5">
-                          <span>{item.percentage.toFixed(1)}%</span>
-                          <span className="text-slate-400 dark:text-slate-500 font-normal">|</span>
-                          <span className="text-white light-theme:text-slate-800 font-mono">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                    <div className="w-full mt-4 flex flex-col gap-2 border-t border-[#1f2433] light-theme:border-slate-200 pt-3 text-[12px] font-semibold text-[#94a3b8] light-theme:text-slate-600">
+                      {ccsFinalData.map((item, idx) => {
+                        const color = getRedShadeByValue(item.total, maxCCVal);
+                        return (
+                          <div key={idx} className="flex items-center justify-between hover:bg-white/5 light-theme:hover:bg-slate-100/50 p-1.5 rounded transition-colors">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                              <span className="uppercase font-bold text-white light-theme:text-slate-700 text-[12px] leading-normal">{item.ccName}</span>
+                            </div>
+                            <div className="font-bold text-[#f43f5e] dark:text-[#fca5a5] flex-shrink-0 flex items-center gap-1.5">
+                              <span>{item.percentage.toFixed(1)}%</span>
+                              <span className="text-slate-400 dark:text-slate-500 font-normal">|</span>
+                              <span className="text-white light-theme:text-slate-800 font-mono">
+                                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.total)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -4911,7 +5114,161 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
+        {/* Seção Full Width: Gráfico Despesas x Provisão + Faturamento Estacionamento & Box */}
+        <div className="flex flex-col gap-6 w-full">
+          {/* Gráfico Comparativo: Despesas Realizadas vs Provisionadas por Centro de Custo (Toda Largura do Dash) */}
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col gap-4 w-full">
+            <div className="flex items-center justify-between flex-wrap gap-4 text-left">
+              <div>
+                <h3 className="text-sm font-bold text-white light-theme:text-slate-800 leading-none">
+                  Despesas vs Provisão por Centro de Custo
+                </h3>
+                <p className="text-[10px] text-[#64748b] mt-1.5 leading-none font-medium">
+                  Comparativo entre despesas realizadas e o valor provisionado do mês por centro de custo.
+                </p>
+              </div>
+              <button
+                onClick={exportComparativoCCPDF}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-600 active:bg-cyan-700 text-white text-[10px] font-bold tracking-wide transition-all shadow-sm shadow-cyan-500/10 active:scale-95 flex-shrink-0"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span>Imprimir Gráfico</span>
+              </button>
+            </div>
+
+            {/* CONTAINER QUE VAMOS CAPTURAR (Gráfico Comparativo + Legendas) */}
+            <div id="comparativo-cc-chart-container" className="flex flex-col gap-4 bg-[#0e111a] light-theme:bg-white p-2 rounded-xl w-full">
+              {/* Legends */}
+              <div className="flex items-center justify-center gap-6 mt-1 flex-wrap text-[10px] font-bold text-[#64748b]">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#f43f5e] rounded-sm" />
+                  <span>Valor Realizado</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-3 bg-[#3b82f6] rounded-sm" />
+                  <span>Valor Provisionado</span>
+                </div>
+              </div>
+
+              {displayComparativoData.length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-[#64748b] text-center">
+                  <TrendingDown className="h-8 w-8 text-slate-600 animate-pulse" />
+                  <span className="text-xs font-bold text-slate-400">Nenhum dado encontrado para o filtro selecionado</span>
+                  <span className="text-[10px] text-slate-500">Ajuste os filtros do painel para visualizar outros registros.</span>
+                </div>
+              ) : (
+                <div className="w-full overflow-x-auto custom-scrollbar">
+                  <div className="w-full min-w-[760px] h-72 relative bg-[#090b11]/40 light-theme:bg-slate-50/50 rounded-xl border border-[#1f2433]/50 light-theme:border-slate-100 flex items-center justify-center p-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={displayComparativoData} barCategoryGap="20%" barGap={4} margin={{ top: 25, right: 10, left: 0, bottom: 40 }}>
+                        <CartesianGrid vertical={false} stroke={theme === 'dark' ? '#1f2433' : '#e2e8f0'} strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="centroCusto"
+                          tickLine={false}
+                          axisLine={false}
+                          interval={0}
+                          tick={(props: any) => {
+                            const { x, y, payload } = props;
+                            const rawText: string = payload.value || '';
+                            const words = rawText.split(' ');
+                            let line1 = rawText;
+                            let line2 = '';
+
+                            if (words.length > 1) {
+                              const mid = Math.ceil(words.length / 2);
+                              line1 = words.slice(0, mid).join(' ');
+                              line2 = words.slice(mid).join(' ');
+                            } else if (rawText.length > 12) {
+                              const mid = Math.floor(rawText.length / 2);
+                              line1 = rawText.substring(0, mid);
+                              line2 = rawText.substring(mid);
+                            }
+
+                            return (
+                              <g transform={`translate(${x},${y})`}>
+                                <text
+                                  x={0}
+                                  y={0}
+                                  dy={12}
+                                  textAnchor="middle"
+                                  fill="#64748b"
+                                  fontSize={9}
+                                  fontWeight="bold"
+                                >
+                                  <tspan x={0} dy="0">{line1}</tspan>
+                                  {line2 && <tspan x={0} dy="11">{line2}</tspan>}
+                                </text>
+                              </g>
+                            );
+                          }}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                          tickFormatter={(value) => new Intl.NumberFormat('pt-BR', { notation: 'compact' }).format(value)}
+                          width={55}
+                        />
+                        <Tooltip
+                          formatter={(value: any, name: string) => [
+                            new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value),
+                            name === 'realizado' || name === 'Valor Realizado' || name === 'Despesas Realizadas'
+                              ? 'Valor Realizado'
+                              : 'Valor Provisionado'
+                          ]}
+                          contentStyle={{
+                            backgroundColor: theme === 'dark' ? '#0e111a' : '#ffffff',
+                            borderColor: theme === 'dark' ? '#1f2433' : '#e2e8f0',
+                            borderRadius: '12px',
+                            color: theme === 'dark' ? '#fff' : '#1e293b',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                          }}
+                        />
+                        <Bar dataKey="realizado" name="Valor Realizado" fill="#f43f5e" radius={[4, 4, 0, 0]}>
+                          <LabelList
+                            dataKey="realizado"
+                            position="top"
+                            formatter={(val: any) => {
+                              const num = typeof val === 'number' ? val : Number(val) || 0;
+                              if (num <= 0) return '';
+                              if (num >= 1000) {
+                                return `R$ ${(num / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
+                              }
+                              return `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                            }}
+                            fill={theme === 'dark' ? '#fca5a5' : '#e11d48'}
+                            fontSize={9}
+                            fontWeight="bold"
+                          />
+                        </Bar>
+                        <Bar dataKey="provisionado" name="Valor Provisionado" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                          <LabelList
+                            dataKey="provisionado"
+                            position="top"
+                            formatter={(val: any) => {
+                              const num = typeof val === 'number' ? val : Number(val) || 0;
+                              if (num <= 0) return '';
+                              if (num >= 1000) {
+                                return `R$ ${(num / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`;
+                              }
+                              return `R$ ${num.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+                            }}
+                            fill={theme === 'dark' ? '#93c5fd' : '#2563eb'}
+                            fontSize={9}
+                            fontWeight="bold"
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -5164,7 +5521,7 @@ const App: React.FC = () => {
 
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(8);
-      
+
       const formatDateLocal = (dateStr?: string) => {
         if (!dateStr) return 'N/A';
         const cleanDate = dateStr.split('T')[0].split(' ')[0];
@@ -5191,7 +5548,7 @@ const App: React.FC = () => {
         filterText += `Busca: "${searchSupabaseEntradas}" | `;
       }
       filterText += `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
-      
+
       doc.text(filterText, margin, 17);
 
       const formatCurrency = (val: number) => {
@@ -5392,14 +5749,30 @@ const App: React.FC = () => {
                   </h3>
                   <p className="text-[10px] text-[#64748b] mt-1">Preencha os dados do lançamento financeiro.</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setEntradaFormMode('list')}
-                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  <span>Voltar para a Lista</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handlePrintEntradaFromForm}
+                    disabled={loadingPrintOSData}
+                    className="px-3.5 py-2 rounded-xl bg-[#090b11] light-theme:bg-slate-100 hover:bg-cyan-500/10 border border-[#1f2433] light-theme:border-slate-200 text-cyan-400 light-theme:text-cyan-600 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Imprimir Ordem de Serviço"
+                  >
+                    {loadingPrintOSData ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                    ) : (
+                      <Printer className="h-4 w-4" />
+                    )}
+                    <span>Imprimir OS</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntradaFormMode('list')}
+                    className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 border border-[#1f2433] light-theme:border-slate-200 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Voltar para a Lista</span>
+                  </button>
+                </div>
               </div>
 
               {formEntradaError && (
@@ -5554,22 +5927,38 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-start gap-3 mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4">
+              <div className="flex items-center justify-between mt-auto border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={() => setEntradaFormMode('list')}
-                  className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                  onClick={handlePrintEntradaFromForm}
+                  disabled={loadingPrintOSData}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-cyan-400 hover:border-cyan-500/50 light-theme:text-cyan-600 font-bold text-xs transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                  title="Imprimir Ordem de Serviço"
                 >
-                  Cancelar
+                  {loadingPrintOSData ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                  ) : (
+                    <Printer className="h-4 w-4" />
+                  )}
+                  <span>Imprimir OS</span>
                 </button>
-                <button
-                  type="submit"
-                  disabled={formEntradaSubmitting}
-                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  {formEntradaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  <span>Salvar Lançamento</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEntradaFormMode('list')}
+                    className="px-4 py-2 rounded-xl bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={formEntradaSubmitting}
+                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white font-bold text-xs shadow-lg shadow-violet-900/20 transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {formEntradaSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    <span>Salvar Lançamento</span>
+                  </button>
+                </div>
               </div>
             </form>
           ) : (
@@ -5724,19 +6113,6 @@ const App: React.FC = () => {
                           <td className="py-3.5 pr-6 font-medium text-slate-300 light-theme:text-slate-500">{item.nome_pessoa || ''}</td>
                           <td className="py-3.5 text-center">
                             <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenPrintEntrada(item)}
-                                disabled={loadingPrintOSData}
-                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-cyan-600/15 light-theme:hover:bg-cyan-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-cyan-500/30 light-theme:hover:border-cyan-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-cyan-400 light-theme:hover:text-cyan-600 transition-colors cursor-pointer"
-                                title="Imprimir OS"
-                              >
-                                {loadingPrintOSData && activePrintOSData?.id === item.id ? (
-                                  <Loader2 className="h-3 w-3 animate-spin text-cyan-400" />
-                                ) : (
-                                  <Printer className="h-3 w-3" />
-                                )}
-                              </button>
                               {item.ordem_servico_id ? (
                                 <button
                                   type="button"
@@ -6097,7 +6473,7 @@ const App: React.FC = () => {
 
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(8);
-      
+
       let filterText = '';
       if (selectedCentroCustoDespesas) {
         const ccName = supabaseCentroCusto.find(cc => cc.id === selectedCentroCustoDespesas)?.nome_centro_custo || 'N/A';
@@ -6114,7 +6490,7 @@ const App: React.FC = () => {
         filterText += `Busca: "${searchSupabaseDespesas}" | `;
       }
       filterText += `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
-      
+
       doc.text(filterText, margin, 17);
 
       const formatCurrency = (val: number) => {
@@ -7746,41 +8122,40 @@ const App: React.FC = () => {
                                 {item.ativo ? 'Ativo' : 'Inativo'}
                               </span>
                             </td>
-                          <td className="py-3.5 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setActiveMensalistaFinanceiro(item)}
-                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-violet-600/15 light-theme:hover:bg-violet-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-violet-500/30 light-theme:hover:border-violet-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-violet-400 light-theme:hover:text-violet-600 transition-colors cursor-pointer"
-                                title="Gerenciar Financeiro (Parcelas)"
-                              >
-                                <CreditCard className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditMensalista(item)}
-                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
-                                title="Editar Cadastro"
-                              >
-                                <Pencil className="h-3 w-3" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setIsExcluindoMensalista(item)}
-                                className={`p-1 rounded bg-[#161924] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 transition-colors cursor-pointer ${
-                                  item.ativo === false
-                                    ? 'hover:bg-emerald-600/15 light-theme:hover:bg-emerald-600/10 hover:border-emerald-500/30 light-theme:hover:border-emerald-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-emerald-400 light-theme:hover:text-emerald-600'
-                                    : 'hover:bg-amber-600/15 light-theme:hover:bg-amber-600/10 hover:border-amber-500/30 light-theme:hover:border-amber-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-amber-400 light-theme:hover:text-amber-600'
-                                }`}
-                                title={item.ativo === false ? 'Ativar Mensalista' : 'Inativar Mensalista'}
-                              >
-                                {item.ativo === false ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            <td className="py-3.5 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveMensalistaFinanceiro(item)}
+                                  className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-violet-600/15 light-theme:hover:bg-violet-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-violet-500/30 light-theme:hover:border-violet-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-violet-400 light-theme:hover:text-violet-600 transition-colors cursor-pointer"
+                                  title="Gerenciar Financeiro (Parcelas)"
+                                >
+                                  <CreditCard className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditMensalista(item)}
+                                  className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-rose-400 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                  title="Editar Cadastro"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setIsExcluindoMensalista(item)}
+                                  className={`p-1 rounded bg-[#161924] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 transition-colors cursor-pointer ${item.ativo === false
+                                      ? 'hover:bg-emerald-600/15 light-theme:hover:bg-emerald-600/10 hover:border-emerald-500/30 light-theme:hover:border-emerald-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-emerald-400 light-theme:hover:text-emerald-600'
+                                      : 'hover:bg-amber-600/15 light-theme:hover:bg-amber-600/10 hover:border-amber-500/30 light-theme:hover:border-amber-500/20 text-[#64748b] light-theme:text-slate-500 hover:text-amber-400 light-theme:hover:text-amber-600'
+                                    }`}
+                                  title={item.ativo === false ? 'Ativar Mensalista' : 'Inativar Mensalista'}
+                                >
+                                  {item.ativo === false ? <UserCheck className="h-3 w-3" /> : <UserX className="h-3 w-3" />}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -7810,11 +8185,10 @@ const App: React.FC = () => {
                 <div className={`absolute top-0 left-0 right-0 h-1 ${isExcluindoMensalista.ativo === false ? 'bg-emerald-500' : 'bg-amber-500'}`} />
 
                 <div className="flex items-start gap-3.5">
-                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${
-                    isExcluindoMensalista.ativo === false
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border ${isExcluindoMensalista.ativo === false
                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                       : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                  }`}>
+                    }`}>
                     {isExcluindoMensalista.ativo === false ? <UserCheck className="h-5 w-5" /> : <UserX className="h-5 w-5" />}
                   </div>
                   <div>
@@ -7842,11 +8216,10 @@ const App: React.FC = () => {
                   <button
                     onClick={handleDeleteMensalista}
                     disabled={isDeletingMensalista}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-bold text-xs shadow-lg transition-colors ${
-                      isExcluindoMensalista.ativo === false
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-white font-bold text-xs shadow-lg transition-colors ${isExcluindoMensalista.ativo === false
                         ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/10'
                         : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/10'
-                    }`}
+                      }`}
                   >
                     {isDeletingMensalista ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -9884,18 +10257,6 @@ const App: React.FC = () => {
                         <td className="py-4 px-6">
                           <div className="flex items-center justify-center gap-2.5">
                             <button
-                              onClick={() => handleOpenPrintOSFromList(os)}
-                              disabled={loadingPrintOSData}
-                              className="h-9 w-9 rounded-xl bg-[#090b11] border border-[#1f2433] text-[#94a3b8] hover:border-cyan-500 hover:text-cyan-400 light-theme:bg-slate-50 light-theme:border-slate-200/80 light-theme:text-slate-500 light-theme:hover:bg-cyan-50 light-theme:hover:text-cyan-600 transition-all duration-200 flex items-center justify-center cursor-pointer shadow-sm disabled:opacity-40"
-                              title="Imprimir OS"
-                            >
-                              {loadingPrintOSData && activePrintOSData?.id === os.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
-                              ) : (
-                                <Printer className="h-4 w-4 stroke-[1.5]" />
-                              )}
-                            </button>
-                            <button
                               onClick={() => handleOpenEditOS(os)}
                               className="h-9 w-9 rounded-xl bg-[#090b11] border border-[#1f2433] text-[#94a3b8] hover:border-violet-500 hover:text-white light-theme:bg-slate-50 light-theme:border-slate-200/80 light-theme:text-slate-500 light-theme:hover:bg-slate-100 light-theme:hover:text-slate-800 transition-all duration-200 flex items-center justify-center cursor-pointer shadow-sm"
                               title="Editar OS"
@@ -10592,128 +10953,7 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-        {showPrintOSModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPrintOSModal(false)} />
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-6 max-w-md w-full relative z-10 shadow-2xl animate-scaleUp text-white light-theme:text-slate-800">
-              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center">
-                    <Printer className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-white light-theme:text-slate-800 text-sm">Imprimir Ordem de Serviço</h3>
-                    <p className="text-[11px] text-[#64748b] mt-0.5">Selecione quais vias deseja imprimir</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPrintOSModal(false)}
-                  className="h-8 w-8 rounded-lg hover:bg-white/10 text-[#94a3b8] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
 
-              <div className="space-y-3 my-5">
-                {/* Option 1: Via Cliente */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedPrintVia('cliente')}
-                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                    selectedPrintVia === 'cliente'
-                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
-                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'cliente' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Primeira Via - Cliente</div>
-                      <div className="text-[10px] text-[#64748b]">Imprime apenas a via do cliente</div>
-                    </div>
-                  </div>
-                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'cliente' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
-                    {selectedPrintVia === 'cliente' && <CheckCircle className="h-3 w-3 text-violet-400" />}
-                  </div>
-                </button>
-
-                {/* Option 2: Via Empresa */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedPrintVia('empresa')}
-                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                    selectedPrintVia === 'empresa'
-                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
-                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'empresa' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
-                      <FileText className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Segunda Via - Empresa</div>
-                      <div className="text-[10px] text-[#64748b]">Imprime apenas a via da empresa</div>
-                    </div>
-                  </div>
-                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'empresa' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
-                    {selectedPrintVia === 'empresa' && <CheckCircle className="h-3 w-3 text-violet-400" />}
-                  </div>
-                </button>
-
-                {/* Option 3: Ambas as Vias */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedPrintVia('ambas')}
-                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${
-                    selectedPrintVia === 'ambas'
-                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
-                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'ambas' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
-                      <Layers className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Ambas as Vias (Cliente e Empresa)</div>
-                      <div className="text-[10px] text-[#64748b]">Imprime as duas vias em folha A4 com serrilha</div>
-                    </div>
-                  </div>
-                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'ambas' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
-                    {selectedPrintVia === 'ambas' && <CheckCircle className="h-3 w-3 text-violet-400" />}
-                  </div>
-                </button>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1f2433] light-theme:border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowPrintOSModal(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#1f2433] light-theme:border-slate-200 text-xs font-bold text-[#94a3b8] light-theme:text-slate-600 hover:text-white transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const printDataToUse = activePrintOSData;
-                    setShowPrintOSModal(false);
-                    handlePrintOS(selectedPrintVia, printDataToUse);
-                    setActivePrintOSData(null);
-                  }}
-                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-violet-900/20 active:scale-95 transition-all cursor-pointer"
-                >
-                  <Printer className="h-4 w-4" />
-                  <span>Imprimir</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     );
   };
@@ -12843,7 +13083,7 @@ const App: React.FC = () => {
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_jato_agua ? 'X' : '&nbsp;'}&nbsp;)</span> JATO D'ÁGUA</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_embaixo ? 'X' : '&nbsp;'}&nbsp;)</span> EMBAIXO</div>
                   <div><span class="check-parenthesis">(&nbsp;${isMangoteChecked ? 'X' : '&nbsp;'}&nbsp;)</span> MANGOTE</div>
-                  <div><span class="check-parenthesis">(&nbsp;${(laudo.carreta_externo_lona || laudo.carreta_externoLona) ? 'X' : '&nbsp;'}&nbsp;)</span> LONA</div>
+                  <div><span class="check-parenthesis">(&nbsp;${(laudo.carreta_externo_lona || (laudo as any).carreta_externoLona) ? 'X' : '&nbsp;'}&nbsp;)</span> LONA</div>
                 </div>
               </div>
             </div>
@@ -13901,7 +14141,7 @@ const App: React.FC = () => {
     if (iframe) {
       try {
         document.body.removeChild(iframe);
-      } catch (e) {}
+      } catch (e) { }
     }
 
     iframe = document.createElement('iframe');
@@ -14328,12 +14568,11 @@ const App: React.FC = () => {
           </style>
         </head>
         <body>
-          ${
-            via === 'cliente'
-              ? `<div class="via-section single-via">${getCardHtml('VIA CLIENTE')}</div>`
-              : via === 'empresa'
-              ? `<div class="via-section single-via">${getCardHtml('VIA EMPRESA')}</div>`
-              : `
+          ${via === 'cliente'
+        ? `<div class="via-section single-via">${getCardHtml('VIA CLIENTE')}</div>`
+        : via === 'empresa'
+          ? `<div class="via-section single-via">${getCardHtml('VIA EMPRESA')}</div>`
+          : `
                 <div class="via-section first-via">
                   ${getCardHtml('VIA CLIENTE')}
                   <div class="divider-container">
@@ -14346,7 +14585,7 @@ const App: React.FC = () => {
                   ${getCardHtml('VIA EMPRESA')}
                 </div>
               `
-          }
+      }
         </body>
       </html>`;
 
@@ -14905,6 +15144,35 @@ const App: React.FC = () => {
     setFormPlacaVeiculo(entrada.placa_veiculo || '');
     setFormEntradaError(null);
     setEntradaFormMode('edit');
+  };
+
+  const handlePrintEntradaFromForm = async () => {
+    const parseVal = (v: string) => {
+      if (!v) return 0;
+      const clean = v.replace(/\./g, '').replace(',', '.');
+      return parseFloat(clean) || 0;
+    };
+
+    const pessoaObj = supabaseData.find(p => p.id === formPessoaId);
+    const formaPagObj = supabaseFormaPagamento.find(fp => fp.id === formFormaPagamentoId);
+
+    const entradaToPrint: Entrada = {
+      id: selectedEntrada?.id || `temp-${Date.now()}`,
+      ordem_servico_id: selectedEntrada?.ordem_servico_id || undefined,
+      data_entrada: formDataEntrada || new Date().toISOString().split('T')[0],
+      centro_custo_id: formCentroCustoId,
+      forma_pagamento_id: formFormaPagamentoId,
+      descricao_forma_pagamento: formaPagObj?.descricao || selectedEntrada?.descricao_forma_pagamento || '',
+      valor: parseVal(formValorEntrada),
+      descricao_entrada: formDescricaoEntrada || 'Serviço Lavatório',
+      veiculo_id: formVeiculoId,
+      placa_veiculo: formPlacaVeiculo,
+      pessoa_id: formPessoaId,
+      nome_pessoa: pessoaObj?.nome_pessoa || selectedEntrada?.nome_pessoa || '',
+      created_at: selectedEntrada?.created_at || new Date().toISOString()
+    };
+
+    await handleOpenPrintEntrada(entradaToPrint);
   };
 
   const handleSaveEntrada = async (e: React.FormEvent) => {
@@ -17999,8 +18267,8 @@ const App: React.FC = () => {
                           setProfileMessage(null);
                         }}
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${isActive
-                            ? 'bg-violet-600/10 text-violet-400 light-theme:bg-blue-50 light-theme:text-blue-600'
-                            : 'text-[#94a3b8] hover:text-white light-theme:text-slate-500 light-theme:hover:text-slate-800 hover:bg-white/5'
+                          ? 'bg-violet-600/10 text-violet-400 light-theme:bg-blue-50 light-theme:text-blue-600'
+                          : 'text-[#94a3b8] hover:text-white light-theme:text-slate-500 light-theme:hover:text-slate-800 hover:bg-white/5'
                           }`}
                       >
                         <Icon className="h-4 w-4" />
@@ -18014,8 +18282,8 @@ const App: React.FC = () => {
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 min-h-0">
                   {profileMessage && (
                     <div className={`p-3 rounded-xl mb-4 text-xs flex items-start gap-2 animate-fadeIn ${profileMessage.type === 'success'
-                        ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 light-theme:text-emerald-700 light-theme:bg-emerald-50'
-                        : 'bg-red-500/10 border border-red-500/20 text-red-400 light-theme:text-red-700 light-theme:bg-red-50'
+                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 light-theme:text-emerald-700 light-theme:bg-emerald-50'
+                      : 'bg-red-500/10 border border-red-500/20 text-red-400 light-theme:text-red-700 light-theme:bg-red-50'
                       }`}>
                       {profileMessage.type === 'success' ? <CheckCircle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="h-4.5 w-4.5 mt-0.5 flex-shrink-0" />}
                       <span>{profileMessage.text}</span>
@@ -18232,10 +18500,10 @@ const App: React.FC = () => {
                             <div key={log.id} className="p-3 bg-[#090b11]/80 light-theme:bg-slate-50 border border-[#1f2433]/70 light-theme:border-slate-200 rounded-xl flex flex-col gap-1.5 text-xxs leading-relaxed">
                               <div className="flex items-center justify-between font-bold">
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase tracking-wide ${log.acao === 'EDITAR_PERFIL'
-                                    ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/25'
-                                    : log.acao === 'ALTERAR_SENHA'
-                                      ? 'bg-violet-500/10 text-violet-400 border border-violet-500/25'
-                                      : 'bg-slate-500/10 text-[#94a3b8] border border-[#1f2433]'
+                                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/25'
+                                  : log.acao === 'ALTERAR_SENHA'
+                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/25'
+                                    : 'bg-slate-500/10 text-[#94a3b8] border border-[#1f2433]'
                                   }`}>
                                   {log.acao}
                                 </span>
@@ -18316,6 +18584,140 @@ const App: React.FC = () => {
                 >
                   {wiping ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                   <span>Sim, Esvaziar</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* GLOBAL MODAL FOR PRINTING OS */}
+      <AnimatePresence>
+        {showPrintOSModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowPrintOSModal(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-3xl p-6 max-w-md w-full relative z-10 shadow-2xl text-white light-theme:text-slate-800"
+            >
+              <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-violet-600/10 text-violet-400 flex items-center justify-center">
+                    <Printer className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-white light-theme:text-slate-800 text-sm">Imprimir Ordem de Serviço</h3>
+                    <p className="text-[11px] text-[#64748b] mt-0.5">Selecione quais vias deseja imprimir</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintOSModal(false)}
+                  className="h-8 w-8 rounded-lg hover:bg-white/10 text-[#94a3b8] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 my-5">
+                {/* Option 1: Via Cliente */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrintVia('cliente')}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${selectedPrintVia === 'cliente'
+                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
+                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'cliente' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Primeira Via - Cliente</div>
+                      <div className="text-[10px] text-[#64748b]">Imprime apenas a via do cliente</div>
+                    </div>
+                  </div>
+                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'cliente' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
+                    {selectedPrintVia === 'cliente' && <CheckCircle className="h-3 w-3 text-violet-400" />}
+                  </div>
+                </button>
+
+                {/* Option 2: Via Empresa */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrintVia('empresa')}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${selectedPrintVia === 'empresa'
+                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
+                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'empresa' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
+                      <FileText className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Segunda Via - Empresa</div>
+                      <div className="text-[10px] text-[#64748b]">Imprime apenas a via da empresa</div>
+                    </div>
+                  </div>
+                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'empresa' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
+                    {selectedPrintVia === 'empresa' && <CheckCircle className="h-3 w-3 text-violet-400" />}
+                  </div>
+                </button>
+
+                {/* Option 3: Ambas as Vias */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedPrintVia('ambas')}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all cursor-pointer ${selectedPrintVia === 'ambas'
+                      ? 'bg-violet-600/15 border-violet-500 text-white light-theme:text-slate-900 ring-2 ring-violet-500/30'
+                      : 'bg-[#090b11] light-theme:bg-slate-50 border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:border-slate-700'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${selectedPrintVia === 'ambas' ? 'bg-violet-600 text-white' : 'bg-white/5 text-[#64748b]'}`}>
+                      <Layers className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-white light-theme:text-slate-800">Ambas as Vias (Cliente e Empresa)</div>
+                      <div className="text-[10px] text-[#64748b]">Imprime as duas vias em folha A4 com serrilha</div>
+                    </div>
+                  </div>
+                  <div className={`h-4 w-4 rounded-full border flex items-center justify-center ${selectedPrintVia === 'ambas' ? 'border-violet-500 bg-violet-600 text-white' : 'border-[#64748b]'}`}>
+                    {selectedPrintVia === 'ambas' && <CheckCircle className="h-3 w-3 text-violet-400" />}
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#1f2433] light-theme:border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowPrintOSModal(false)}
+                  className="px-4 py-2.5 rounded-xl border border-[#1f2433] light-theme:border-slate-200 text-xs font-bold text-[#94a3b8] light-theme:text-slate-600 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const printDataToUse = activePrintOSData;
+                    setShowPrintOSModal(false);
+                    handlePrintOS(selectedPrintVia, printDataToUse);
+                    setActivePrintOSData(null);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white text-xs font-bold shadow-lg shadow-violet-900/20 active:scale-95 transition-all cursor-pointer"
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>Imprimir</span>
                 </button>
               </div>
             </motion.div>
