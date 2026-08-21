@@ -1,7 +1,7 @@
 const fetch = require('node-fetch');
 
-const SUPABASE_URL = 'https://funzoqxomyhhfvdtpmlw.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ1bnpvcXhvbXloaGZ2ZHRwbWx3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4MTcyNzgsImV4cCI6MjA5NzA2Nzk4MX0.8uhlJWO6BzQR8NoF8YrzeN8dWZ2DrXy-iTRoHwbcEjc';
+const SUPABASE_URL = 'https://tdoyuqiwfvibnqudeems.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRkb3l1cWl3ZnZpYm5xdWRlZW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0OTE5ODEsImV4cCI6MjA5NzA2Nzk4MX0.3axNH7ZkxwHpZmG85WJIb6asLsCsJL-3MyZv0BheMp8';
 
 async function fetchSchema() {
   try {

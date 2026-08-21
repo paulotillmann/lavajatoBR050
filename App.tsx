@@ -1742,6 +1742,7 @@ const App: React.FC = () => {
   // Mensalistas Filter/Search states
   const [searchBubbleMensalistas, setSearchBubbleMensalistas] = useState('');
   const [searchSupabaseMensalistas, setSearchSupabaseMensalistas] = useState('');
+  const [filterStatusMensalistas, setFilterStatusMensalistas] = useState<'todos' | 'ativos' | 'inativos'>('ativos');
 
   // Mensalistas Parcelas Data states
   const [bubbleMensalistaParcelas, setBubbleMensalistaParcelas] = useState<MensalistaParcela[]>([]);
@@ -1835,6 +1836,9 @@ const App: React.FC = () => {
   const [isRevertingParcela, setIsRevertingParcela] = useState<any | null>(null);
   const [revertSubmitting, setRevertSubmitting] = useState(false);
   const [revertError, setRevertError] = useState<string | null>(null);
+  const [isExcluindoParcela, setIsExcluindoParcela] = useState<MensalistaParcela | null>(null);
+  const [isDeletingParcela, setIsDeletingParcela] = useState(false);
+  const [deleteParcelaError, setDeleteParcelaError] = useState<string | null>(null);
 
   // Entradas Data states
   const [bubbleEntradas, setBubbleEntradas] = useState<Entrada[]>([]);
@@ -2349,30 +2353,9 @@ const App: React.FC = () => {
           </div>
         </nav>
 
-        {/* Promotion card at bottom */}
+        {/* Bottom Section: Logout & Theme toggle */}
         <div className="p-4 border-t border-[#1f2433] light-theme:border-[#242f63]/50">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-900/60 to-indigo-950/40 light-theme:bg-gradient-to-br light-theme:from-violet-600/25 light-theme:to-cyan-500/20 border border-violet-500/20 light-theme:border-violet-500/30 relative overflow-hidden group">
-            <div className="absolute -right-8 -top-8 w-20 h-20 bg-violet-600/10 rounded-full blur-xl group-hover:scale-125 transition-transform" />
-            <div className="relative z-10 flex flex-col gap-2">
-              <span className="text-[10px] font-bold text-violet-400 light-theme:text-cyan-300 uppercase tracking-widest flex items-center gap-1">
-                <Award className="h-3.5 w-3.5" />
-                TECHNOCODE Soluções
-              </span>
-              <p className="text-xs text-[#94a3b8] light-theme:text-slate-200/90 leading-relaxed">
-                Automação inteligente e controle total da sua frota em uma única plataforma de alta performance.
-              </p>
-              <button
-                type="button"
-                onClick={() => alert("Obrigado pelo interesse! Esta funcionalidade está sendo preparada em conjunto com sua integração n8n.")}
-                className="mt-1 w-full bg-gradient-to-r from-violet-600 to-cyan-500 hover:from-violet-700 hover:to-cyan-600 text-white rounded-lg py-1.5 font-bold text-[10px] uppercase tracking-wider shadow-lg shadow-violet-900/30 light-theme:shadow-indigo-950/50 transition-transform active:scale-95"
-              >
-                Saber Mais
-              </button>
-            </div>
-          </div>
-
-          {/* Logout & Profile summary */}
-          <div className="flex items-center justify-between mt-4 px-2 w-full border-t border-[#1f2433] light-theme:border-[#242f63]/50 pt-3.5 gap-2">
+          <div className="flex items-center justify-between px-2 w-full gap-2">
             <button
               onClick={handleSignOut}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 light-theme:bg-slate-100 light-theme:hover:bg-slate-200 light-theme:border-slate-200 text-white light-theme:text-slate-700 font-bold text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
@@ -5492,12 +5475,17 @@ const App: React.FC = () => {
 
     // 2. Ordenação e Paginação dos Itens Filtrados
     const sortedSupabaseEntradas = [...filteredSupabaseEntradas].sort((a, b) => {
-      const dateA = a.data_entrada ? new Date(a.data_entrada).getTime() : 0;
-      const dateB = b.data_entrada ? new Date(b.data_entrada).getTime() : 0;
-      return dateB - dateA; // Decrescente (mais recentes primeiro)
+      const dateA = a.data_entrada || '';
+      const dateB = b.data_entrada || '';
+      if (dateB !== dateA) {
+        return dateB.localeCompare(dateA);
+      }
+      const createdA = a.created_at || '';
+      const createdB = b.created_at || '';
+      return createdB.localeCompare(createdA);
     });
 
-    const itemsPerPage = 10;
+    const itemsPerPage = 50;
     const totalPages = Math.ceil(sortedSupabaseEntradas.length / itemsPerPage);
     const activePage = Math.max(1, Math.min(currentPageEntradas, totalPages || 1));
     const indexOfLastItem = activePage * itemsPerPage;
@@ -6440,9 +6428,11 @@ const App: React.FC = () => {
     const descCard4 = 'Valor médio das despesas';
 
     // Pagination calculations
-    const indexOfLastItem = currentPageDespesas * 10;
-    const indexOfFirstItem = indexOfLastItem - 10;
-    const totalPages = Math.ceil(sortedSupabaseDespesas.length / 10);
+    const itemsPerPage = 50;
+    const totalPages = Math.ceil(sortedSupabaseDespesas.length / itemsPerPage);
+    const activePage = Math.max(1, Math.min(currentPageDespesas, totalPages || 1));
+    const indexOfLastItem = activePage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
     const currentItems = sortedSupabaseDespesas.slice(indexOfFirstItem, indexOfLastItem);
 
     // Helper to format date safely in local time as DD/MM/YYYY without timezone shift issues
@@ -7014,7 +7004,7 @@ const App: React.FC = () => {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setCurrentPageDespesas(prev => Math.max(1, prev - 1))}
-                      disabled={currentPageDespesas === 1}
+                      disabled={activePage === 1}
                       className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -7022,7 +7012,7 @@ const App: React.FC = () => {
 
                     {Array.from({ length: totalPages }, (_, idx) => {
                       const pageNum = idx + 1;
-                      const isNearCurrent = Math.abs(pageNum - currentPageDespesas) <= 1;
+                      const isNearCurrent = Math.abs(pageNum - activePage) <= 1;
                       const isFirstOrLast = pageNum === 1 || pageNum === totalPages;
 
                       if (!isNearCurrent && !isFirstOrLast) {
@@ -7036,7 +7026,7 @@ const App: React.FC = () => {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPageDespesas(pageNum)}
-                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${currentPageDespesas === pageNum
+                          className={`min-w-[28px] h-7 px-1.5 rounded-lg text-xs font-bold transition-all ${activePage === pageNum
                             ? 'bg-gradient-to-r from-violet-600 to-cyan-500 text-white shadow-md shadow-violet-900/20'
                             : 'border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50'
                             }`}
@@ -7048,7 +7038,7 @@ const App: React.FC = () => {
 
                     <button
                       onClick={() => setCurrentPageDespesas(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPageDespesas === totalPages}
+                      disabled={activePage === totalPages}
                       className="p-1.5 rounded-lg border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-600 hover:bg-white/5 light-theme:hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                     >
                       <ChevronRight className="h-4 w-4" />
@@ -7284,7 +7274,7 @@ const App: React.FC = () => {
                       <th className="pb-3">Data Pagamento</th>
                       <th className="pb-3 text-right">Valor Pago</th>
                       <th className="pb-3 text-center">Status</th>
-                      <th className="pb-3 text-center w-24">Ações</th>
+                      <th className="pb-3 text-center w-32">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1f2433]/40 light-theme:divide-slate-100">
@@ -7308,23 +7298,36 @@ const App: React.FC = () => {
                         </td>
                         <td className="py-3.5 text-center">
                           {!p.data_pagamento ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPayDataPagamento(new Date().toLocaleDateString('en-CA'));
-                                const formattedValor = p.valor_original !== undefined
-                                  ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(p.valor_original)
-                                  : '';
-                                setPayValorPago(formattedValor);
-                                setPayFormaPagamentoId('');
-                                setPayCentroCustoId(activeMensalistaFinanceiro.centro_custo_id || '');
-                                setPayError(null);
-                                setIsPayingParcela(p);
-                              }}
-                              className="px-2.5 py-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-emerald-600/15 light-theme:hover:bg-emerald-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-emerald-500/30 light-theme:hover:border-emerald-500/20 text-emerald-400 font-bold text-[10px] transition-colors cursor-pointer"
-                            >
-                              Dar Baixa
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPayDataPagamento(new Date().toLocaleDateString('en-CA'));
+                                  const formattedValor = p.valor_original !== undefined
+                                    ? new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(p.valor_original)
+                                    : '';
+                                  setPayValorPago(formattedValor);
+                                  setPayFormaPagamentoId('');
+                                  setPayCentroCustoId(activeMensalistaFinanceiro.centro_custo_id || '');
+                                  setPayError(null);
+                                  setIsPayingParcela(p);
+                                }}
+                                className="px-2.5 py-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-emerald-600/15 light-theme:hover:bg-emerald-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-emerald-500/30 light-theme:hover:border-emerald-500/20 text-emerald-400 font-bold text-[10px] transition-colors cursor-pointer"
+                              >
+                                Dar Baixa
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDeleteParcelaError(null);
+                                  setIsExcluindoParcela(p);
+                                }}
+                                className="p-1 rounded bg-[#161924] light-theme:bg-slate-100 hover:bg-rose-600/15 light-theme:hover:bg-rose-600/10 border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/30 light-theme:hover:border-rose-500/20 text-[#64748b] hover:text-rose-400 light-theme:text-slate-500 light-theme:hover:text-rose-600 transition-colors cursor-pointer"
+                                title="Excluir Mensalidade Pendente"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           ) : (
                             <div className="flex flex-col items-center gap-1">
                               <span className="text-[10px] text-emerald-400 font-semibold italic flex items-center justify-center gap-1">
@@ -7682,6 +7685,85 @@ const App: React.FC = () => {
                 </motion.div>
               </div>
             )}
+
+            {isExcluindoParcela && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => !isDeletingParcela && setIsExcluindoParcela(null)}
+                  className="absolute inset-0 bg-[#06080d]/80 backdrop-blur-sm"
+                />
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="relative w-full max-w-md bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 rounded-2xl shadow-2xl p-6 overflow-hidden flex flex-col gap-4"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+
+                  <div className="flex items-start gap-3.5">
+                    <div className="h-10 w-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 flex-shrink-0">
+                      <Trash2 className="h-5 w-5" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-bold text-white light-theme:text-slate-800 text-base">Excluir Mensalidade?</h3>
+                      <p className="text-xxs text-[#64748b] mt-1 leading-relaxed">
+                        Você tem certeza que deseja excluir esta parcela pendente de <strong>{activeMensalistaFinanceiro?.nome_pessoa}</strong>? Esta ação removerá o registro da cobrança permanentemente.
+                      </p>
+                    </div>
+                  </div>
+
+                  {deleteParcelaError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-start gap-2 text-left">
+                      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                      <span>{deleteParcelaError}</span>
+                    </div>
+                  )}
+
+                  <div className="p-3.5 rounded-xl bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 text-xs flex flex-col gap-2 text-left">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[#64748b]">Vencimento:</span>
+                      <span className="font-bold text-white light-theme:text-slate-800">{formatDate(isExcluindoParcela.data_vencimento)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[#64748b]">Valor Original:</span>
+                      <span className="font-bold text-white light-theme:text-slate-800">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(isExcluindoParcela.valor_original || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-[#64748b]">Status Atual:</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-yellow-500/10 border-yellow-500/20 text-yellow-400">
+                        Pendente
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 mt-1 border-t border-[#1f2433]/40 light-theme:border-slate-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsExcluindoParcela(null)}
+                      disabled={isDeletingParcela}
+                      className="px-4 py-2 rounded-lg bg-transparent hover:bg-white/5 light-theme:hover:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 text-[#94a3b8] light-theme:text-slate-500 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteParcela}
+                      disabled={isDeletingParcela}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-600/15 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isDeletingParcela ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      <span>Excluir Mensalidade</span>
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
           </AnimatePresence>
         </div>
       );
@@ -8005,6 +8087,71 @@ const App: React.FC = () => {
                     <span>Novo Mensalista</span>
                   </button>
 
+                  {/* Filtro Toggle Ativos / Inativos / Todos */}
+                  <div className="flex items-center bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl p-1 gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatusMensalistas('todos')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        filterStatusMensalistas === 'todos'
+                          ? 'bg-[#161924] light-theme:bg-white text-white light-theme:text-slate-800 shadow-sm border border-[#2f384e] light-theme:border-slate-300'
+                          : 'text-[#64748b] hover:text-slate-300 light-theme:hover:text-slate-700'
+                      }`}
+                      title="Exibir todos os mensalistas"
+                    >
+                      <span>Todos</span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full ${
+                        filterStatusMensalistas === 'todos'
+                          ? 'bg-violet-500/20 text-violet-300 light-theme:bg-violet-100 light-theme:text-violet-700'
+                          : 'bg-[#1f2433] light-theme:bg-slate-200 text-[#64748b]'
+                      }`}>
+                        {supabaseMensalistas.length}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatusMensalistas('ativos')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        filterStatusMensalistas === 'ativos'
+                          ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 light-theme:bg-emerald-50 light-theme:text-emerald-700 light-theme:border-emerald-200 shadow-sm'
+                          : 'text-[#64748b] hover:text-emerald-400 light-theme:hover:text-emerald-600'
+                      }`}
+                      title="Exibir apenas mensalistas ativos"
+                    >
+                      <span className={`h-2 w-2 rounded-full ${filterStatusMensalistas === 'ativos' ? 'bg-emerald-400 animate-pulse' : 'bg-emerald-500/40'}`} />
+                      <span>Ativos</span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full ${
+                        filterStatusMensalistas === 'ativos'
+                          ? 'bg-emerald-500/20 text-emerald-300 light-theme:bg-emerald-100 light-theme:text-emerald-800'
+                          : 'bg-[#1f2433] light-theme:bg-slate-200 text-[#64748b]'
+                      }`}>
+                        {supabaseMensalistas.filter(m => m.ativo !== false).length}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFilterStatusMensalistas('inativos')}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        filterStatusMensalistas === 'inativos'
+                          ? 'bg-rose-500/15 border border-rose-500/30 text-rose-400 light-theme:bg-rose-50 light-theme:text-rose-700 light-theme:border-rose-200 shadow-sm'
+                          : 'text-[#64748b] hover:text-rose-400 light-theme:hover:text-rose-600'
+                      }`}
+                      title="Exibir apenas mensalistas inativos"
+                    >
+                      <span className={`h-2 w-2 rounded-full ${filterStatusMensalistas === 'inativos' ? 'bg-rose-400' : 'bg-rose-500/40'}`} />
+                      <span>Inativos</span>
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded-full ${
+                        filterStatusMensalistas === 'inativos'
+                          ? 'bg-rose-500/20 text-rose-300 light-theme:bg-rose-100 light-theme:text-rose-800'
+                          : 'bg-[#1f2433] light-theme:bg-slate-200 text-[#64748b]'
+                      }`}>
+                        {supabaseMensalistas.filter(m => m.ativo === false).length}
+                      </span>
+                    </button>
+                  </div>
+
                   {/* Filtro por Período */}
                   <div className="flex items-center gap-2 bg-[#090b11] light-theme:bg-slate-100 border border-[#1f2433] light-theme:border-slate-200 rounded-xl px-3 py-1.5 text-xs text-[#94a3b8] light-theme:text-slate-600">
                     <span className="font-semibold text-xs uppercase tracking-wider text-[#64748b]">Cadastro:</span>
@@ -8054,6 +8201,26 @@ const App: React.FC = () => {
                   <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
                     <Database className="h-8 w-8 text-[#64748b]/40 animate-pulse" />
                     <span className="text-xs">Nenhum mensalista cadastrado no Supabase</span>
+                  </div>
+                ) : filteredSupabaseMensalistas.length === 0 ? (
+                  <div className="h-60 flex flex-col items-center justify-center text-[#64748b] gap-2">
+                    <Filter className="h-8 w-8 text-[#64748b]/40" />
+                    <span className="text-xs font-semibold text-slate-300 light-theme:text-slate-700">Nenhum mensalista encontrado para o filtro aplicado</span>
+                    <span className="text-xxs text-[#64748b]">Tente alternar o filtro de status (Ativos/Inativos) ou limpar a busca.</span>
+                    {(filterStatusMensalistas !== 'todos' || periodoInicioMensalistas || periodoFimMensalistas || searchSupabaseMensalistas) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFilterStatusMensalistas('todos');
+                          setPeriodoInicioMensalistas('');
+                          setPeriodoFimMensalistas('');
+                          setSearchSupabaseMensalistas('');
+                        }}
+                        className="text-xxs font-bold text-violet-400 hover:text-violet-300 mt-2 underline cursor-pointer"
+                      >
+                        Limpar todos os filtros
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <table className="w-full text-left border-collapse">
@@ -12222,7 +12389,7 @@ const App: React.FC = () => {
         const { data, error } = await supabase
           .from('despesas')
           .select('*')
-          .order('data_despesa', { ascending: true })
+          .order('data_despesa', { ascending: false })
           .range(offset, offset + limit - 1);
 
         if (error) throw error;
@@ -12541,6 +12708,11 @@ const App: React.FC = () => {
 
     const lacres = laudo.lacres || Array(10).fill('');
     const ultimasCargas = laudo.ultimas_cargas || Array(3).fill('');
+    const modeloNormalized = (laudo.modelo || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
 
     printWindow.document.write(`
       <html>
@@ -12702,13 +12874,41 @@ const App: React.FC = () => {
               font-family: monospace;
             }
 
-            .higienizacao-container {
+            .modelo-row {
+              display: flex;
+              align-items: center;
+              gap: 16px;
+              margin-top: 6px;
+              width: 100%;
+            }
+            .modelo-grid-4col {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              column-gap: 12px;
+              row-gap: 4px;
+              flex-grow: 1;
+            }
+            .checkbox-option {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              font-size: 10px;
+              font-weight: bold;
+              white-space: nowrap;
+            }
+
+            .higienizacao-container, .higienizacao-section {
               border: 1px solid #000;
               border-radius: 8px;
               padding: 8px 10px;
-              margin-top: 10px;
+              margin-top: 8px;
               width: 100%;
               box-sizing: border-box;
+            }
+            .higienizacao-title {
+              font-weight: bold;
+              font-size: 10px;
+              margin-bottom: 4px;
             }
             .higienizacao-row {
               display: flex;
@@ -12741,7 +12941,7 @@ const App: React.FC = () => {
               padding-left: 12px;
               font-size: 9px;
             }
-            .sub-checks-grid-2col {
+            .sub-checks-grid-2col, .sub-checks-grid-2x2 {
               display: grid;
               grid-template-columns: 1fr 1fr;
               column-gap: 15px;
@@ -12836,7 +13036,7 @@ const App: React.FC = () => {
             .obs-lines-container {
               margin-top: 4px;
               position: relative;
-              min-height: 48px;
+              min-height: 96px;
             }
             .obs-line-text {
               position: absolute;
@@ -13002,23 +13202,25 @@ const App: React.FC = () => {
           <!-- Modelo -->
           <div class="modelo-row">
             <span class="inline-label-bold">MODELO:</span>
-            <div class="checkbox-option">
-              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'tanque' ? 'X' : '&nbsp;'}&nbsp;)</span> TANQUE
-            </div>
-            <div class="checkbox-option">
-              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'graneleiro' ? 'X' : '&nbsp;'}&nbsp;)</span> GRANELEIRO
-            </div>
-            <div class="checkbox-option">
-              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'boiadeiro' ? 'X' : '&nbsp;'}&nbsp;)</span> BOIADEIRO
-            </div>
-            <div class="checkbox-option">
-              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'bau' ? 'X' : '&nbsp;'}&nbsp;)</span> BAU
-            </div>
-            <div class="checkbox-option">
-              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'cacamba' ? 'X' : '&nbsp;'}&nbsp;)</span> CAÇAMBA
-            </div>
-            <div class="checkbox-option">
-              <span class="check-parenthesis">(&nbsp;${laudo.modelo === 'container' ? 'X' : '&nbsp;'}&nbsp;)</span> CONTAINER
+            <div class="modelo-grid-4col">
+              <div class="checkbox-option">
+                <span class="check-parenthesis">(&nbsp;${modeloNormalized === 'tanque' ? 'X' : '&nbsp;'}&nbsp;)</span> TANQUE
+              </div>
+              <div class="checkbox-option">
+                <span class="check-parenthesis">(&nbsp;${modeloNormalized === 'graneleiro' ? 'X' : '&nbsp;'}&nbsp;)</span> GRANELEIRO
+              </div>
+              <div class="checkbox-option">
+                <span class="check-parenthesis">(&nbsp;${modeloNormalized === 'boiadeiro' ? 'X' : '&nbsp;'}&nbsp;)</span> BOIADEIRO
+              </div>
+              <div class="checkbox-option">
+                <span class="check-parenthesis">(&nbsp;${modeloNormalized === 'bau' ? 'X' : '&nbsp;'}&nbsp;)</span> BAU
+              </div>
+              <div class="checkbox-option">
+                <span class="check-parenthesis">(&nbsp;${modeloNormalized === 'cacamba' ? 'X' : '&nbsp;'}&nbsp;)</span> CAÇAMBA
+              </div>
+              <div class="checkbox-option">
+                <span class="check-parenthesis">(&nbsp;${modeloNormalized === 'container' ? 'X' : '&nbsp;'}&nbsp;)</span> CONTAINER
+              </div>
             </div>
           </div>
 
@@ -13134,7 +13336,10 @@ const App: React.FC = () => {
           <div class="obs-section">
             <div class="obs-header">OBS.:</div>
             <div class="obs-lines-container">
-              <div class="obs-line-text">${laudo.observacoes || ''}</div>
+              <div class="obs-line-text">${cleanObservacoes}</div>
+              <div class="obs-bg-line"></div>
+              <div class="obs-bg-line"></div>
+              <div class="obs-bg-line"></div>
               <div class="obs-bg-line"></div>
               <div class="obs-bg-line"></div>
               <div class="obs-bg-line"></div>
@@ -13144,7 +13349,7 @@ const App: React.FC = () => {
           <!-- Rodapé e Assinaturas -->
           <div class="footer-section">
             <div class="footer-left">
-              <div class="footer-box-item" style="height: 44px; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+              <div class="footer-box-item" style="height: 60px; flex-direction: column; justify-content: space-between; align-items: flex-start;">
                 <span class="box-label">ASS. MOT.:</span>
                 <div style="border-bottom: 1px dashed #000; width: 90%; margin: 0 auto 2px auto; height: 1px;"></div>
               </div>
@@ -13161,7 +13366,7 @@ const App: React.FC = () => {
             </div>
             
             <div class="footer-right">
-              <div class="footer-box-item" style="height: 60px; flex-direction: column; justify-content: space-between; align-items: flex-start;">
+              <div class="footer-box-item" style="height: 80px; flex-direction: column; justify-content: space-between; align-items: flex-start;">
                 <span class="box-label">RESP. LAVA-JATO</span>
                 <div style="border-bottom: 1px dashed #000; width: 90%; margin: 0 auto 4px auto; height: 1px;"></div>
               </div>
@@ -15107,6 +15312,33 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteParcela = async () => {
+    if (!isExcluindoParcela || !activeMensalistaFinanceiro) return;
+    setIsDeletingParcela(true);
+    setDeleteParcelaError(null);
+
+    try {
+      if (isExcluindoParcela.data_pagamento) {
+        throw new Error('Não é possível excluir uma parcela que já foi baixada. Estorne o pagamento primeiro.');
+      }
+
+      const { error } = await supabase
+        .from('mensalistaparcelas')
+        .delete()
+        .eq('id', isExcluindoParcela.id);
+
+      if (error) throw error;
+
+      await fetchSupabaseMensalistaParcelas();
+      setIsExcluindoParcela(null);
+    } catch (err: any) {
+      console.error(err);
+      setDeleteParcelaError(err.message || 'Erro ao excluir a parcela.');
+    } finally {
+      setIsDeletingParcela(false);
+    }
+  };
+
   // Funções CRUD para gerenciamento de Entradas/Receitas
   const handleOpenCreateEntrada = () => {
     const today = new Date();
@@ -15917,6 +16149,11 @@ const App: React.FC = () => {
       (item.plano || '').toLowerCase().includes(searchSupabaseMensalistas.toLowerCase());
 
     if (!matchesSearch) return false;
+
+    // Filtro Toggle Ativos / Inativos
+    if (filterStatusMensalistas === 'ativos' && item.ativo === false) return false;
+    if (filterStatusMensalistas === 'inativos' && item.ativo !== false) return false;
+
     if (periodoInicioMensalistas || periodoFimMensalistas) {
       const itemDateStr = item.created_at ? item.created_at.split('T')[0] : '';
       if (!itemDateStr) return false;
@@ -15985,7 +16222,12 @@ const App: React.FC = () => {
   const sortedSupabaseDespesas = [...filteredSupabaseDespesas].sort((a, b) => {
     const dateA = a.data_despesa || '';
     const dateB = b.data_despesa || '';
-    return dateB.localeCompare(dateA);
+    if (dateB !== dateA) {
+      return dateB.localeCompare(dateA);
+    }
+    const createdA = a.created_at || '';
+    const createdB = b.created_at || '';
+    return createdB.localeCompare(createdA);
   });
 
   // Filter local rows (Entradas)
