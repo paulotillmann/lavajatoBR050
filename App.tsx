@@ -1055,7 +1055,7 @@ const App: React.FC = () => {
     );
 
     return (
-      <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0">
+      <div className="h-full flex flex-col gap-3.5 overflow-hidden min-h-0">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 flex-shrink-0">
           <div>
@@ -2542,48 +2542,48 @@ const App: React.FC = () => {
 
     if (laudoFormMode === 'list') {
       return (
-        <div className="h-full flex flex-col gap-5 w-full overflow-hidden text-left">
+        <div className="h-full flex flex-col gap-3.5 w-full overflow-hidden text-left">
           {/* A. KPI Header */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full flex-shrink-0">
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[120px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TOTAL DE LAUDOS</span>
-              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full flex-shrink-0">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">TOTAL DE LAUDOS</span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
                 {showPrivacyValues ? supabaseLaudos.length : '••'}
               </h3>
-              <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-                <FileText className="h-3.5 w-3.5 text-emerald-400 light-theme:text-emerald-600" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+                <FileText className="h-3 w-3 text-emerald-400 light-theme:text-emerald-600" />
                 <span>Laudos emitidos no total</span>
               </div>
-              <FileText className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+              <FileText className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
 
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[120px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ÚLTIMO LAUDO GERADO</span>
-              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">ÚLTIMO LAUDO GERADO</span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
                 {laudoConfig ? String(laudoConfig.ultimo_numero).padStart(6, '0') : 'N/A'}
               </h3>
-              <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-                <Clock className="h-3.5 w-3.5 text-cyan-400 light-theme:text-cyan-600" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+                <Clock className="h-3 w-3 text-cyan-400 light-theme:text-cyan-600" />
                 <span>Sequência atual do sistema</span>
               </div>
-              <ListOrdered className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+              <ListOrdered className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
 
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[120px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS HIGIENIZADOS</span>
-              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">VEÍCULOS HIGIENIZADOS</span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
                 {showPrivacyValues ? Array.from(new Set(supabaseLaudos.map(l => l.placa_cavalo))).length : '••'}
               </h3>
-              <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-                <Truck className="h-3.5 w-3.5 text-violet-400 light-theme:text-violet-600" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+                <Truck className="h-3 w-3 text-violet-400 light-theme:text-violet-600" />
                 <span>Cavalos/Tratores únicos</span>
               </div>
-              <Truck className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+              <Truck className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
           </div>
 
           {/* B. Filter and Grid Section */}
-          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl shadow-xl overflow-hidden min-h-0 flex flex-col relative">
+          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl shadow-xl overflow-hidden min-h-0 flex flex-col relative">
             <div className="flex items-center justify-between mb-5 flex-wrap gap-4 flex-shrink-0">
               <div>
                 <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Laudos de Higienização Cadastrados</h3>
@@ -2676,7 +2676,7 @@ const App: React.FC = () => {
                           {String(laudo.numero_laudo).padStart(6, '0')}
                         </td>
                         <td className="py-4 px-6 text-[#94a3b8] light-theme:text-slate-500">
-                          {laudo.data_laudo ? new Date(laudo.data_laudo).toLocaleDateString('pt-BR') : 'N/A'}
+                          {laudo.data_laudo ? new Date(laudo.data_laudo + 'T00:00:00').toLocaleDateString('pt-BR') : 'N/A'}
                         </td>
                         <td className="py-4 px-6 text-white light-theme:text-slate-800 font-bold">
                           {laudo.empresa || 'N/A'}
@@ -3408,7 +3408,7 @@ const App: React.FC = () => {
 
   const renderLaudoSequence = () => {
     return (
-      <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0 text-left">
+      <div className="h-full flex flex-col gap-3.5 overflow-hidden min-h-0 text-left">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
           <div>
@@ -4442,105 +4442,105 @@ const App: React.FC = () => {
 
 
         {/* Top Operational Cards Group */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 w-full">
           {/* Faturamento Geral (Líquido) */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-blue-500/30 light-theme:hover:border-blue-300">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-blue-500/30 light-theme:hover:border-blue-300">
             <div className="flex justify-between items-start w-full gap-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO LÍQUIDO</span>
-              <div className="h-7 w-7 rounded-lg bg-blue-500/10 dark:bg-blue-500/25 flex items-center justify-center text-blue-400 light-theme:text-blue-600 border border-blue-500/20 flex-shrink-0">
-                <TrendingUp className="h-4 w-4" />
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">FATURAMENTO LÍQUIDO</span>
+              <div className="h-6 w-6 rounded-md bg-blue-500/10 dark:bg-blue-500/25 flex items-center justify-center text-blue-400 light-theme:text-blue-600 border border-blue-500/20 flex-shrink-0">
+                <TrendingUp className="h-3 w-3" />
               </div>
             </div>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-900 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues
                 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoGeralVal)
                 : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-blue-400 light-theme:text-blue-600 mt-4 relative z-10">
-              <TrendingUp className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-blue-400 light-theme:text-blue-600 mt-1.5 relative z-10">
+              <TrendingUp className="h-3 w-3" />
               <span>Resultado líquido</span>
             </div>
-            <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-blue-500/5 dark:text-blue-400/5 light-theme:text-blue-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
+            <TrendingUp className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-blue-500/5 dark:text-blue-400/5 light-theme:text-blue-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
           </div>
 
           {/* Faturamento Bruto */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-emerald-500/30 light-theme:hover:border-emerald-300">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-emerald-500/30 light-theme:hover:border-emerald-300">
             <div className="flex justify-between items-start w-full gap-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO BRUTO</span>
-              <div className="h-7 w-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/25 flex items-center justify-center text-emerald-400 light-theme:text-emerald-600 border border-emerald-500/20 flex-shrink-0">
-                <DollarSign className="h-4 w-4" />
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">FATURAMENTO BRUTO</span>
+              <div className="h-6 w-6 rounded-md bg-emerald-500/10 dark:bg-emerald-500/25 flex items-center justify-center text-emerald-400 light-theme:text-emerald-600 border border-emerald-500/20 flex-shrink-0">
+                <DollarSign className="h-3 w-3" />
               </div>
             </div>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-900 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues
                 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(faturamentoBrutoVal)
                 : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-              <DollarSign className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+              <DollarSign className="h-3 w-3" />
               <span>{showPrivacyValues ? `${filteredEntradas.length} entradas no sistema` : '•• entradas no sistema'}</span>
             </div>
-            <DollarSign className="absolute -right-3 -bottom-3 h-20 w-20 text-emerald-500/5 dark:text-emerald-400/5 light-theme:text-emerald-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
+            <DollarSign className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-emerald-500/5 dark:text-emerald-400/5 light-theme:text-emerald-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
           </div>
 
           {/* Custos Totais */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-rose-500/30 light-theme:hover:border-rose-300">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-rose-500/30 light-theme:hover:border-rose-300">
             <div className="flex justify-between items-start w-full gap-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">CUSTOS TOTAIS</span>
-              <div className="h-7 w-7 rounded-lg bg-rose-500/10 dark:bg-rose-500/25 flex items-center justify-center text-rose-400 light-theme:text-rose-600 border border-rose-500/20 flex-shrink-0">
-                <TrendingDown className="h-4 w-4" />
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">CUSTOS TOTAIS</span>
+              <div className="h-6 w-6 rounded-md bg-rose-500/10 dark:bg-rose-500/25 flex items-center justify-center text-rose-400 light-theme:text-rose-600 border border-rose-500/20 flex-shrink-0">
+                <TrendingDown className="h-3 w-3" />
               </div>
             </div>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-900 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues
                 ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDespesasValCalculated)
                 : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
-              <TrendingDown className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-400 light-theme:text-rose-600 mt-1.5 relative z-10">
+              <TrendingDown className="h-3 w-3" />
               <span>{showPrivacyValues ? `${filteredDespesas.length} despesas no total` : '•• despesas no total'}</span>
             </div>
-            <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-rose-500/5 dark:text-rose-400/5 light-theme:text-rose-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
+            <TrendingDown className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-rose-500/5 dark:text-rose-400/5 light-theme:text-rose-600/5 pointer-events-none stroke-[1.5] transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
           </div>
 
           {/* Mensalistas VIP */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <div className="flex justify-between items-start w-full gap-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS VIP</span>
-              <div className="h-7 w-7 rounded-lg bg-violet-500/10 dark:bg-violet-500/25 flex items-center justify-center text-violet-400 light-theme:text-violet-600 border border-violet-500/20 flex-shrink-0">
-                <Users className="h-4 w-4" />
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">MENSALISTAS VIP</span>
+              <div className="h-6 w-6 rounded-md bg-violet-500/10 dark:bg-violet-500/25 flex items-center justify-center text-violet-400 light-theme:text-violet-600 border border-violet-500/20 flex-shrink-0">
+                <Users className="h-3 w-3" />
               </div>
             </div>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-900 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues
                 ? `${supabaseMensalistas.filter(m => m.ativo).length || 24} Ativos`
                 : '•• Ativos'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-              <Calendar className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+              <Calendar className="h-3 w-3" />
               <span>{showPrivacyValues ? `De ${supabaseMensalistas.length || 28} cadastrados` : 'De •• cadastrados'}</span>
             </div>
-            <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Users className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Veículos Cadastrados */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
             <div className="flex justify-between items-start w-full gap-2">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS CADASTRADOS</span>
-              <div className="h-7 w-7 rounded-lg bg-amber-500/10 dark:bg-amber-500/25 flex items-center justify-center text-amber-500 light-theme:text-amber-600 border border-amber-500/20 flex-shrink-0">
-                <Car className="h-4 w-4" />
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">VEÍCULOS CADASTRADOS</span>
+              <div className="h-6 w-6 rounded-md bg-amber-500/10 dark:bg-amber-500/25 flex items-center justify-center text-amber-500 light-theme:text-amber-600 border border-amber-500/20 flex-shrink-0">
+                <Car className="h-3 w-3" />
               </div>
             </div>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-black mt-2.5 tracking-tight block leading-none">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-900 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues
                 ? `${supabaseVehicles.length || 42} Veículos`
                 : '•• Veículos'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
-              <Car className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-500 light-theme:text-amber-600 mt-1.5 relative z-10">
+              <Car className="h-3 w-3" />
               <span>{showPrivacyValues ? `${supabaseVehicles.filter(v => v.ativo).length || 38} operacionais` : '•• operacionais'}</span>
             </div>
-            <Car className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Car className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
@@ -5670,64 +5670,64 @@ const App: React.FC = () => {
     };
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full">
+      <div className="h-full flex flex-col gap-3.5 w-full">
         {/* Aggregated Finance Stats header */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full flex-shrink-0">
           {/* Entradas do Dia */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard1}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard1}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard1) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-              <TrendingUp className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+              <TrendingUp className="h-3 w-3" />
               <span>{descCard1}</span>
             </div>
-            <TrendingUp className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <TrendingUp className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Entradas da Semana */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard2}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard2}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {isPeriodoFilterActive ? (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••') : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••')}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-              <Calendar className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+              <Calendar className="h-3 w-3" />
               <span>{descCard2}</span>
             </div>
-            <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Calendar className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Entradas do Mês */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard3}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard3}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR').format(valCard3) : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard3) : 'R$ ••••••')}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-              <Wallet className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+              <Wallet className="h-3 w-3" />
               <span>{descCard3}</span>
             </div>
-            <Wallet className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Wallet className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           {/* Média por Lançamento */}
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard4}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard4}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard4) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
-              <Activity className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-500 light-theme:text-amber-600 mt-1.5 relative z-10">
+              <Activity className="h-3 w-3" />
               <span>{descCard4}</span>
             </div>
-            <Activity className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Activity className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
         {/* Content Box */}
-        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex flex-col overflow-hidden">
           {entradaFormMode !== 'list' ? (
             <form onSubmit={handleSaveEntrada} className="flex flex-col gap-5 w-full max-w-4xl mr-auto ml-0 py-2 text-left">
               <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
@@ -6612,59 +6612,59 @@ const App: React.FC = () => {
     };
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full">
+      <div className="h-full flex flex-col gap-3.5 w-full">
         {/* Finance Stats header */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard1}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full flex-shrink-0">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard1}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard1) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
-              <TrendingDown className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-400 light-theme:text-rose-600 mt-1.5 relative z-10">
+              <TrendingDown className="h-3 w-3" />
               <span>{descCard1}</span>
             </div>
-            <TrendingDown className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <TrendingDown className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard2}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard2}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {isPeriodoFilterActive ? (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••') : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard2) : 'R$ ••••••')}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-amber-500 light-theme:text-amber-600 mt-4 relative z-10">
-              <Layers className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-500 light-theme:text-amber-600 mt-1.5 relative z-10">
+              <Layers className="h-3 w-3" />
               <span>{descCard2}</span>
             </div>
-            <Layers className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Layers className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard3}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard3}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {isPeriodoFilterActive ? new Intl.NumberFormat('pt-BR').format(valCard3) : (showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard3) : 'R$ ••••••')}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-              <Calendar className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+              <Calendar className="h-3 w-3" />
               <span>{descCard3}</span>
             </div>
-            <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Calendar className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">{labelCard4}</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">{labelCard4}</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valCard4) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-              <Target className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+              <Target className="h-3 w-3" />
               <span>{descCard4}</span>
             </div>
-            <Target className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Target className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
-        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex flex-col overflow-hidden">
           {despesaFormMode !== 'list' ? (
             <form onSubmit={handleSaveDespesa} className="flex flex-col gap-5 w-full max-w-4xl mr-auto ml-0 py-2 text-left">
               <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
@@ -7770,68 +7770,68 @@ const App: React.FC = () => {
     }
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full">
+      <div className="h-full flex flex-col gap-3.5 w-full">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full flex-shrink-0">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MENSALISTAS ATIVOS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full flex-shrink-0">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">MENSALISTAS ATIVOS</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseMensalistas.filter(m => m.ativo).length} de ${supabaseMensalistas.length} Cadastros` : '•• de •• Cadastros'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-              <Users className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+              <Users className="h-3 w-3" />
               <span>Clientes recorrentes</span>
             </div>
-            <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Users className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FATURAMENTO PREVISTO MENSAL</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">FATURAMENTO PREVISTO MENSAL</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalVipRevenue) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-              <DollarSign className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+              <DollarSign className="h-3 w-3" />
               <span>Receita VIP recorrente</span>
             </div>
-            <DollarSign className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <DollarSign className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TICKET MÉDIO MENSALISTA</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">TICKET MÉDIO MENSALISTA</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(supabaseMensalistas.length > 0 ? (totalVipRevenue / supabaseMensalistas.length) : 0) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-              <Calendar className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+              <Calendar className="h-3 w-3" />
               <span>Média mensal por plano</span>
             </div>
-            <Calendar className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Calendar className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
           <div
             onClick={() => setShowModalOverdueParcelas(true)}
-            className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/50 light-theme:hover:border-rose-400 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all cursor-pointer"
+            className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 hover:border-rose-500/50 light-theme:hover:border-rose-400 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all cursor-pointer"
             title="Clique para ver o relatório detalhado de mensalistas com parcelas vencidas"
           >
-            <span className="text-[10px] font-bold text-rose-400 dark:text-rose-400 light-theme:text-rose-600 uppercase tracking-widest block leading-none">
+            <span className="text-[9px] sm:text-[10px] font-bold text-rose-400 dark:text-rose-400 light-theme:text-rose-600 uppercase tracking-wider block leading-none">
               PARCELAS ABERTAS VENCIDAS
             </span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalValorOverdueGlobal) : 'R$ ••••••'}
             </h3>
-            <div className="flex items-center justify-between text-xxs font-bold text-rose-400 light-theme:text-rose-600 mt-4 relative z-10">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-rose-400 light-theme:text-rose-600 mt-1.5 relative z-10">
               <div className="flex items-center gap-1.5">
-                <AlertTriangle className="h-3.5 w-3.5" />
+                <AlertTriangle className="h-3 w-3" />
                 <span>{overdueParcelasGlobal.length} parcela(s) em atraso</span>
               </div>
               <span className="text-[9px] underline opacity-80 group-hover:opacity-100 transition-opacity">Detalhar</span>
             </div>
-            <AlertTriangle className="absolute -right-3 -bottom-3 h-20 w-20 text-rose-500/10 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <AlertTriangle className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-rose-500/10 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
-        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden">
+        <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex flex-col overflow-hidden">
           {mensalistaFormMode !== 'list' ? (
             <form onSubmit={handleSaveMensalista} className="flex flex-col justify-between w-full max-w-4xl mr-auto ml-0 py-2 text-left h-full overflow-hidden">
               <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3">
@@ -8600,47 +8600,47 @@ const App: React.FC = () => {
     const currentItems = sortedSupabasePessoas.slice(indexOfFirstItem, indexOfLastItem);
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+      <div className="h-full flex flex-col gap-3.5 w-full min-h-0">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">PESSOAS FÍSICAS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full flex-shrink-0">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">PESSOAS FÍSICAS</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseData.filter(p => p.tipo_pessoa === 'Física' || p.tipo_pessoa === 'Cliente' || p.tipo_pessoa === 'Mensalista' || p.tipo_pessoa === 'Outros' || !p.tipo_pessoa).length} Cadastros` : '•• Cadastros'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-              <Users className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+              <Users className="h-3 w-3" />
               <span>Clientes pessoa física</span>
             </div>
-            <Users className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Users className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">PESSOAS JURÍDICAS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">PESSOAS JURÍDICAS</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseData.filter(p => p.tipo_pessoa === 'Empresa' || p.tipo_pessoa === 'Jurídica').length} Cadastros` : '•• Cadastros'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-              <Database className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+              <Database className="h-3 w-3" />
               <span>Empresas corporativas</span>
             </div>
-            <Database className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Database className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ATIVOS NA BASE DE DADOS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">ATIVOS NA BASE DE DADOS</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseData.filter(p => p.ativo !== false).length} de ${supabaseData.length} Contatos` : '•• de •• Contatos'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-              <CheckCircle className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+              <CheckCircle className="h-3 w-3" />
               <span>Cadastros ativos</span>
             </div>
-            <CheckCircle className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <CheckCircle className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
-        <div className={`${pessoaFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
+        <div className={`${pessoaFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex flex-col overflow-hidden`}>
           {pessoaFormMode !== 'list' ? (
             <form onSubmit={handleSavePessoa} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
               <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
@@ -9051,47 +9051,47 @@ const App: React.FC = () => {
     const currentItems = sortedSupabaseVehicles.slice(indexOfFirstItem, indexOfLastItem);
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+      <div className="h-full flex flex-col gap-3.5 w-full min-h-0">
         {/* Header Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full flex-shrink-0">
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">FROTA TOTAL</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full flex-shrink-0">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">FROTA TOTAL</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseVehicles.length} Veículos` : '•• Veículos'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-              <Car className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+              <Car className="h-3 w-3" />
               <span>Frota total cadastrada</span>
             </div>
-            <Car className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <Car className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">MOTORISTAS VINCULADOS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">MOTORISTAS VINCULADOS</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseVehicles.filter(v => v.motorista && v.motorista.length > 0).length} Veículos` : '•• Veículos'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-              <User className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+              <User className="h-3 w-3" />
               <span>Condutores associados</span>
             </div>
-            <User className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <User className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
 
-          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">VEÍCULOS ATIVOS</span>
-            <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+          <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">VEÍCULOS ATIVOS</span>
+            <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
               {showPrivacyValues ? `${supabaseVehicles.filter(v => v.ativo).length} de ${supabaseVehicles.length} Ativos` : '•• de •• Ativos'}
             </h3>
-            <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-              <CheckCircle className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+              <CheckCircle className="h-3 w-3" />
               <span>Em operação ativa</span>
             </div>
-            <CheckCircle className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+            <CheckCircle className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
           </div>
         </div>
 
-        <div className={`${veiculoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
+        <div className={`${veiculoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl flex flex-col overflow-hidden`}>
           {veiculoFormMode !== 'list' ? (
             <form onSubmit={handleSaveVeiculo} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
               <div className="flex items-center justify-between border-b border-[#1f2433] light-theme:border-slate-100 pb-3 flex-shrink-0">
@@ -9473,7 +9473,7 @@ const App: React.FC = () => {
     const currentItems = sortedSupabaseFormaPagamento.slice(indexOfFirstItem, indexOfLastItem);
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+      <div className="h-full flex flex-col gap-3.5 w-full min-h-0">
         <div className={`${formaPagamentoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
           {formaPagamentoFormMode !== 'list' ? (
             <form onSubmit={handleSaveFormaPagamento} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
@@ -9793,7 +9793,7 @@ const App: React.FC = () => {
     const currentItems = sortedSupabaseCentroCusto.slice(indexOfFirstItem, indexOfLastItem);
 
     return (
-      <div className="h-full flex flex-col gap-4 w-full min-h-0">
+      <div className="h-full flex flex-col gap-3.5 w-full min-h-0">
         <div className={`${centroCustoFormMode === 'list' ? 'flex-1 min-h-0 w-full' : 'w-full max-w-3xl h-fit max-h-full flex flex-col min-h-0'} bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl flex flex-col overflow-hidden`}>
           {centroCustoFormMode !== 'list' ? (
             <form onSubmit={handleSaveCentroCusto} className="flex flex-col min-h-0 w-full py-2 text-left gap-5">
@@ -10223,51 +10223,51 @@ const App: React.FC = () => {
     // 2. Render List view
     if (osFormMode === 'list') {
       return (
-        <div className="h-full flex flex-col gap-5 w-full overflow-hidden">
+        <div className="h-full flex flex-col gap-3.5 w-full overflow-hidden">
           {/* A. KPI Stats Header */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full flex-shrink-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full flex-shrink-0">
             {/* Total Periodo */}
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TOTAL DO PERÍODO</span>
-              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">TOTAL DO PERÍODO</span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
                 {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalPeriodo) : 'R$ ••••••'}
               </h3>
-              <div className="flex items-center gap-1.5 text-xxs font-bold text-cyan-400 light-theme:text-cyan-600 mt-4 relative z-10">
-                <TrendingUp className="h-3.5 w-3.5 text-cyan-400 light-theme:text-cyan-600" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-cyan-400 light-theme:text-cyan-600 mt-1.5 relative z-10">
+                <TrendingUp className="h-3 w-3 text-cyan-400 light-theme:text-cyan-600" />
                 <span>Receitas do período</span>
               </div>
-              <DollarSign className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+              <DollarSign className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
 
             {/* Total OS Count */}
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">ORDEM DE SERVIÇOS</span>
-              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">ORDEM DE SERVIÇOS</span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
                 {showPrivacyValues ? totalOSCount : '••'}
               </h3>
-              <div className="flex items-center gap-1.5 text-xxs font-bold text-emerald-400 light-theme:text-emerald-600 mt-4 relative z-10">
-                <FileText className="h-3.5 w-3.5 text-emerald-400 light-theme:text-emerald-600" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-emerald-400 light-theme:text-emerald-600 mt-1.5 relative z-10">
+                <FileText className="h-3 w-3 text-emerald-400 light-theme:text-emerald-600" />
                 <span>Total de O.S. no período</span>
               </div>
-              <FileText className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+              <FileText className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
 
             {/* Ticket Medio */}
-            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 py-5 rounded-2xl flex flex-col justify-between min-h-[140px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-widest block leading-none">TICKET MÉDIO</span>
-              <h3 className="text-2xl sm:text-[28px] font-bold text-white light-theme:text-slate-800 mt-2.5 tracking-tight block leading-none">
+            <div className="bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 px-4 py-3 sm:px-5 sm:py-3.5 rounded-xl flex flex-col justify-between min-h-[85px] sm:min-h-[90px] relative overflow-hidden group shadow-sm transition-all hover:border-[#2f384e] light-theme:hover:border-slate-300">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-500 light-theme:text-slate-400 uppercase tracking-wider block leading-none">TICKET MÉDIO</span>
+              <h3 className="text-lg sm:text-xl font-extrabold text-white light-theme:text-slate-800 mt-1 sm:mt-1.5 tracking-tight block leading-none">
                 {showPrivacyValues ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(ticketMedio) : 'R$ ••••••'}
               </h3>
-              <div className="flex items-center gap-1.5 text-xxs font-bold text-violet-400 light-theme:text-violet-600 mt-4 relative z-10">
-                <Wallet className="h-3.5 w-3.5 text-violet-400 light-theme:text-violet-600" />
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-violet-400 light-theme:text-violet-600 mt-1.5 relative z-10">
+                <Wallet className="h-3 w-3 text-violet-400 light-theme:text-violet-600" />
                 <span>Valor médio por O.S.</span>
               </div>
-              <Wallet className="absolute -right-3 -bottom-3 h-20 w-20 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
+              <Wallet className="absolute -right-2 -bottom-2 h-12 w-12 sm:h-14 sm:w-14 text-[#1f2433]/15 dark:text-slate-800/10 light-theme:text-slate-200/20 pointer-events-none stroke-[1] transition-transform duration-300 group-hover:scale-110" />
             </div>
           </div>
 
           {/* C. Grid/Table of Service Orders with Unified Header */}
-          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-6 rounded-2xl shadow-xl overflow-hidden min-h-0 flex flex-col relative">
+          <div className="flex-1 bg-[#0e111a] light-theme:bg-white border border-[#1f2433] light-theme:border-slate-200 p-5 rounded-2xl shadow-xl overflow-hidden min-h-0 flex flex-col relative">
             <div className="flex items-center justify-between mb-5 flex-wrap gap-4 flex-shrink-0 text-left">
               <div>
                 <h3 className="text-sm font-bold text-white light-theme:text-slate-800">Lista de Ordens de Serviço</h3>
@@ -16286,7 +16286,7 @@ const App: React.FC = () => {
     );
 
     return (
-      <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0 text-left">
+      <div className="h-full flex flex-col gap-3.5 overflow-hidden min-h-0 text-left">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
           <div>
@@ -16606,7 +16606,7 @@ const App: React.FC = () => {
         )}
 
         {/* Workspace Display Area */}
-        <main className="flex-1 overflow-hidden p-6 md:p-8 flex flex-col min-h-0 relative">
+        <main className="flex-1 overflow-hidden px-6 md:px-8 py-3.5 flex flex-col min-h-0 relative">
 
           {/* Dynamic Background subtle glows */}
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-600/5 via-transparent to-transparent -z-10 pointer-events-none" />
@@ -16626,7 +16626,7 @@ const App: React.FC = () => {
           {currentTab === 'usuarios' && renderUsuarios()}
 
           {currentTab === 'migracoes' && (
-            <div className="h-full flex flex-col gap-6 overflow-hidden min-h-0">
+            <div className="h-full flex flex-col gap-3.5 overflow-hidden min-h-0">
               {renderMigrationScreenControlHeader()}
 
               {/* Splicing the original layout split-grids to ensure 100% feature parity */}
