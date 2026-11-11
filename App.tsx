@@ -2869,7 +2869,6 @@ const App: React.FC = () => {
                 <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Horário Entrada</label>
                 <input
                   type="datetime-local"
-                  required
                   value={formLaudoEntrada}
                   onChange={(e) => setFormLaudoEntrada(e.target.value)}
                   className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 cursor-pointer"
@@ -2880,7 +2879,6 @@ const App: React.FC = () => {
                 <label className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">Horário Saída</label>
                 <input
                   type="datetime-local"
-                  required
                   value={formLaudoSaida}
                   onChange={(e) => setFormLaudoSaida(e.target.value)}
                   className="w-full bg-[#090b11] light-theme:bg-slate-50 border border-[#1f2433] light-theme:border-slate-200 rounded-xl py-2 px-3.5 focus:outline-none focus:border-violet-500 text-white light-theme:text-slate-800 cursor-pointer"
@@ -3087,7 +3085,7 @@ const App: React.FC = () => {
                         onChange={(e) => setFormLaudoCavaloExternoAguaQuente(e.target.checked)}
                         className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
                       />
-                      <span>Água Quente</span>
+                      <span>Água Quente 75º graus.</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
                       <input
@@ -3152,7 +3150,7 @@ const App: React.FC = () => {
                         onChange={(e) => setFormLaudoCarretaInternoAguaQuente(e.target.checked)}
                         className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
                       />
-                      <span>Água Quente</span>
+                      <span>Água Quente 75º graus.</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
                       <input
@@ -3200,7 +3198,7 @@ const App: React.FC = () => {
                         onChange={(e) => setFormLaudoCarretaExternoAguaQuente(e.target.checked)}
                         className="h-3.5 w-3.5 rounded bg-[#090b11] border-[#1f2433] text-violet-600 cursor-pointer"
                       />
-                      <span>Água Quente</span>
+                      <span>Água Quente 75º graus.</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer text-[#94a3b8] hover:text-white light-theme:text-slate-600 transition-colors">
                       <input
@@ -13249,7 +13247,7 @@ const App: React.FC = () => {
                   <span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo ? 'X' : '&nbsp;'}&nbsp;)</span> EXTERNO
                 </div>
                 <div class="sub-checks-stack">
-                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE 75º GRAUS.</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.cavalo_externo_agua_fria ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA FRIA</div>
                 </div>
               </div>
@@ -13268,7 +13266,7 @@ const App: React.FC = () => {
                   <span class="check-parenthesis">(&nbsp;${laudo.carreta_interno ? 'X' : '&nbsp;'}&nbsp;)</span> INTERNO
                 </div>
                 <div class="sub-checks-stack">
-                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_interno_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_interno_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE 75º GRAUS.</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_interno_agua_fria ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA FRIA</div>
                 </div>
               </div>
@@ -13278,7 +13276,7 @@ const App: React.FC = () => {
                   <span class="check-parenthesis">(&nbsp;${laudo.carreta_externo ? 'X' : '&nbsp;'}&nbsp;)</span> EXTERNO
                 </div>
                 <div class="sub-checks-grid-2col" style="flex-grow: 1;">
-                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE</div>
+                  <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_agua_quente ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA QUENTE 75º GRAUS.</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_boca_superior ? 'X' : '&nbsp;'}&nbsp;)</span> BOCA SUPERIOR</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_agua_fria ? 'X' : '&nbsp;'}&nbsp;)</span> ÁGUA FRIA</div>
                   <div><span class="check-parenthesis">(&nbsp;${laudo.carreta_externo_boca_lateral ? 'X' : '&nbsp;'}&nbsp;)</span> BOCA LATERAL</div>
@@ -13456,12 +13454,21 @@ const App: React.FC = () => {
     setLaudoFormMode('create');
   };
 
+  const formatToLocalDatetimeInput = (isoStr?: string) => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr.slice(0, 16);
+    const offset = d.getTimezoneOffset();
+    const localDate = new Date(d.getTime() - (offset * 60 * 1000));
+    return localDate.toISOString().slice(0, 16);
+  };
+
   const handleOpenEditLaudo = (laudo: LaudoHigienizacao) => {
     setSelectedLaudo(laudo);
     setFormLaudoNumero(laudo.numero_laudo);
     setFormLaudoData(laudo.data_laudo ? laudo.data_laudo.slice(0, 10) : '');
-    setFormLaudoEntrada(laudo.entrada_data_hora ? laudo.entrada_data_hora.slice(0, 16) : '');
-    setFormLaudoSaida(laudo.saida_data_hora ? laudo.saida_data_hora.slice(0, 16) : '');
+    setFormLaudoEntrada(formatToLocalDatetimeInput(laudo.entrada_data_hora));
+    setFormLaudoSaida(formatToLocalDatetimeInput(laudo.saida_data_hora));
     setFormLaudoPlacaCavalo(laudo.placa_cavalo || '');
     setFormLaudoPlacaCarreta1(laudo.placa_carreta_1 || '');
     setFormLaudoPlacaCarreta2(laudo.placa_carreta_2 || '');
@@ -13644,36 +13651,26 @@ const App: React.FC = () => {
         });
 
       } else if (laudoFormMode === 'edit' && selectedLaudo) {
-        let res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${selectedLaudo.id}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
+        const updatePayload = { ...payload };
+        delete (updatePayload as any).carreta_externo_mangote;
 
-        if (!res.ok) {
-          const errData = await res.json();
-          if (errData.message && errData.message.includes('carreta_externo_mangote')) {
-            const fallbackPayload = { ...payload };
-            delete (fallbackPayload as any).carreta_externo_mangote;
-            res = await fetch(`${SUPABASE_URL}/rest/v1/laudos_higienizacao?id=eq.${selectedLaudo.id}`, {
-              method: 'PATCH',
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify(fallbackPayload)
+        const { error: updateError } = await supabase
+          .from('laudos_higienizacao')
+          .update(updatePayload)
+          .eq('id', selectedLaudo.id);
+
+        if (updateError) {
+          const { error: upsertError } = await supabase
+            .from('laudos_higienizacao')
+            .upsert({
+              id: selectedLaudo.id,
+              created_at: selectedLaudo.created_at || new Date().toISOString(),
+              created_by: selectedLaudo.created_by || session?.user?.email || 'anon',
+              ...updatePayload
             });
-            if (!res.ok) {
-              const errData2 = await res.json();
-              throw new Error(errData2.message || 'Erro ao atualizar laudo.');
-            }
-          } else {
-            throw new Error(errData.message || 'Erro ao atualizar laudo.');
+
+          if (upsertError) {
+            throw new Error(upsertError.message || updateError.message || 'Erro ao atualizar laudo.');
           }
         }
       }
